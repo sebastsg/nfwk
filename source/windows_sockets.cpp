@@ -191,7 +191,7 @@ static bool socket_send(int id, const io_stream& packet) {
 	auto& socket = winsock.sockets[id];
 	auto data = new iocp_send_data;
 	socket.io.send.emplace(data);
-	data->buffer = { packet.write_index(), packet.data() };
+	data->buffer = { (ULONG)packet.write_index(), packet.data() };
 	// unlike regular non-blocking send(), WSASend() will complete the operation asynchronously,
 	// and this might happen before it returns. the data can immediately be discarded on return.
 	int result = WSASend(socket.handle, &data->buffer, 1, &data->bytes, 0, &data->overlapped, nullptr);

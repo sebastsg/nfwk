@@ -82,7 +82,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 		keyboard.release.emit((no::key)w_param);
 		return 0;
 	case WM_CHAR:
-		keyboard.input.emit(w_param);
+		keyboard.input.emit((unsigned int)w_param);
 		return 0;
 	case WM_SIZE:
 		active_window->set_viewport(0, 0, LOWORD(l_param), HIWORD(l_param));
