@@ -1,0 +1,6 @@
+project/vs
+
+config.hpp
+
+*.pdb
+lib
