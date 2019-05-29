@@ -62,7 +62,7 @@ io_stream::io_stream(char* data, size_t size, construct_by construction) {
 	}
 }
 
-io_stream::io_stream(io_stream&& that) {
+io_stream::io_stream(io_stream&& that) noexcept {
 	std::swap(begin, that.begin);
 	std::swap(end, that.end);
 	std::swap(read_position, that.read_position);
@@ -74,7 +74,7 @@ io_stream::~io_stream() {
 	free();
 }
 
-io_stream& io_stream::operator=(io_stream&& that) {
+io_stream& io_stream::operator=(io_stream&& that) noexcept {
 	std::swap(begin, that.begin);
 	std::swap(end, that.end);
 	std::swap(read_position, that.read_position);
@@ -253,8 +253,7 @@ int io_stream::find_first(const std::string& key, size_t start) const {
 	if (!found) {
 		return -1;
 	}
-	found -= (size_t)begin;
-	return (int)found;
+	return (int)(found - begin);
 }
 
 int io_stream::find_last(const std::string& key, size_t start) const {
@@ -263,8 +262,7 @@ int io_stream::find_last(const std::string& key, size_t start) const {
 		char* previous = found;
 		found = strstr(found, key.c_str());
 		if (!found) {
-			previous -= (size_t)begin;
-			return (int)previous;
+			return (int)(previous - begin);
 		}
 		++found;
 	}

@@ -70,7 +70,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	case WM_KEYDOWN:
 	case WM_SYSKEYDOWN:
 	{
-		int repeat = l_param >> 30;
+		auto repeat = l_param >> 30;
 		keyboard.repeated_press.emit((no::key)w_param);
 		if (repeat == 0) {
 			keyboard.press.emit((no::key)w_param);

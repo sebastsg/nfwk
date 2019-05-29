@@ -23,11 +23,11 @@ public:
 	io_stream(size_t size);
 	io_stream(char* data, size_t size, construct_by construction);
 	io_stream(const io_stream&) = delete;
-	io_stream(io_stream&&);
+	io_stream(io_stream&&) noexcept;
 	~io_stream();
 
 	io_stream& operator=(const io_stream&) = delete;
-	io_stream& operator=(io_stream&&);
+	io_stream& operator=(io_stream&&) noexcept;
 
 	void allocate(size_t size);
 	void resize(size_t new_size);
@@ -121,7 +121,7 @@ public:
 	template<>
 	void write(std::string value) {
 		size_t size = value.size();
-		write<uint32_t>(size);
+		write((uint32_t)size);
 		if (size == 0) {
 			return;
 		}

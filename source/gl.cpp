@@ -105,10 +105,10 @@ int create_vertex_array(const vertex_specification& specification) {
 	bind_vertex_array(id);
 	int vertex_size = 0;
 	for (auto& attribute : specification) {
-		vertex_size += attribute.components * size_of_attribute_component(attribute.type);
+		vertex_size += attribute.components * (int)size_of_attribute_component(attribute.type);
 	}
 	char* attribute_pointer = nullptr;
-	for (size_t i = 0; i < specification.size(); i++) {
+	for (int i = 0; i < (int)specification.size(); i++) {
 		auto& attribute = specification[i];
 		int normalized = (attribute.normalized ? GL_TRUE : GL_FALSE);
 		switch (attribute.type) {
@@ -123,7 +123,7 @@ int create_vertex_array(const vertex_specification& specification) {
 			break;
 		}
 		CHECK_GL_ERROR(glEnableVertexAttribArray(i));
-		attribute_pointer += attribute.components * size_of_attribute_component(attribute.type);
+		attribute_pointer += (size_t)attribute.components * size_of_attribute_component(attribute.type);
 	}
 	return id;
 }
@@ -159,7 +159,7 @@ void set_vertex_array_indices(int id, uint8_t* data, size_t size) {
 		vertex_array.index_buffer.exists = true;
 		vertex_array.index_buffer.allocated = size;
 	}
-	vertex_array.indices = size / sizeof(unsigned short);
+	vertex_array.indices = (unsigned int)(size / sizeof(unsigned short));
 }
 
 void draw_vertex_array(int id) {
@@ -167,7 +167,7 @@ void draw_vertex_array(int id) {
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, vertex_array.indices, GL_UNSIGNED_SHORT, nullptr));
 }
 
-void draw_vertex_array(int id, size_t offset, size_t count) {
+void draw_vertex_array(int id, size_t offset, int count) {
 	offset *= sizeof(unsigned short);
 	const auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, count, GL_UNSIGNED_SHORT, (void*)offset));
@@ -347,7 +347,7 @@ int create_shader(const std::string& path) {
 	MESSAGE("Loading shader " << path << " (" << attributes << ")");
 	int vertex_shader_id = create_shader_script(source, GL_VERTEX_SHADER);
 	CHECK_GL_ERROR(glAttachShader(shader.id, vertex_shader_id));
-	for (size_t location = 0; location < attributes.size(); location++) {
+	for (int location = 0; location < (int)attributes.size(); location++) {
 		CHECK_GL_ERROR(glBindAttribLocation(shader.id, location, attributes[location].c_str()));
 	}
 	source = file::read(path + "/fragment.glsl");
@@ -476,15 +476,15 @@ void shader_variable::set(const transform3& transform) const {
 }
 
 void shader_variable::set(vector2f* vector, size_t count) const {
-	CHECK_GL_ERROR(glUniform2fv(location, count, &vector[0].x));
+	CHECK_GL_ERROR(glUniform2fv(location, (int)count, &vector[0].x));
 }
 
 void shader_variable::set(const std::vector<glm::mat4>& matrices) const {
-	CHECK_GL_ERROR(glUniformMatrix4fv(location, matrices.size(), GL_FALSE, glm::value_ptr(matrices[0])));
+	CHECK_GL_ERROR(glUniformMatrix4fv(location, (int)matrices.size(), GL_FALSE, glm::value_ptr(matrices[0])));
 }
 
 void shader_variable::set(const glm::mat4* matrices, size_t count) const {
-	CHECK_GL_ERROR(glUniformMatrix4fv(location, count, GL_FALSE, glm::value_ptr(matrices[0])));
+	CHECK_GL_ERROR(glUniformMatrix4fv(location, (int)count, GL_FALSE, glm::value_ptr(matrices[0])));
 }
 
 bool shader_variable::exists() const {

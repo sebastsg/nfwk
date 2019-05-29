@@ -16,7 +16,7 @@ void packetizer::end(io_stream& stream) {
 	// go back to the beginning and write the size
 	size_t size = stream.write_index() - header_size;
 	stream.set_write_index(sizeof(magic_type));
-	stream.write<body_size_type>(size);
+	stream.write((body_size_type)size);
 	stream.move_write_index(size);
 }
 
