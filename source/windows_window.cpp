@@ -75,7 +75,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 		if (w_param == VK_SHIFT) {
 			key = ((GetKeyState(VK_LSHIFT) & 0x8000) != 0 ? no::key::left_shift : no::key::right_shift);
 		} else if (w_param == VK_CONTROL) {
-			key = ((GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 ? no::key::left_control : no::key::right_control);
+			key = ((GetKeyState(VK_LCONTROL) & 0x8000) != 0 ? no::key::left_control : no::key::right_control);
 		}
 		keyboard.repeated_press.emit(key);
 		if (repeat == 0) {
@@ -88,9 +88,17 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	{
 		no::key key = (no::key)w_param;
 		if (w_param == VK_SHIFT) {
-			key = ((GetKeyState(VK_LSHIFT) & 0x8000) == 0 ? no::key::left_shift : no::key::right_shift);
+			if (keyboard.is_key_down(no::key::left_shift) && (GetKeyState(VK_LSHIFT) & 0x8000) == 0) {
+				key = no::key::left_shift;
+			} else {
+				key = no::key::right_shift;
+			}
 		} else if (w_param == VK_CONTROL) {
-			key = ((GetAsyncKeyState(VK_LCONTROL) & 0x8000) == 0 ? no::key::left_control : no::key::right_control);
+			if (keyboard.is_key_down(no::key::left_control) && (GetKeyState(VK_LCONTROL) & 0x8000) == 0) {
+				key = no::key::left_control;
+			} else {
+				key = no::key::right_control;
+			}
 		}
 		keyboard.release.emit(key);
 		return 0;
