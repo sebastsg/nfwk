@@ -27,7 +27,7 @@ void bind_vertex_array(int id);
 void set_vertex_array_vertices(int id, uint8_t* buffer, size_t size);
 void set_vertex_array_indices(int id, uint8_t* buffer, size_t size);
 void draw_vertex_array(int id);
-void draw_vertex_array(int id, size_t offset, size_t count);
+void draw_vertex_array(int id, size_t offset, int count);
 void delete_vertex_array(int id);
 
 int create_texture();

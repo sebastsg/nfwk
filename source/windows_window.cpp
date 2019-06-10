@@ -71,16 +71,30 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	case WM_SYSKEYDOWN:
 	{
 		auto repeat = l_param >> 30;
-		keyboard.repeated_press.emit((no::key)w_param);
+		no::key key = (no::key)w_param;
+		if (w_param == VK_SHIFT) {
+			key = ((GetKeyState(VK_LSHIFT) & 0x8000) != 0 ? no::key::left_shift : no::key::right_shift);
+		} else if (w_param == VK_CONTROL) {
+			key = ((GetAsyncKeyState(VK_LCONTROL) & 0x8000) != 0 ? no::key::left_control : no::key::right_control);
+		}
+		keyboard.repeated_press.emit(key);
 		if (repeat == 0) {
-			keyboard.press.emit((no::key)w_param);
+			keyboard.press.emit(key);
 		}
 		return 0;
 	}
 	case WM_SYSKEYUP:
 	case WM_KEYUP:
-		keyboard.release.emit((no::key)w_param);
+	{
+		no::key key = (no::key)w_param;
+		if (w_param == VK_SHIFT) {
+			key = ((GetKeyState(VK_LSHIFT) & 0x8000) == 0 ? no::key::left_shift : no::key::right_shift);
+		} else if (w_param == VK_CONTROL) {
+			key = ((GetAsyncKeyState(VK_LCONTROL) & 0x8000) == 0 ? no::key::left_control : no::key::right_control);
+		}
+		keyboard.release.emit(key);
 		return 0;
+	}
 	case WM_CHAR:
 		keyboard.input.emit((unsigned int)w_param);
 		return 0;
