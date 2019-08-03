@@ -42,7 +42,8 @@ struct gl_vertex_array {
 	int draw_mode = GL_TRIANGLES;
 	gl_buffer vertex_buffer;
 	gl_buffer index_buffer;
-	unsigned int indices = 0;
+	size_t indices = 0;
+	int index_type = GL_UNSIGNED_SHORT;
 };
 
 struct gl_texture {
@@ -148,9 +149,23 @@ void set_vertex_array_vertices(int id, uint8_t* data, size_t size) {
 	}
 }
 
-void set_vertex_array_indices(int id, uint8_t* data, size_t size) {
+void set_vertex_array_indices(int id, uint8_t* data, size_t size, size_t element_size) {
 	ASSERT(data && size > 0);
 	auto& vertex_array = renderer.vertex_arrays[id];
+	switch (element_size) {
+	case 1:
+		vertex_array.index_type = GL_UNSIGNED_BYTE;
+		break;
+	case 2:
+		vertex_array.index_type = GL_UNSIGNED_SHORT;
+		break;
+	case 4:
+		vertex_array.index_type = GL_UNSIGNED_INT;
+		break;
+	default:
+		WARNING_LIMIT("Invalid index element size: " << element_size, 100);
+		break;
+	}
 	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));
 	if (vertex_array.index_buffer.exists && vertex_array.index_buffer.allocated >= size) {
 		CHECK_GL_ERROR(glBufferSubData(GL_ELEMENT_ARRAY_BUFFER, 0, size, data));
@@ -159,18 +174,17 @@ void set_vertex_array_indices(int id, uint8_t* data, size_t size) {
 		vertex_array.index_buffer.exists = true;
 		vertex_array.index_buffer.allocated = size;
 	}
-	vertex_array.indices = (unsigned int)(size / sizeof(unsigned short));
+	vertex_array.indices = size / element_size;
 }
 
 void draw_vertex_array(int id) {
 	const auto& vertex_array = renderer.vertex_arrays[id];
-	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, vertex_array.indices, GL_UNSIGNED_SHORT, nullptr));
+	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, vertex_array.indices, vertex_array.index_type, nullptr));
 }
 
 void draw_vertex_array(int id, size_t offset, int count) {
-	offset *= sizeof(unsigned short);
 	const auto& vertex_array = renderer.vertex_arrays[id];
-	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, count, GL_UNSIGNED_SHORT, (void*)offset));
+	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, count, vertex_array.index_type, (void*)offset));
 }
 
 void delete_vertex_array(int id) {
@@ -357,7 +371,7 @@ int create_shader(const std::string& path) {
 	CHECK_GL_ERROR(glDeleteShader(vertex_shader_id));
 	CHECK_GL_ERROR(glDeleteShader(fragment_shader_id));
 
-#if DEBUG_ENABLED
+#if _DEBUG
 	char buffer[1024];
 	int length = 0;
 	CHECK_GL_ERROR(glGetProgramInfoLog(shader.id, 1024, &length, buffer));
@@ -376,10 +390,10 @@ int create_shader(const std::string& path) {
 #endif
 
 	bind_shader(id);
-	CHECK_GL_ERROR(shader.model_view_projection_location = glGetUniformLocation(shader.id, "uni_ModelViewProjection"));
-	CHECK_GL_ERROR(shader.model_location = glGetUniformLocation(shader.id, "uni_Model"));
-	CHECK_GL_ERROR(shader.view_location = glGetUniformLocation(shader.id, "uni_View"));
-	CHECK_GL_ERROR(shader.projection_location = glGetUniformLocation(shader.id, "uni_Projection"));
+	CHECK_GL_ERROR(shader.model_view_projection_location = glGetUniformLocation(shader.id, "model_view_projection"));
+	CHECK_GL_ERROR(shader.model_location = glGetUniformLocation(shader.id, "model"));
+	CHECK_GL_ERROR(shader.view_location = glGetUniformLocation(shader.id, "view"));
+	CHECK_GL_ERROR(shader.projection_location = glGetUniformLocation(shader.id, "projection"));
 	return id;
 }
 

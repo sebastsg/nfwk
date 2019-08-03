@@ -11,16 +11,18 @@
 
 namespace no {
 
-generic_vertex_array::generic_vertex_array(generic_vertex_array&& that) {
+generic_vertex_array::generic_vertex_array(generic_vertex_array&& that) noexcept {
 	std::swap(id, that.id);
+	std::swap(index_size, that.index_size);
 }
 
 generic_vertex_array::~generic_vertex_array() {
 	delete_vertex_array(id);
 }
 
-generic_vertex_array& generic_vertex_array::operator=(generic_vertex_array&& that) {
+generic_vertex_array& generic_vertex_array::operator=(generic_vertex_array&& that) noexcept {
 	std::swap(id, that.id);
+	std::swap(index_size, that.index_size);
 	return *this;
 }
 
@@ -40,7 +42,11 @@ bool generic_vertex_array::exists() const {
 	return id != -1;
 }
 
-model::model(model&& that) : mesh(std::move(that.mesh)) {
+size_t generic_vertex_array::size_of_index() const {
+	return index_size;
+}
+
+model::model(model&& that) noexcept : mesh{ std::move(that.mesh) } {
 	std::swap(root_transform, that.root_transform);
 	std::swap(min_vertex, that.min_vertex);
 	std::swap(max_vertex, that.max_vertex);
@@ -51,7 +57,7 @@ model::model(model&& that) : mesh(std::move(that.mesh)) {
 	std::swap(texture, that.texture);
 }
 
-model& model::operator=(model&& that) {
+model& model::operator=(model&& that) noexcept {
 	std::swap(mesh, that.mesh);
 	std::swap(root_transform, that.root_transform);
 	std::swap(min_vertex, that.min_vertex);

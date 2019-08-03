@@ -25,7 +25,7 @@ enum class polygon_render_mode { fill, wireframe };
 int create_vertex_array(const vertex_specification& specification);
 void bind_vertex_array(int id);
 void set_vertex_array_vertices(int id, uint8_t* buffer, size_t size);
-void set_vertex_array_indices(int id, uint8_t* buffer, size_t size);
+void set_vertex_array_indices(int id, uint8_t* buffer, size_t size, size_t element_size);
 void draw_vertex_array(int id);
 void draw_vertex_array(int id, size_t offset, int count);
 void delete_vertex_array(int id);
@@ -84,7 +84,7 @@ public:
 
 };
 
-template<typename V>
+template<typename V, typename I>
 class vertex_array {
 public:
 
@@ -94,13 +94,13 @@ public:
 		id = create_vertex_array(vertex_specification(std::begin(V::attributes), std::end(V::attributes)));
 	}
 
-	vertex_array(const std::vector<V>& vertices, const std::vector<unsigned short>& indices) : vertex_array() {
+	vertex_array(const std::vector<V>& vertices, const std::vector<I>& indices) : vertex_array{} {
 		set(vertices, indices);
 	}
 
-	vertex_array(const vertex_array<V>&) = delete;
+	vertex_array(const vertex_array&) = delete;
 
-	vertex_array(vertex_array<V>&& that) {
+	vertex_array(vertex_array&& that) {
 		std::swap(id, that.id);
 	}
 
@@ -108,9 +108,9 @@ public:
 		delete_vertex_array(id);
 	}
 
-	vertex_array<V>& operator=(const vertex_array<V>&) = delete;
+	vertex_array& operator=(const vertex_array&) = delete;
 
-	vertex_array<V>& operator=(vertex_array<V>&& that) {
+	vertex_array& operator=(vertex_array&& that) {
 		std::swap(id, that.id);
 		return *this;
 	}
@@ -123,15 +123,15 @@ public:
 		set_vertex_array_vertices(id, vertices, vertex_count * sizeof(V));
 	}
 
-	void set_indices(const std::vector<unsigned short>& indices) {
-		set_vertex_array_indices(id, (uint8_t*)&indices[0], indices.size() * sizeof(unsigned short));
+	void set_indices(const std::vector<I>& indices) {
+		set_vertex_array_indices(id, (uint8_t*)&indices[0], indices.size() * sizeof(I), sizeof(I));
 	}
 
 	void set_indices(uint8_t* indices, size_t index_count) {
-		set_vertex_array_indices(id, indices, index_count * sizeof(unsigned short));
+		set_vertex_array_indices(id, indices, index_count * sizeof(I), sizeof(I));
 	}
 
-	void set(const std::vector<V>& vertices, const std::vector<unsigned short>& indices) {
+	void set(const std::vector<V>& vertices, const std::vector<I>& indices) {
 		set_vertices(vertices);
 		set_indices(indices);
 	}
@@ -150,7 +150,7 @@ public:
 	}
 
 	void draw(size_t offset, size_t count) const {
-		draw_vertex_array(id, offset, count);
+		draw_vertex_array(id, offset * sizeof(I), count);
 	}
 
 private:
@@ -164,26 +164,30 @@ public:
 
 	generic_vertex_array() = default;
 	generic_vertex_array(const generic_vertex_array&) = delete;
-	generic_vertex_array(generic_vertex_array&&);
+	generic_vertex_array(generic_vertex_array&&) noexcept;
 
-	template<typename V>
-	generic_vertex_array(vertex_array<V>&& that) {
+	template<typename V, typename I>
+	generic_vertex_array(vertex_array<V, I>&& that) {
 		std::swap(id, that.id);
+		index_size = sizeof(I);
 	}
 
 	~generic_vertex_array();
 
 	generic_vertex_array& operator=(const generic_vertex_array&) = delete;
-	generic_vertex_array& operator=(generic_vertex_array&&);
+	generic_vertex_array& operator=(generic_vertex_array&&) noexcept;
 
 	void bind() const;
 	void draw() const;
 	void draw(size_t offset, size_t count) const;
 	bool exists() const;
 
+	size_t size_of_index() const;
+
 private:
 
 	int id = -1;
+	size_t index_size = 0;
 
 };
 
@@ -195,12 +199,12 @@ public:
 
 	model() = default;
 	model(const model&) = delete;
-	model(model&&);
+	model(model&&) noexcept;
 
 	~model() = default;
 
 	model& operator=(const model&) = delete;
-	model& operator=(model&&);
+	model& operator=(model&&) noexcept;
 
 	int index_of_animation(const std::string& name) const;
 	int total_animations() const;
@@ -216,7 +220,7 @@ public:
 			WARNING("Failed to load model");
 			return;
 		}
-		mesh = { std::move(vertex_array<V>{model.shape.vertices, model.shape.indices }) };
+		mesh = { std::move(vertex_array<V, I>{model.shape.vertices, model.shape.indices }) };
 		root_transform = model.transform;
 		min_vertex = model.min;
 		max_vertex = model.max;
@@ -280,7 +284,7 @@ public:
 
 private:
 
-	vertex_array<sprite_vertex> vertices;
+	vertex_array<sprite_vertex, unsigned short> vertices;
 
 };
 
@@ -339,11 +343,11 @@ public:
 
 private:
 
-	vertex_array<V> vertices;
+	vertex_array<V, unsigned short> vertices;
 
 };
 
-template<typename V>
+template<typename V, typename I>
 class tiled_quad_array {
 public:
 
@@ -366,7 +370,7 @@ public:
 		return *this;
 	}
 
-	void build(int vertices_per_quad, vector2i size, const std::function<void(int, int, std::vector<V>&, std::vector<unsigned short>&)>& builder) {
+	void build(int vertices_per_quad, vector2i size, const std::function<void(int, int, std::vector<V>&, std::vector<I>&)>& builder) {
 		per_quad = vertices_per_quad;
 		quad_count = size;
 		vertices.clear();
@@ -413,10 +417,10 @@ public:
 
 private:
 
-	vertex_array<V> shape;
+	vertex_array<V, I> shape;
 	vector2i quad_count;
 	std::vector<V> vertices;
-	std::vector<unsigned short> indices;
+	std::vector<I> indices;
 	int per_quad = 1;
 
 };

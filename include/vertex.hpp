@@ -81,7 +81,7 @@ template<typename V>
 struct vertex_array_data {
 
 	std::vector<V> vertices;
-	std::vector<unsigned short> indices;
+	std::vector<int> indices;
 
 	bool operator==(const vertex_array_data& that) const {
 		if (vertices.size() != that.vertices.size()) {

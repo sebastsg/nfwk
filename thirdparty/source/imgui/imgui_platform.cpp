@@ -175,7 +175,7 @@ void create(window& window) {
 			ReleaseCapture();
 		}
 	});
-	io.BackendRendererName = "opengl-no";
+	io.BackendRendererName = "opengl-nfwk";
 
 	ImGui::StyleColorsDark();
 
@@ -212,29 +212,23 @@ void destroy() {
 
 void start_frame() {
 	auto& io = ImGui::GetIO();
-
 	RECT rect;
 	GetClientRect(data.window->platform_window()->handle(), &rect);
 	io.DisplaySize = { (float)(rect.right - rect.left), (float)(rect.bottom - rect.top) };
-
 	INT64 current_time;
 	QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
 	io.DeltaTime = (float)(current_time - data.time) / data.ticks_per_second;
 	data.time = current_time;
-
 	io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
 	io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
 	io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
 	io.KeySuper = false;
-
 	update_mouse_position();
-
 	ImGuiMouseCursor mouse_cursor = io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor();
 	if (data.last_mouse_cursor != mouse_cursor) {
 		data.last_mouse_cursor = mouse_cursor;
 		update_cursor_icon();
 	}
-
 	ImGui::NewFrame();
 }
 
@@ -255,17 +249,14 @@ void draw() {
 	}
 	draw_data->ScaleClipRects(io.DisplayFramebufferScale);
 
-	vector2f pos = {
-		draw_data->DisplayPos.x,
-		draw_data->DisplayPos.y
-	};
+	vector2f pos{ draw_data->DisplayPos.x, draw_data->DisplayPos.y };
 	bind_shader(data.shader_id);
 
 	ortho_camera camera;
 	camera.transform.scale = { draw_data->DisplaySize.x, draw_data->DisplaySize.y };
 	set_shader_view_projection(camera);
 
-	vertex_array<imgui_vertex> vertex_array;
+	vertex_array<imgui_vertex, unsigned short> vertex_array;
 	for (int list_index = 0; list_index < draw_data->CmdListsCount; list_index++) {
 		auto cmd_list = draw_data->CmdLists[list_index];
 		auto vertex_data = (uint8_t*)cmd_list->VtxBuffer.Data;
@@ -280,7 +271,7 @@ void draw() {
 				buffer->UserCallback(cmd_list, buffer);
 				continue;
 			}
-			vector4i clip_rect = {
+			vector4i clip_rect{
 				(int)buffer->ClipRect.x - (int)pos.x,
 				(int)buffer->ClipRect.y - (int)pos.y,
 				(int)buffer->ClipRect.z - (int)pos.x,
