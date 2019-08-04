@@ -348,55 +348,41 @@ private:
 };
 
 template<typename V, typename I>
-class tiled_quad_array {
+class quad_array {
 public:
 
-	tiled_quad_array() = default;
-	tiled_quad_array(const tiled_quad_array&) = delete;
-	tiled_quad_array(tiled_quad_array&& that) : shape(std::move(that.shape)) {
-		std::swap(quad_count, that.quad_count);
-		std::swap(per_quad, that.per_quad);
+	quad_array() = default;
+
+	quad_array(const quad_array&) = delete;
+
+	quad_array(quad_array&& that) : shape{ std::move(that.shape) } {
 		std::swap(vertices, that.vertices);
 		std::swap(indices, that.indices);
 	}
 
-	tiled_quad_array& operator=(const tiled_quad_array&) = delete;
-	tiled_quad_array& operator=(tiled_quad_array&& that) {
+	quad_array& operator=(const quad_array&) = delete;
+
+	quad_array& operator=(quad_array&& that) {
 		std::swap(shape, that.shape);
-		std::swap(quad_count, that.quad_count);
-		std::swap(per_quad, that.per_quad);
 		std::swap(vertices, that.vertices);
 		std::swap(indices, that.indices);
 		return *this;
 	}
 
-	void build(int vertices_per_quad, vector2i size, const std::function<void(int, int, std::vector<V>&, std::vector<I>&)>& builder) {
-		per_quad = vertices_per_quad;
-		quad_count = size;
-		vertices.clear();
-		vertices.reserve(size.x * size.y);
-		indices.clear();
-		indices.reserve(size.x * size.y);
-		for (int y = 0; y < size.y; y++) {
-			for (int x = 0; x < size.x; x++) {
-				builder(x, y, vertices, indices);
-			}
-		}
-		shape.set(vertices, indices);
+	void append(const V& v1, const V& v2, const V& v3, const V& v4) {
+		const I i{ (I)vertices.size() };
+		vertices.insert(vertices.end(), { v1, v2, v3, v4 });
+		indices.insert(indices.end(), { (I)i, (I)(i + 1), (I)(i + 2), (I)i, (I)(i + 3), (I)(i + 2) });
 	}
 
-	void for_each(const std::function<void(int, int, int, std::vector<V>&)>& function) {
-		int i = 0;
-		for (int y = 0; y < quad_count.y; y++) {
-			for (int x = 0; x < quad_count.x; x++) {
-				function(i, x, y, vertices);
-				i += per_quad;
-			}
-		}
+	void set(const std::vector<V>& v, const std::vector<I>& i) {
+		vertices = v;
+		indices = v;
+		refresh();
 	}
 
 	void refresh() {
-		shape.set_vertices(vertices);
+		shape.set(vertices, indices);
 	}
 
 	void bind() const {
@@ -407,21 +393,11 @@ public:
 		shape.draw();
 	}
 
-	int width() const {
-		return quad_count.x;
-	}
-
-	int height() const {
-		return quad_count.y;
-	}
-
 private:
 
 	vertex_array<V, I> shape;
-	vector2i quad_count;
 	std::vector<V> vertices;
 	std::vector<I> indices;
-	int per_quad = 1;
 
 };
 
