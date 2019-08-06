@@ -215,7 +215,7 @@ public:
 	glm::mat4 bone(int index) const;
 
 	template<typename V, typename I>
-	void load(const model_data<V>& model) {
+	void load(const model_data<V, I>& model) {
 		if (model.shape.vertices.empty()) {
 			WARNING("Failed to load model");
 			return;
@@ -234,9 +234,9 @@ public:
 		drawable = (vertices > 0 && indices > 0);
 	}
 
-	template<typename V>
+	template<typename V, typename I>
 	void load(const std::string& path) {
-		model_data<V> model;
+		model_data<V, I> model;
 		import_model(path, model);
 		if (model.shape.vertices.empty()) {
 			WARNING("Failed to load model: " << path);

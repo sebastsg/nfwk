@@ -77,11 +77,11 @@ struct pick_vertex {
 	vector3f color;
 };
 
-template<typename V>
+template<typename V, typename I>
 struct vertex_array_data {
 
 	std::vector<V> vertices;
-	std::vector<int> indices;
+	std::vector<I> indices;
 
 	bool operator==(const vertex_array_data& that) const {
 		if (vertices.size() != that.vertices.size()) {
@@ -157,12 +157,12 @@ struct model_node {
 	int depth = 0;
 };
 
-template<typename V>
+template<typename V, typename I>
 struct model_data {
 	glm::mat4 transform;
 	vector3f min;
 	vector3f max;
-	vertex_array_data<V> shape;
+	vertex_array_data<V, I> shape;
 	std::vector<std::string> bone_names;
 	std::vector<glm::mat4> bones;
 	std::vector<model_node> nodes;
@@ -170,9 +170,9 @@ struct model_data {
 	std::string texture;
 	std::string name;
 
-	template<typename T>
-	model_data<T> to(const std::function<T(V)>& mapper) const {
-		model_data<T> that;
+	template<typename T, typename I>
+	model_data<T, I> to(const std::function<T(V)>& mapper) const {
+		model_data<T, I> that;
 		that.transform = transform;
 		that.min = min;
 		that.max = max;
@@ -191,9 +191,9 @@ struct model_data {
 
 };
 
-template<typename V>
-model_data<V> create_box_model_data(const std::function<V(const vector3f&)>& mapper) {
-	model_data<V> data;
+template<typename V, typename I>
+model_data<V, I> create_box_model_data(const std::function<V(const vector3f&)>& mapper) {
+	model_data<V, I> data;
 	data.name = "box";
 	data.min = 0.0f;
 	data.max = 1.0f;
@@ -230,11 +230,11 @@ struct model_import_options {
 
 struct model_conversion_options {
 	model_import_options import;
-	std::function<void(const std::string&, const model_data<animated_mesh_vertex>&)> exporter;
+	std::function<void(const std::string&, const model_data<animated_mesh_vertex, int>&)> exporter;
 };
 
-template<typename V>
-void export_model(const std::string& path, const model_data<V>& model) {
+template<typename V, typename I>
+void export_model(const std::string& path, const model_data<V, I>& model) {
 	io_stream stream;
 	stream.write(model.transform);
 	stream.write(model.min);
@@ -243,7 +243,7 @@ void export_model(const std::string& path, const model_data<V>& model) {
 	stream.write(model.name);
 	stream.write((int32_t)sizeof(V));
 	stream.write_array<V>(model.shape.vertices);
-	stream.write_array<uint16_t>(model.shape.indices);
+	stream.write_array<I>(model.shape.indices);
 	stream.write_array<std::string>(model.bone_names);
 	stream.write_array<glm::mat4>(model.bones);
 	stream.write((int16_t)model.nodes.size());
@@ -281,8 +281,8 @@ void export_model(const std::string& path, const model_data<V>& model) {
 	file::write(path, stream);
 }
 
-template<typename V>
-void import_model(const std::string& path, model_data<V>& model) {
+template<typename V, typename I>
+void import_model(const std::string& path, model_data<V, I>& model) {
 	io_stream stream;
 	file::read(path, stream);
 	if (stream.write_index() == 0) {
@@ -300,7 +300,7 @@ void import_model(const std::string& path, model_data<V>& model) {
 		return;
 	}
 	model.shape.vertices = stream.read_array<V>();
-	model.shape.indices = stream.read_array<uint16_t>();
+	model.shape.indices = stream.read_array<I>();
 	model.bone_names = stream.read_array<std::string>();
 	model.bones = stream.read_array<glm::mat4>();
 	int16_t node_count = stream.read<int16_t>();
@@ -345,15 +345,15 @@ void import_model(const std::string& path, model_data<V>& model) {
 
 // if multiple models have identical vertex data, they can be merged into one model with all animations
 // source files must already be converted to nom format. validation is done during the merging process.
-template<typename V>
-model_data<V> merge_model_animations(const std::vector<model_data<V>>& models) {
+template<typename V, typename I>
+model_data<V, I> merge_model_animations(const std::vector<model_data<V, I>>& models) {
 	if (models.empty()) {
 		return {};
 	}
 	if (models.size() == 1) {
 		return models.front();
 	}
-	model_data<V> output = models.front();
+	model_data<V, I> output = models.front();
 	for (size_t m = 1; m < models.size(); m++) {
 		auto& model = models[m];
 		if (model.transform != output.transform) {

@@ -68,7 +68,7 @@ static glm::quat ai_quat_to_glm_quat(const aiQuaternion& ai_quat) {
 class assimp_importer {
 public:
 
-	model_data<animated_mesh_vertex> model;
+	model_data<animated_mesh_vertex, int> model;
 
 	assimp_importer(const std::string& input, model_import_options options);
 
