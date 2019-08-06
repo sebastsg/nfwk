@@ -214,7 +214,7 @@ public:
 	int total_nodes() const;
 	glm::mat4 bone(int index) const;
 
-	template<typename V>
+	template<typename V, typename I>
 	void load(const model_data<V>& model) {
 		if (model.shape.vertices.empty()) {
 			WARNING("Failed to load model");
