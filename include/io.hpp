@@ -173,6 +173,14 @@ private:
 
 };
 
+class io_streamable {
+public:
+
+	virtual void write(io_stream& stream) const = 0;
+	virtual void read(io_stream& stream) = 0;
+
+};
+
 namespace file {
 
 void write(const std::string& path, const std::string& source);
