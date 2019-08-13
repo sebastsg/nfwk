@@ -43,10 +43,10 @@ private:
 };
 
 struct socket_events {
-	message_event<io_stream> stream;
-	message_event<io_stream> packet;
-	message_event<socket_close_status> disconnect;
-	message_event<int> accept;
+	event<io_stream> stream;
+	event<io_stream> packet;
+	event<socket_close_status> disconnect;
+	event<int> accept;
 };
 
 template<typename P>

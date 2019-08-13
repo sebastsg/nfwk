@@ -103,12 +103,12 @@ private:
 	void change_state(const internal::make_state_function& make_state);
 
 	internal::make_state_function make_next_state;
-	int window_close_id = -1;
+	event_listener window_close;
 
 };
 
-signal_event& post_configure_event();
-signal_event& pre_exit_event();
+event<int>& post_configure_event();
+event<int>& pre_exit_event();
 
 #if ENABLE_WINDOW
 

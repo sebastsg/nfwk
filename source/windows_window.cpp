@@ -111,7 +111,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 		active_window->resize.emit({ { LOWORD(l_param), HIWORD(l_param) } });
 		return 0;
 	case WM_SETCURSOR:
-		if (LOWORD(l_param) == HTCLIENT && mouse.icon.listeners() > 0) {
+		if (LOWORD(l_param) == HTCLIENT && mouse.icon.total_listeners() > 0) {
 			mouse.icon.emit();
 			return 1;
 		}

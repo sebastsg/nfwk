@@ -19,14 +19,14 @@ public:
 	transform2 transform;
 	
 	struct {
-		signal_event click;
+		event<int> click;
 	} events;
 
 	ui_element(const program_state& state, const ortho_camera& camera);
 	ui_element(const ui_element&) = delete;
 	ui_element(ui_element&&) = delete;
 
-	virtual ~ui_element();
+	virtual ~ui_element() = default;
 
 	ui_element& operator=(const ui_element&) = delete;
 	ui_element& operator=(ui_element&&) = delete;
@@ -41,7 +41,7 @@ protected:
 
 private:
 
-	int mouse_release_id = -1;
+	event_listener mouse_release;
 
 };
 
@@ -117,8 +117,6 @@ public:
 	input_field(const input_field&) = delete;
 	input_field(input_field&&) = delete;
 
-	~input_field() override;
-
 	input_field& operator=(const input_field&) = delete;
 	input_field& operator=(input_field&&) = delete;
 
@@ -142,8 +140,9 @@ private:
 	text_view label;
 	std::string input;
 
-	int key_input = -1;
-	int mouse_press = -1;
+	event_listener key_input;
+	event_listener mouse_press;
+	event_listener click;
 
 };
 

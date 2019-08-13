@@ -22,13 +22,13 @@ public:
 		vector2i position;
 	};
 
-	message_event<move_message> move;
-	message_event<button> press;
-	message_event<button> release;
-	message_event<button> double_click;
-	message_event<int> scroll;
-	message_event<bool> visibility;
-	signal_event icon;
+	event<move_message> move;
+	event<button> press;
+	event<button> release;
+	event<button> double_click;
+	event<int> scroll;
+	event<bool> visibility;
+	event<int> icon;
 
 	mouse(window* parent_window);
 	mouse() = default;
@@ -133,10 +133,10 @@ enum class key {
 class keyboard {
 public:
 
-	message_event<key> press;
-	message_event<key> repeated_press;
-	message_event<key> release;
-	message_event<unsigned int> input;
+	event<key> press;
+	event<key> repeated_press;
+	event<key> release;
+	event<unsigned int> input;
 
 	keyboard();
 
@@ -145,6 +145,8 @@ public:
 private:
 
 	bool keys[(size_t)key::max_keys];
+	event_listener press_key;
+	event_listener release_key;
 
 };
 

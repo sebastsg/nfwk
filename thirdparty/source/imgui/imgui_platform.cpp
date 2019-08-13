@@ -30,14 +30,14 @@ static struct {
 	ImGuiMouseCursor last_mouse_cursor = ImGuiMouseCursor_COUNT;
 	int shader_id = -1;
 	int font_texture_id = -1;
-	int keyboard_repeated_press_id = -1;
-	int keyboard_release_id = -1;
-	int keybord_input_id = -1;
-	int mouse_scroll_id = -1;
-	int mouse_cursor_id = -1;
-	int mouse_press_id = -1;
-	int mouse_double_click_id = -1;
-	int mouse_release_id = -1;
+	event_listener keyboard_repeated_press;
+	event_listener keyboard_release;
+	event_listener keybord_input;
+	event_listener mouse_scroll;
+	event_listener mouse_cursor;
+	event_listener mouse_press;
+	event_listener mouse_double_click;
+	event_listener mouse_release;
 } data;
 
 struct imgui_vertex {
@@ -136,40 +136,40 @@ void create(window& window) {
 	io.KeyMap[ImGuiKey_X] = 'X';
 	io.KeyMap[ImGuiKey_Y] = 'Y';
 	io.KeyMap[ImGuiKey_Z] = 'Z';
-	data.keyboard_repeated_press_id = window.keyboard.repeated_press.listen([&](key pressed_key) {
+	data.keyboard_repeated_press = window.keyboard.repeated_press.listen([&](key pressed_key) {
 		if ((int)pressed_key < 256) {
 			io.KeysDown[(int)pressed_key] = true;
 		}
 	});
-	data.keyboard_release_id = window.keyboard.release.listen([&](key released_key) {
+	data.keyboard_release = window.keyboard.release.listen([&](key released_key) {
 		if ((int)released_key < 256) {
 			io.KeysDown[(int)released_key] = false;
 		}
 	});
-	data.keybord_input_id = window.keyboard.input.listen([&](unsigned int character) {
+	data.keybord_input = window.keyboard.input.listen([&](unsigned int character) {
 		if (character > 0 && character < 0x10000) {
 			io.AddInputCharacter(character);
 		}
 	});
-	data.mouse_scroll_id = window.mouse.scroll.listen([&](int steps) {
+	data.mouse_scroll = window.mouse.scroll.listen([&](int steps) {
 		io.MouseWheel += steps;
 	});
-	data.mouse_cursor_id = window.mouse.icon.listen([] {
+	data.mouse_cursor = window.mouse.icon.listen([](int) {
 		update_cursor_icon();
 	});
-	data.mouse_press_id = window.mouse.press.listen([&](mouse::button pressed_button) {
+	data.mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
 			SetCapture(data.window->platform_window()->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data.mouse_double_click_id = window.mouse.double_click.listen([&](mouse::button pressed_button) {
+	data.mouse_double_click = window.mouse.double_click.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
 			SetCapture(data.window->platform_window()->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data.mouse_release_id = window.mouse.release.listen([&](mouse::button released_button) {
+	data.mouse_release = window.mouse.release.listen([&](mouse::button released_button) {
 		set_mouse_down(released_button, false);
 		if (!ImGui::IsAnyMouseDown() && GetCapture() == data.window->platform_window()->handle()) {
 			ReleaseCapture();
@@ -194,14 +194,14 @@ void create(window& window) {
 }
 
 void destroy() {
-	data.window->keyboard.repeated_press.ignore(data.keyboard_repeated_press_id);
-	data.window->keyboard.release.ignore(data.keyboard_release_id);
-	data.window->keyboard.input.ignore(data.keybord_input_id);
-	data.window->mouse.scroll.ignore(data.mouse_scroll_id);
-	data.window->mouse.icon.ignore(data.mouse_cursor_id);
-	data.window->mouse.press.ignore(data.mouse_press_id);
-	data.window->mouse.double_click.ignore(data.mouse_double_click_id);
-	data.window->mouse.release.ignore(data.mouse_release_id);
+	data.keyboard_repeated_press.stop();
+	data.keyboard_release.stop();
+	data.keybord_input.stop();
+	data.mouse_scroll.stop();
+	data.mouse_cursor.stop();
+	data.mouse_press.stop();
+	data.mouse_double_click.stop();
+	data.mouse_release.stop();
 	delete_shader(data.shader_id);
 	delete_texture(data.font_texture_id);
 	data.shader_id = -1;

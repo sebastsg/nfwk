@@ -72,16 +72,16 @@ static struct {
 
 	long redundant_bind_calls_this_frame = 0;
 
-	signal_event post_configure;
-	signal_event pre_exit;
+	event<int> post_configure;
+	event<int> pre_exit;
 
 } loop;
 
-signal_event& post_configure_event() {
+event<int>& post_configure_event() {
 	return loop.post_configure;
 }
 
-signal_event& pre_exit_event() {
+event<int>& pre_exit_event() {
 	return loop.pre_exit;
 }
 
@@ -143,16 +143,13 @@ static void destroy_stopped_states() {
 
 program_state::program_state() {
 #if ENABLE_WINDOW
-	window_close_id = window().close.listen([this] {
+	window_close = window().close.listen([this](int) {
 		loop.states_to_stop.push_back(this);
 	});
 #endif
 }
 
 program_state::~program_state() {
-#if ENABLE_WINDOW
-	window().close.ignore(window_close_id);
-#endif
 	if (make_next_state) {
 		loop.states.emplace_back(make_next_state());
 	}

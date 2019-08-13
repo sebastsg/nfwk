@@ -20,8 +20,8 @@ public:
 		vector2i size;
 	};
 
-	signal_event close;
-	message_event<resize_message> resize;
+	event<int> close;
+	event<resize_message> resize;
 
 	keyboard keyboard;
 	mouse mouse;

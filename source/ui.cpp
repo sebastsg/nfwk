@@ -7,15 +7,11 @@
 namespace no {
 
 ui_element::ui_element(const program_state& state_, const ortho_camera& camera_) : state(state_), camera(camera_) {
-	mouse_release_id = state.mouse().release.listen([this](mouse::button button) {
+	mouse_release = state.mouse().release.listen([this](mouse::button button) {
 		if (button == mouse::button::left && transform.collides_with(camera.mouse_position(state.mouse()))) {
 			events.click.emit();
 		}
 	});
-}
-
-ui_element::~ui_element() {
-	state.mouse().release.ignore(mouse_release_id);
 }
 
 bool ui_element::is_hovered() const {
@@ -135,7 +131,7 @@ void button::set_tex_coords(vector2f position, vector2f size) {
 input_field::input_field(const program_state& state_, const ortho_camera& camera_, const font& font) : ui_element(state_, camera_), label(state_, camera_), input_font(font) {
 	animation.pause();
 	animation.frames = 3;
-	events.click.listen([this] {
+	click = events.click.listen([this](int) {
 		focus();
 	});
 	mouse_press = state.mouse().press.listen([this](mouse::button button) {
@@ -149,13 +145,8 @@ input_field::input_field(const program_state& state_, const ortho_camera& camera
 	});
 }
 
-input_field::~input_field() {
-	blur();
-	state.mouse().press.ignore(mouse_press);
-}
-
 void input_field::update() {
-	if (key_input != -1) {
+	if (key_input.exists()) {
 		animation.set_frame(2);
 	} else if (transform.collides_with(camera.mouse_position(state.mouse()))) {
 		if (state.mouse().is_button_down(mouse::button::left)) {
@@ -167,8 +158,8 @@ void input_field::update() {
 		animation.set_frame(0);
 	}
 	label.transform.align(align_type::left, transform, padding);
-	std::string text = censor ? std::string(input.size(), '*') : input;
-	label.render(input_font, key_input == -1 ? text : text + "|");
+	std::string text{ censor ? std::string(input.size(), '*') : input };
+	label.render(input_font, key_input.exists() ? text + "|" : text);
 }
 
 void input_field::draw(int sprite) {
@@ -177,7 +168,7 @@ void input_field::draw(int sprite) {
 }
 
 void input_field::focus() {
-	if (key_input != -1) {
+	if (key_input.exists()) {
 		return;
 	}
 	key_input = state.keyboard().input.listen([this](unsigned int character) {
@@ -195,8 +186,7 @@ void input_field::focus() {
 }
 
 void input_field::blur() {
-	state.keyboard().input.ignore(key_input);
-	key_input = -1;
+	key_input.stop();
 }
 
 void input_field::draw_background(int sprite) {

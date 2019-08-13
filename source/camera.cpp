@@ -181,14 +181,10 @@ void perspective_camera::update_rotation() {
 	rotation_offset.z = cos_x * cos_y * rotation_offset_factor;
 }
 
-perspective_camera::drag_controller::drag_controller(mouse& mouse) : mouse_(mouse) {
-	press_id = mouse.press.listen([this](mouse::button button) {
+perspective_camera::drag_controller::drag_controller(mouse& mouse) : mouse_{ mouse } {
+	press = mouse.press.listen([this](mouse::button button) {
 		last_mouse_position = mouse_.position().to<float>();
 	});
-}
-
-perspective_camera::drag_controller::~drag_controller() {
-	mouse_.press.ignore(press_id);
 }
 
 void perspective_camera::drag_controller::update(perspective_camera& camera) {

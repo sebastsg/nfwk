@@ -8,97 +8,137 @@
 
 namespace no {
 
-class signal_event {
+namespace internal {
+
+int add_event();
+void remove_event(int event_id);
+int add_event_listener(int event_id);
+void remove_event_listener(int event_id, int listener_id);
+bool is_event_listener(int event_id, int listener_id);
+
+}
+
+class event_listener {
 public:
 
-	using handler = std::function<void()>;
+	template<typename T>
+	friend class event;
 
-	int listen(const handler& handler);
-	void emit() const;
-	void ignore(int id);
+	event_listener() = default;
+	event_listener(const event_listener&) = delete;
+	event_listener(event_listener&&) noexcept;
 
-	int listeners() const;
+	~event_listener();
+
+	event_listener& operator=(const event_listener&) = delete;
+	event_listener& operator=(event_listener&&) noexcept;
+
+	bool exists() const;
+	void stop();
 
 private:
 
-	std::vector<handler> handlers;
+	event_listener(int event_id, int listener_id);
+
+	int event_id{ -1 };
+	int listener_id{ -1 };
 
 };
 
-template<typename M>
-class message_event {
+template<typename T>
+class event {
 public:
 
-	using handler = std::function<void(const M&)>;
+	using handler_function = std::function<void(const T&)>;
 
-	int listen(const handler& handler) {
-		if (!handler) {
-			return -1;
-		}
-		//MESSAGE("Registering event listener #" << handlers.size() << " <" << typeid(M).name() << ">");
-		for (size_t i = 0; i < handlers.size(); i++) {
-			if (!handlers[i]) {
-				handlers[i] = handler;
-				return (int)i;
-			}
-		}
-		handlers.push_back(handler);
-		return (int)handlers.size() - 1;
+	event() {
+		id = internal::add_event();
 	}
 
-	void emit(const M& event) const {
+	event(const event&) = delete;
+	event(event&& that) : id{ std::move(that.id) }, handlers{ std::move(that.handlers) } {
+
+	}
+
+	event& operator=(const event&) = delete;
+	event& operator=(event&& that) {
+		std::swap(id, that.id);
+		std::swap(handlers, that.handlers);
+		return *this;
+	}
+
+	~event() {
+		internal::remove_event(id);
+	}
+
+	[[nodiscard]] event_listener listen(handler_function&& handler) {
+		if (!handler) {
+			return {};
+		}
+		int listener_id{ internal::add_event_listener(id) };
+		for (auto& existing_handler : handlers) {
+			if (existing_handler.first == -1) {
+				existing_handler = { listener_id, handler };
+				return { id, listener_id };
+			}
+		}
+		handlers.emplace_back(listener_id, handler);
+		return { id, listener_id };
+	}
+
+	void emit(const T& event) const {
 		for (auto& handler : handlers) {
-			if (handler) {
-				handler(event);
+			if (internal::is_event_listener(id, handler.first) && handler.second) {
+				handler.second(event);
 			}
 		}
 	}
 
 	template<typename... Args>
 	void emit(Args... args) const {
-		emit(M{ std::forward<Args>(args)... });
+		emit(T{ std::forward<Args>(args)... });
 	}
 
-	void ignore(int id) {
-		if (id >= 0 && id < (int)handlers.size()) {
-			handlers[id] = {};
-		}
-	}
-
-	int listeners() const {
+	int total_listeners() const {
 		return (int)handlers.size();
 	}
 
 private:
 
-	std::vector<handler> handlers;
+	int id{ -1 };
+	std::vector<std::pair<int, handler_function>> handlers;
 
 };
 
-template<typename M>
-class event_message_queue {
+template<typename T>
+class event_queue {
 public:
 
-	event_message_queue() = default;
-	event_message_queue(const event_message_queue&) = delete;
-	event_message_queue(event_message_queue&& that) : messages(std::move(that.messages)) {}
+	event_queue() = default;
 
-	event_message_queue& operator=(const event_message_queue&) = delete;
-	event_message_queue& operator=(event_message_queue&& that) {
+	event_queue(const event_queue&) = delete;
+
+	event_queue(event_queue&& that) : messages{ std::move(that.messages) } {
+	
+	}
+
+	event_queue& operator=(const event_queue&) = delete;
+
+	event_queue& operator=(event_queue&& that) {
 		std::swap(messages, that.messages);
 		return *this;
 	}
 
-	void move_and_push(M&& message) {
+	void move_and_push(T&& message) {
 		messages.push(std::move(message));
 	}
 
 	template<typename... Args>
 	void emplace_and_push(Args... args) {
-		messages.emplace(M{ std::forward<Args>(args)... });
+		messages.emplace(T{ std::forward<Args>(args)... });
 	}
 
-	void all(const std::function<void(const M&)>& function) {
+	void all(const std::function<void(const T&)>& function) {
 		if (function) {
 			while (!messages.empty()) {
 				function(messages.front());
@@ -107,7 +147,7 @@ public:
 		}
 	}
 
-	void emit(const message_event<M>& listener) {
+	void emit(const event<T>& listener) {
 		while (!messages.empty()) {
 			listener.emit(messages.front());
 			messages.pop();
@@ -120,7 +160,7 @@ public:
 
 private:
 
-	std::queue<M> messages;
+	std::queue<T> messages;
 
 };
 

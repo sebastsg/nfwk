@@ -94,7 +94,6 @@ public:
 	vector2f speed = 0.2f;
 
 	drag_controller(mouse& mouse);
-	~drag_controller();
 
 	void update(perspective_camera& camera);
 
@@ -102,7 +101,7 @@ private:
 
 	mouse& mouse_;
 	vector2f last_mouse_position;
-	int press_id = -1;
+	event_listener press;
 
 };
 

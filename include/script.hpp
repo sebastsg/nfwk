@@ -62,7 +62,7 @@ public:
 	};
 
 	struct {
-		message_event<choice_event> choice;
+		event<choice_event> choice;
 	} events;
 
 	int id = -1;

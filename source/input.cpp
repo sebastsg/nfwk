@@ -55,10 +55,10 @@ void mouse::set_icon(cursor icon) {
 
 keyboard::keyboard() {
 	std::fill(std::begin(keys), std::end(keys), false);
-	press.listen([this](key pressed_key) {
+	press_key = press.listen([this](key pressed_key) {
 		keys[(size_t)pressed_key] = true;
 	});
-	release.listen([this](key released_key) {
+	release_key = release.listen([this](key released_key) {
 		keys[(size_t)released_key] = false;
 	});
 }
