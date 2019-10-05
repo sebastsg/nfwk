@@ -26,8 +26,8 @@ private:
 	io_stream file_stream;
 	io_stream pcm_stream;
 
-	long frequency = 0;
-	int channels = 0;
+	long frequency{ 0 };
+	int channels{ 0 };
 
 };
 

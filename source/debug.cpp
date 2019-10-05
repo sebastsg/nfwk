@@ -24,8 +24,8 @@ std::ostream& operator<<(std::ostream& out, no::debug::message_type message) {
 namespace no::debug {
 
 static std::string current_time_ms_string() {
-	auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
-	auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(time_since_epoch).count();
+	const auto time_since_epoch{ std::chrono::system_clock::now().time_since_epoch() };
+	const auto milliseconds{ std::chrono::duration_cast<std::chrono::milliseconds>(time_since_epoch).count() };
 	return std::to_string(milliseconds % 1000);
 }
 

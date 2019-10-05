@@ -45,6 +45,7 @@ public:
 	void move_read_index(long long size);
 	void move_write_index(long long size);
 
+	bool empty() const;
 	size_t size() const;
 	size_t size_left_to_write() const;
 	size_t size_left_to_read() const;

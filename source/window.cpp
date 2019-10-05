@@ -9,15 +9,15 @@
 
 namespace no {
 
-window::window(const std::string& title, int width, int height, int samples, bool maximized) : mouse(this) {
-	platform = new platform::platform_window(this, title, width, height, samples, maximized);
+window::window(const std::string& title, int width, int height, int samples, bool maximized) : mouse{ this } {
+	platform = new platform::platform_window{ this, title, width, height, samples, maximized };
 }
 
-window::window(const std::string& title) : mouse(this) {
-	platform = new platform::platform_window(this, title, 0, 0, 1, true);
+window::window(const std::string& title) : mouse{ this } {
+	platform = new platform::platform_window{ this, title, 0, 0, 1, true };
 }
 
-window::window(window&& that) {
+window::window(window&& that) noexcept {
 	last_set_display_mode = that.last_set_display_mode;
 	close = std::move(that.close);
 	resize = std::move(that.resize);

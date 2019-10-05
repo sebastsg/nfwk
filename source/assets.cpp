@@ -3,6 +3,7 @@
 #include "draw.hpp"
 #include "surface.hpp"
 #include "font.hpp"
+#include "ogg_vorbis.hpp"
 
 #include <unordered_map>
 #include <unordered_set>
@@ -13,30 +14,30 @@ namespace no {
 struct registered_asset {
 	load_asset_func load;
 	free_asset_func free;
-	int holders = 0;
-	void* any = nullptr;
-	bool is_loaded = false;
+	int holders{ 0 };
+	void* any{ nullptr };
+	bool is_loaded{ false };
 };
 
-static std::string asset_directory_path = "assets";
+static std::string asset_directory_path{ "assets" };
 static std::unordered_map<std::string, registered_asset> assets;
 static std::unordered_set<std::string> to_be_released;
 
 namespace internal {
 
 void* require_asset(const std::string& name) {
-	auto asset = assets.find(name);
-	if (asset == assets.end()) {
+	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+		asset->second.holders++;
+		if (asset->second.is_loaded) {
+			to_be_released.erase(name);
+		} else {
+			asset->second.any = asset->second.load();
+			asset->second.is_loaded = true;
+		}
+		return asset->second.any;
+	} else {
 		return nullptr;
 	}
-	asset->second.holders++;
-	if (asset->second.is_loaded) {
-		to_be_released.erase(name);
-	} else {
-		asset->second.any = asset->second.load();
-		asset->second.is_loaded = true;
-	}
-	return asset->second.any;
 }
 
 }
@@ -54,13 +55,11 @@ std::string asset_path(const std::string& path) {
 }
 
 void free_asset(const std::string& name) {
-	auto asset = assets.find(name);
-	if (asset == assets.end()) {
-		return;
+	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+		asset->second.free(asset->second.any);
+		asset->second.any = nullptr;
+		asset->second.is_loaded = false;
 	}
-	asset->second.free(asset->second.any);
-	asset->second.any = nullptr;
-	asset->second.is_loaded = false;
 }
 
 void free_released_assets() {
@@ -78,22 +77,20 @@ void register_asset(const std::string& name, const load_asset_func& load, const 
 }
 
 void unregister_asset(const std::string& name) {
-	auto asset = assets.find(name);
-	if (asset == assets.end()) {
+	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+		asset->second.free(asset->second.any);
+		assets.erase(asset);
+	} else {
 		WARNING("Asset " << name << " not registered.");
 	}
-	asset->second.free(asset->second.any);
-	assets.erase(asset);
 }
 
 void release_asset(const std::string& name) {
-	auto asset = assets.find(name);
-	if (asset == assets.end()) {
-		return;
-	}
-	asset->second.holders--;
-	if (asset->second.holders <= 0 && asset->second.is_loaded) {
-		to_be_released.insert(name);
+	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+		asset->second.holders--;
+		if (asset->second.holders <= 0 && asset->second.is_loaded) {
+			to_be_released.insert(name);
+		}
 	}
 }
 
@@ -106,8 +103,7 @@ void register_texture(const std::string& name) {
 }
 
 void register_all_textures() {
-	std::filesystem::recursive_directory_iterator textures{ no::asset_path("textures") };
-	for (auto& texture : textures) {
+	for (auto& texture : std::filesystem::recursive_directory_iterator{ no::asset_path("textures") }) {
 		register_texture(texture.path().stem().string());
 	}
 }
@@ -150,6 +146,22 @@ int require_shader(const std::string& name) {
 
 void release_shader(const std::string& name) {
 	release_asset("shaders/" + name);
+}
+
+void register_sound(const std::string& name) {
+	register_asset("sounds/" + name, [name]() -> void* {
+		return static_cast<void*>(new ogg_vorbis_audio_source{ no::asset_path("sounds/" + name + ".ogg") });
+	}, [](void* data) {
+		delete static_cast<ogg_vorbis_audio_source*>(data);
+	});
+}
+
+audio_source* require_sound(const std::string& name) {
+	return require_asset<audio_source*>("sounds/" + name);
+}
+
+void release_sound(const std::string& name) {
+	release_asset("sounds/" + name);
 }
 
 }

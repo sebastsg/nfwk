@@ -6,7 +6,7 @@
 
 namespace no {
 
-ui_element::ui_element(const program_state& state_, const ortho_camera& camera_) : state(state_), camera(camera_) {
+ui_element::ui_element(const program_state& state_, const ortho_camera& camera_) : state{ state_ }, camera{ camera_ } {
 	mouse_release = state.mouse().release.listen([this](mouse::button button) {
 		if (button == mouse::button::left && transform.collides_with(camera.mouse_position(state.mouse()))) {
 			events.click.emit();
@@ -22,11 +22,11 @@ bool ui_element::is_pressed() const {
 	return is_hovered() && state.mouse().is_button_down(mouse::button::left);
 }
 
-text_view::text_view(const program_state& state, const ortho_camera& camera) : ui_element(state, camera) {
+text_view::text_view(const program_state& state, const ortho_camera& camera) : ui_element{ state, camera } {
 	texture = create_texture();
 }
 
-text_view::text_view(text_view&& that) : ui_element(that.state, that.camera) {
+text_view::text_view(text_view&& that) noexcept : ui_element{ that.state, that.camera } {
 	std::swap(transform, that.transform);
 	std::swap(rendered_text, that.rendered_text);
 	std::swap(texture, that.texture);
@@ -36,7 +36,7 @@ text_view::~text_view() {
 	delete_texture(texture);
 }
 
-text_view& text_view::operator=(text_view&& that) {
+text_view& text_view::operator=(text_view&& that) noexcept {
 	std::swap(transform, that.transform);
 	std::swap(rendered_text, that.rendered_text);
 	std::swap(texture, that.texture);
@@ -48,12 +48,11 @@ std::string text_view::text() const {
 }
 
 void text_view::render(const font& font, const std::string& text) {
-	if (text == rendered_text) {
-		return;
+	if (text != rendered_text) {
+		rendered_text = text;
+		load_texture(texture, font.render(rendered_text));
+		transform.scale = texture_size(texture).to<float>();
 	}
-	rendered_text = text;
-	load_texture(texture, font.render(rendered_text));
-	transform.scale = texture_size(texture).to<float>();
 }
 
 void text_view::draw(const rectangle& rectangle) const {
@@ -61,7 +60,7 @@ void text_view::draw(const rectangle& rectangle) const {
 	draw_shape(rectangle, transform);
 }
 
-button::button(const program_state& state, const ortho_camera& camera) : ui_element(state, camera), label(state, camera) {
+button::button(const program_state& state, const ortho_camera& camera) : ui_element{ state, camera }, label{ state, camera } {
 	animation.pause();
 	animation.frames = 3;
 }
@@ -104,10 +103,10 @@ void button::update() {
 void button::draw_button() {
 	if (transition.enabled) {
 		color.set({ 1.0f, 1.0f, 1.0f, 1.0f });
-		animation.set_frame((int)transition.previous_frame);
+		animation.set_frame(static_cast<int>(transition.previous_frame));
 		animation.draw(transform);
 		color.set({ 1.0f, 1.0f, 1.0f, transition.current });
-		animation.set_frame((int)transition.next_frame);
+		animation.set_frame(static_cast<int>(transition.next_frame));
 	}
 	animation.draw(transform);
 }
@@ -128,7 +127,8 @@ void button::set_tex_coords(vector2f position, vector2f size) {
 	animation.set_tex_coords(position, size);
 }
 
-input_field::input_field(const program_state& state_, const ortho_camera& camera_, const font& font) : ui_element(state_, camera_), label(state_, camera_), input_font(font) {
+input_field::input_field(const program_state& state_, const ortho_camera& camera_, const font& font)
+	: ui_element{ state_, camera_ }, label{ state_, camera_ }, input_font{ font } {
 	animation.pause();
 	animation.frames = 3;
 	click = events.click.listen([this](int) {
@@ -158,7 +158,7 @@ void input_field::update() {
 		animation.set_frame(0);
 	}
 	label.transform.align(align_type::left, transform, padding);
-	std::string text{ censor ? std::string(input.size(), '*') : input };
+	const std::string text{ censor ? std::string(input.size(), '*') : input };
 	label.render(input_font, key_input.exists() ? text + "|" : text);
 }
 
@@ -172,15 +172,15 @@ void input_field::focus() {
 		return;
 	}
 	key_input = state.keyboard().input.listen([this](unsigned int character) {
-		if (character == (unsigned int)key::enter) {
+		if (character == static_cast<unsigned int>(key::enter)) {
 			return;
 		}
-		if (character == (unsigned int)key::backspace) {
+		if (character == static_cast<unsigned int>(key::backspace)) {
 			if (!input.empty()) {
 				input = input.substr(0, input.size() - 1);
 			}
 		} else if (character < 0x7F) {
-			input += (char)character;
+			input += static_cast<char>(character);
 		}
 	});
 }

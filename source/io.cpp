@@ -8,8 +8,7 @@ namespace no {
 template<typename It>
 static std::vector<std::string> iterate_entries_in_directory(const std::string& path, entry_inclusion inclusion) {
 	std::vector<std::string> files;
-	auto directory = It(path);
-	for (auto& entry : directory) {
+	for (auto& entry : It{ path }) {
 		if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
 			continue;
 		}
@@ -30,11 +29,11 @@ std::vector<std::string> entries_in_directory(const std::string& path, entry_inc
 }
 
 std::string file_extension_in_path(const std::string& path) {
-	size_t last_dot_index = path.rfind('.');
-	if (last_dot_index == std::string::npos) {
+	if (const size_t last_dot_index{ path.rfind('.') }; last_dot_index != std::string::npos) {
+		return path.substr(last_dot_index);
+	} else {
 		return "";
 	}
-	return path.substr(last_dot_index);
 }
 
 io_stream::io_stream(size_t size) {
@@ -102,11 +101,11 @@ void io_stream::resize(size_t new_size) {
 		allocate(new_size);
 		return;
 	}
-	size_t old_read_index = read_index();
-	size_t old_write_index = write_index();
-	char* old_begin = begin;
-	size_t old_size = size();
-	size_t copy_size = std::min(old_size, new_size);
+	const size_t old_read_index{ read_index() };
+	const size_t old_write_index{ write_index() };
+	char* old_begin{ begin };
+	const size_t old_size{ size() };
+	const size_t copy_size{ std::min(old_size, new_size) };
 	begin = new char[new_size];
 	memcpy(begin, old_begin, copy_size);
 	delete[] old_begin;
@@ -121,7 +120,7 @@ void io_stream::resize(size_t new_size) {
 void io_stream::resize_if_needed(size_t size_to_write) {
 	if (size_to_write > size_left_to_write()) {
 		// size() might be 0, so make sure the data fits comfortably.
-		size_t new_size = size() * 2 + size_to_write + 64;
+		const size_t new_size{ size() * 2 + size_to_write + 64 };
 		resize(new_size);
 	}
 }
@@ -137,7 +136,7 @@ void io_stream::free() {
 }
 
 void io_stream::shift_read_to_begin() {
-	size_t shift_size = write_position - read_position;
+	const size_t shift_size{ static_cast<size_t>(write_position - read_position) };
 	memcpy(begin, read_position, shift_size); // copy read-to-write to begin-to-size.
 	read_position = begin;
 	write_position = begin + shift_size;
@@ -160,33 +159,37 @@ void io_stream::set_write_index(size_t index) {
 }
 
 void io_stream::move_read_index(long long size) {
-	long long index = (long long)read_index() + size;
-	set_read_index((size_t)index);
+	const long long index{ static_cast<long long>(read_index()) + size };
+	set_read_index(static_cast<size_t>(index));
 }
 
 void io_stream::move_write_index(long long size) {
-	long long index = (long long)write_index() + size;
-	set_write_index((size_t)index);
+	const long long index{ static_cast<long long>(write_index()) + size };
+	set_write_index(static_cast<size_t>(index));
+}
+
+bool io_stream::empty() const {
+	return begin == end;
 }
 
 size_t io_stream::size() const {
-	return (size_t)(end - begin);
+	return static_cast<size_t>(end - begin);
 }
 
 size_t io_stream::size_left_to_write() const {
-	return (size_t)(end - write_position);
+	return static_cast<size_t>(end - write_position);
 }
 
 size_t io_stream::size_left_to_read() const {
-	return (size_t)(write_position - read_position);
+	return static_cast<size_t>(write_position - read_position);
 }
 
 size_t io_stream::read_index() const {
-	return (size_t)(read_position - begin);
+	return static_cast<size_t>(read_position - begin);
 }
 
 size_t io_stream::write_index() const {
-	return (size_t)(write_position - begin);
+	return static_cast<size_t>(write_position - begin);
 }
 
 char* io_stream::at(size_t index) const {
@@ -205,7 +208,7 @@ size_t io_stream::read_line(char* destination, size_t max_size, bool remove_newl
 	if (size_left_to_read() < 2) {
 		return 0;
 	}
-	size_t i = 0;
+	size_t i{ 0 };
 	while (read_position[i] != '\n') {
 		destination[i] = read_position[i];
 		if (destination[i] == '\0') {
@@ -219,7 +222,7 @@ size_t io_stream::read_line(char* destination, size_t max_size, bool remove_newl
 			return max_size - 1;
 		}
 	}
-	size_t end_of_the_line = i + 1;
+	const size_t end_of_the_line{ i + 1 };
 	if (remove_newline) {
 		--i; // remove last increment
 		if (i - 1 > 0 && read_position[i - 2] == '\r') {
@@ -238,7 +241,7 @@ std::string io_stream::read_line(bool remove_newline) {
 	std::string result;
 	char buffer[256];
 	while (true) {
-		size_t count = read_line(buffer, 256, remove_newline);
+		const size_t count{ read_line(buffer, 256, remove_newline) };
 		if (count == 0) {
 			break;
 		}
@@ -248,21 +251,21 @@ std::string io_stream::read_line(bool remove_newline) {
 }
 
 int io_stream::find_first(const std::string& key, size_t start) const {
-	const char* search_start = begin + start;
-	char* found = (char*)strstr(search_start, key.c_str());
+	const char* search_start{ begin + start };
+	char* found{ (char*)strstr(search_start, key.c_str()) };
 	if (!found) {
 		return -1;
 	}
-	return (int)(found - begin);
+	return static_cast<int>(found - begin);
 }
 
 int io_stream::find_last(const std::string& key, size_t start) const {
-	char* found = begin + start;
+	char* found{ begin + start };
 	while (found) {
-		char* previous = found;
+		char* previous{ found };
 		found = strstr(found, key.c_str());
 		if (!found) {
-			return (int)(previous - begin);
+			return static_cast<int>(previous - begin);
 		}
 		++found;
 	}
@@ -280,17 +283,15 @@ bool io_stream::is_owner() const {
 namespace file {
 
 void write(const std::string& path, const std::string& source) {
-	std::filesystem::create_directories(std::filesystem::path(path).parent_path());
-	std::ofstream file(path, std::ios::binary);
-	if (file.is_open()) {
+	std::filesystem::create_directories(std::filesystem::path{ path }.parent_path());
+	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file << source;
 	}
 }
 
 void write(const std::string& path, const char* source, size_t size) {
 	std::filesystem::create_directories(std::filesystem::path(path).parent_path());
-	std::ofstream file(path, std::ios::binary);
-	if (file.is_open()) {
+	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file.write(source, size);
 	}
 }
@@ -300,25 +301,23 @@ void write(const std::string& path, io_stream& source) {
 }
 
 void append(const std::string& path, const std::string& source) {
-	std::ofstream file(path, std::ios::app);
-	if (file.is_open()) {
+	if (std::ofstream file{ path, std::ios::app }; file.is_open()) {
 		file << source;
 	}
 }
 
 std::string read(const std::string& path) {
-	std::ifstream file(path, std::ios::binary);
-	if (!file.is_open()) {
+	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
+		std::stringstream result;
+		result << file.rdbuf();
+		return result.str();
+	} else {
 		return "";
 	}
-	std::stringstream result;
-	result << file.rdbuf();
-	return result.str();
 }
 
 void read(const std::string& path, io_stream& stream) {
-	std::ifstream file(path, std::ios::binary);
-	if (file.is_open()) {
+	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();
 		stream.write(result.str().c_str(), result.str().size());

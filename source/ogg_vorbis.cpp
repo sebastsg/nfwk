@@ -5,16 +5,15 @@ namespace no {
 
 ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 	file::read(path, file_stream);
-	ov_callbacks callbacks = {
+	ov_callbacks callbacks{
 		// read
 		[](void* pointer, size_t object_size, size_t object_count, void* source) -> size_t {
-			size_t size = object_size * object_count;
-			auto file_stream = (io_stream*)source;
-			size_t remaining = file_stream->size_left_to_read();
-			if (size > remaining) {
+			size_t size{ object_size * object_count };
+			auto file_stream{ static_cast<io_stream*>(source) };
+			if (const size_t remaining{ file_stream->size_left_to_read() }; size > remaining) {
 				size = remaining;
 			}
-			file_stream->read((char*)pointer, size);
+			file_stream->read(static_cast<char*>(pointer), size);
 			return size / object_size;
 		},
 		// seek
@@ -32,28 +31,24 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 	};
 
 	MESSAGE("Loading ogg file: " << path);
-	int result = ov_open_callbacks(&file_stream, &file, nullptr, 0, callbacks);
-	if (result != 0) {
+	if (const int result{ ov_open_callbacks(&file_stream, &file, nullptr, 0, callbacks) }; result != 0) {
 		WARNING("The stream is invalid. Error: " << result);
 		return;
 	}
 
-	vorbis_info* info = ov_info(&file, -1);
+	const vorbis_info* info{ ov_info(&file, -1) };
 	channels = info->channels;
 	frequency = info->rate;
-	INFO("Ogg file info:"
-		 << "\nChannels: " << info->channels
-		 << "\nFrequency: " << info->rate
-	);
+	INFO("Ogg file info:" << "\nChannels: " << info->channels << "\nFrequency: " << info->rate);
 
-	char temp[4192];
-	int bit_stream = 0;
+	char buffer[4192];
+	int bit_stream{ 0 };
 	while (true) {
-		size_t bytes = ov_read(&file, temp, 4192, 0, 2, 1, &bit_stream);
-		if (bytes == 0) {
+		if (const auto bytes{ ov_read(&file, buffer, sizeof(buffer), 0, 2, 1, &bit_stream) }; bytes > 0) {
+			pcm_stream.write(buffer, static_cast<size_t>(bytes));
+		} else {
 			break;
 		}
-		pcm_stream.write(temp, bytes);
 	}
 }
 

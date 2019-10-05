@@ -45,7 +45,7 @@ static void set_pixel_format_arb(HDC device_context_handle, int samples) {
 		break;
 	}
 	MESSAGE("Setting pixel format using the ARB extension");
-	const int int_attributes[] = {
+	const int int_attributes[]{
 		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 		WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
@@ -59,20 +59,19 @@ static void set_pixel_format_arb(HDC device_context_handle, int samples) {
 		WGL_STENCIL_BITS_ARB, 0,
 		0
 	};
-	const float float_attributes[] = {
+	const float float_attributes[]{
 		0
 	};
-	int format = 0;
-	unsigned int count = 0;
-	bool success = wglChoosePixelFormatARB(device_context_handle, int_attributes, float_attributes, 1, &format, &count);
+	int format{ 0 };
+	unsigned int count{ 0 };
+	const BOOL success{ wglChoosePixelFormatARB(device_context_handle, int_attributes, float_attributes, 1, &format, &count) };
 	if (!success || count == 0) {
 		WARNING("Failed to find pixel format");
 		return;
 	}
-	PIXELFORMATDESCRIPTOR descriptor = {};
+	PIXELFORMATDESCRIPTOR descriptor{};
 	DescribePixelFormat(device_context_handle, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
-	auto status = SetPixelFormat(device_context_handle, format, &descriptor);
-	if (!status) {
+	if (!SetPixelFormat(device_context_handle, format, &descriptor)) {
 		CRITICAL("Failed to set pixel format");
 	}
 	INFO("Pixel Format: " << format
@@ -96,7 +95,7 @@ void windows_gl_context::create_dummy(HDC device_context_handle) {
 void windows_gl_context::create_with_attributes(HDC device_context_handle, int samples) {
 	this->device_context_handle = device_context_handle;
 	set_pixel_format_arb(device_context_handle, samples);
-	const int attributes[] = {
+	const int attributes[]{
 		WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
 		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
 		0
@@ -118,7 +117,7 @@ void windows_gl_context::create_with_attributes(HDC device_context_handle, int s
 }
 
 void windows_gl_context::initialize_glew() {
-	auto error = glewInit();
+	const auto error{ glewInit() };
 	ASSERT(error == GLEW_OK);
 	if (error != GLEW_OK) {
 		CRITICAL("Failed to initialize GLEW");
@@ -168,7 +167,7 @@ void windows_gl_context::set_clear_color(const vector3f& color) {
 }
 
 bool windows_gl_context::set_swap_interval(int interval) {
-	auto status = wglSwapIntervalEXT(interval);
+	const auto status{ wglSwapIntervalEXT(interval) };
 	if (status) {
 		MESSAGE("Set swap interval to " << interval);
 	} else {

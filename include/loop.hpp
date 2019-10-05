@@ -2,6 +2,7 @@
 
 #include "timer.hpp"
 #include "event.hpp"
+#include "audio.hpp"
 
 #include <string>
 #include <functional>
@@ -44,13 +45,13 @@ public:
 private:
 
 	timer run_timer;
-	long long frame_count = 0;
-	long long old_time = 0;
-	long long new_time = 0;
-	long long time_last_second = 0;
-	long long frames_this_second = 0;
-	long long frames_last_second = 0;
-	double delta_time = 0.0;
+	long long frame_count{ 0 };
+	long long old_time{ 0 };
+	long long new_time{ 0 };
+	long long time_last_second{ 0 };
+	long long frames_this_second{ 0 };
+	long long frames_last_second{ 0 };
+	double delta_time{ 0.0 };
 
 };
 
@@ -81,6 +82,12 @@ public:
 
 #endif
 
+#if ENABLE_AUDIO
+
+	audio_endpoint& audio() const;
+
+#endif
+
 	const loop_frame_counter& frame_counter() const;
 
 	bool has_next_state() const;
@@ -89,7 +96,7 @@ protected:
 
 	template<typename T>
 	void change_state() {
-		change_state([] { return new T(); });
+		change_state([] { return new T{}; });
 	}
 
 	loop_frame_counter& frame_counter();

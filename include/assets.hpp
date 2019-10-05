@@ -6,6 +6,7 @@
 namespace no {
 
 class font;
+class audio_source;
 
 using load_asset_func = std::function<void*()>;
 using free_asset_func = std::function<void(void*)>;
@@ -42,5 +43,10 @@ void release_font(const std::string& name, int size);
 void register_shader(const std::string& name);
 int require_shader(const std::string& name);
 void release_shader(const std::string& name);
+
+void register_sound(const std::string& name);
+audio_source* require_sound(const std::string& name);
+void release_sound(const std::string& name);
+
 
 }

@@ -12,9 +12,9 @@ public:
 
 	struct text_size {
 		vector2i size;
-		int min_y = 0;
-		int max_y = 0;
-		int rows = 1;
+		int min_y{ 0 };
+		int max_y{ 0 };
+		int rows{ 1 };
 	};
 
 	font() = default;
@@ -24,7 +24,7 @@ public:
 	~font();
 
 	font& operator=(const font&) = delete;
-	font& operator=(font&&);
+	font& operator=(font&&) noexcept;
 
 	void render(surface& surface, const std::string& text, uint32_t color = 0x00FFFFFF) const;
 	surface render(const std::string& text, uint32_t color = 0x00FFFFFF) const;
@@ -35,11 +35,11 @@ public:
 private:
 
 	class font_face;
-	font_face* face = nullptr;
+	font_face* face{ nullptr };
 
 	std::pair<uint32_t*, vector2i> render_text(const std::string& text, uint32_t color) const;
 
-	float line_space = 1.25f;
+	float line_space{ 1.25f };
 
 };
 

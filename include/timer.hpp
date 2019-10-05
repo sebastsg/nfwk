@@ -30,9 +30,9 @@ private:
 	bool paused = false;
 	bool started = false;
 
-	long long paused_time = 0;
-	long long start_time = 0;
-	long long ticks_per_second = 0;
+	long long paused_time{ 0 };
+	long long start_time{ 0 };
+	long long ticks_per_second{ 0 };
 
 };
 

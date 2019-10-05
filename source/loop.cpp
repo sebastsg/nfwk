@@ -22,7 +22,7 @@ loop_frame_counter::loop_frame_counter() {
 }
 
 void loop_frame_counter::next_frame() {
-	delta_time = (double)(new_time - old_time) / 1000000.0;
+	delta_time = static_cast<double>(new_time - old_time) / 1000000.0;
 	old_time = new_time;
 	new_time = run_timer.microseconds();
 	frames_this_second++;
@@ -56,13 +56,13 @@ double loop_frame_counter::delta() const {
 
 static struct {
 
-	int ticks_per_second = 60;
-	int max_update_count = 5;
+	int ticks_per_second{ 60 };
+	int max_update_count{ 5 };
 	loop_frame_counter frame_counter;
-	draw_synchronization synchronization = draw_synchronization::if_updated;
+	draw_synchronization synchronization{ draw_synchronization::if_updated };
 
 #if ENABLE_AUDIO
-	audio_endpoint* audio = nullptr;
+	audio_endpoint* audio{ nullptr };
 #endif
 
 	std::vector<program_state*> states;
@@ -70,7 +70,7 @@ static struct {
 
 	std::vector<program_state*> states_to_stop;
 
-	long redundant_bind_calls_this_frame = 0;
+	long redundant_bind_calls_this_frame{ 0 };
 
 	event<int> post_configure;
 	event<int> pre_exit;
@@ -86,9 +86,9 @@ event<int>& pre_exit_event() {
 }
 
 static int state_index(const program_state* state) {
-	for (size_t i = 0; i < loop.states.size(); i++) {
+	for (size_t i{ 0 }; i < loop.states.size(); i++) {
 		if (loop.states[i] == state) {
-			return (int)i;
+			return static_cast<int>(i);
 		}
 	}
 	return -1;
@@ -97,7 +97,7 @@ static int state_index(const program_state* state) {
 static void update_windows() {
 	for (auto state : loop.states) {
 #if ENABLE_WINDOW
-		auto window = loop.windows[state_index(state)];
+		auto window{ loop.windows[state_index(state)] };
 		window->poll();
 #endif
 		state->update();
@@ -107,7 +107,7 @@ static void update_windows() {
 static void draw_windows() {
 #if ENABLE_WINDOW
 	for (auto state : loop.states) {
-		auto window = loop.windows[state_index(state)];
+		auto window{ loop.windows[state_index(state)] };
 		window->clear();
 		state->draw();
 		window->swap();
@@ -117,9 +117,8 @@ static void draw_windows() {
 
 static void destroy_stopped_states() {
 	for (auto state : loop.states_to_stop) {
-		int index = state_index(state);
-		if (index != -1) {
-			bool is_closing = !loop.states[index]->has_next_state();
+		if (const int index{ state_index(state) }; index != -1) {
+			bool is_closing{ !loop.states[index]->has_next_state() };
 			if (is_closing) {
 #if ENABLE_AUDIO
 				loop.audio->stop_all_players();
@@ -162,12 +161,11 @@ void program_state::stop() {
 #if ENABLE_WINDOW
 
 window& program_state::window() const {
-	int index = state_index(this);
-	if (index == -1) {
-		// likely called from constructor. window would be added just before, so back() should be correct
-		return *loop.windows.back();
+	if (const int index{ state_index(this) }; index >= 0) {
+		return *loop.windows[index];
+	} else {
+		return *loop.windows.back(); // likely called from constructor, so back() should be correct
 	}
-	return *loop.windows[index];
 }
 
 keyboard& program_state::keyboard() const {
@@ -176,6 +174,14 @@ keyboard& program_state::keyboard() const {
 
 mouse& program_state::mouse() const {
 	return window().mouse;
+}
+
+#endif
+
+#if ENABLE_AUDIO
+
+audio_endpoint& program_state::audio() const {
+	return *loop.audio;
 }
 
 #endif
@@ -206,7 +212,7 @@ bool program_state::has_next_state() const {
 }
 
 std::string current_local_time_string() {
-	time_t now = std::time(nullptr);
+	const time_t now{ std::time(nullptr) };
 	tm local_time;
 #if PLATFORM_WINDOWS
 	localtime_s(&local_time, &now);
@@ -219,7 +225,7 @@ std::string current_local_time_string() {
 }
 
 std::string curent_local_date_string() {
-	time_t now = std::time(nullptr);
+	const time_t now{ std::time(nullptr) };
 	tm local_time;
 #if PLATFORM_WINDOWS
 	localtime_s(&local_time, &now);
@@ -236,7 +242,7 @@ namespace internal {
 #if ENABLE_WINDOW
 
 void create_state(const std::string& title, int width, int height, int samples, bool maximized, const make_state_function& make_state) {
-	loop.windows.emplace_back(new window(title, width, height, samples, maximized));
+	loop.windows.emplace_back(new window{ title, width, height, samples, maximized });
 	loop.states.emplace_back(make_state());
 }
 
@@ -254,7 +260,7 @@ int run_main_loop() {
 	loop.post_configure.emit();
 
 #if ENABLE_WASAPI
-	loop.audio = new wasapi::audio_device();
+	loop.audio = new wasapi::audio_device{};
 #endif
 
 #if ENABLE_NETWORK
@@ -263,14 +269,14 @@ int run_main_loop() {
 
 	start();
 
-	long long next_tick = loop.frame_counter.ticks();
+	long long next_tick{ loop.frame_counter.ticks() };
 
 	while (!loop.states.empty()) {
-		int update_count = 0;
-		long long frame_skip = 1000000 / loop.ticks_per_second;
-		long long reference_ticks = loop.frame_counter.ticks();
+		int update_count{ 0 };
+		const long long frame_skip{ 1000000 / loop.ticks_per_second };
+		const long long reference_ticks{ loop.frame_counter.ticks() };
 
-		bool is_updated = false;
+		bool is_updated{ false };
 		while (reference_ticks - next_tick > frame_skip && update_count < loop.max_update_count) {
 			update_windows();
 			next_tick += frame_skip;
@@ -279,7 +285,7 @@ int run_main_loop() {
 		}
 
 		if (is_updated || loop.synchronization == draw_synchronization::always) {
-			long current_redundant_bind_calls = 0;// total_redundant_bind_calls();
+			long current_redundant_bind_calls{ 0 };// total_redundant_bind_calls();
 			draw_windows();
 			loop.redundant_bind_calls_this_frame = /*total_redundant_bind_calls()*/0 - current_redundant_bind_calls;
 			loop.frame_counter.next_frame();

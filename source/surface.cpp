@@ -52,10 +52,10 @@ void surface::resize(int width, int height) {
 		size = { width, height };
 		return;
 	}
-	uint32_t* old_pixels = pixels;
-	int count = width * height;
+	uint32_t* old_pixels{ pixels };
+	const int count{ width * height };
 	pixels = new uint32_t[count];
-	for (int y = 0; y < height; y++) {
+	for (int y{ 0 }; y < height; y++) {
 		memcpy(pixels + y * width, old_pixels + y * size.x, size.x * sizeof(uint32_t));
 		memset(pixels + y * width + size.x, 0x00, width - size.x * sizeof(uint32_t));
 	}
@@ -64,16 +64,16 @@ void surface::resize(int width, int height) {
 }
 
 void surface::flip_frames_horizontally(int frames) {
-	const int frame_width = size.x / frames;
-	const int frame_half_width = frame_width / 2 - frame_width % 2;
-	int frame_begin_x = 0;
-	for (int frame = 0; frame < frames; frame++) {
-		const int frame_middle_x = frame_begin_x + frame_half_width;
-		for (int x = frame_begin_x; x < frame_middle_x; x++) {
-			for (int y = 0; y < size.y; y++) {
-				const int row = y * size.x;
-				const int right_column = frame_begin_x + frame_width - (x - frame_begin_x) - 1;
-				uint32_t left = pixels[row + x];
+	const int frame_width{ size.x / frames };
+	const int frame_half_width{ frame_width / 2 - frame_width % 2 };
+	int frame_begin_x{ 0 };
+	for (int frame{ 0 }; frame < frames; frame++) {
+		const int frame_middle_x{ frame_begin_x + frame_half_width };
+		for (int x{ frame_begin_x }; x < frame_middle_x; x++) {
+			for (int y{ 0 }; y < size.y; y++) {
+				const int row{ y * size.x };
+				const int right_column{ frame_begin_x + frame_width - (x - frame_begin_x) - 1 };
+				const uint32_t left{ pixels[row + x] };
 				pixels[row + x] = pixels[row + right_column];
 				pixels[row + right_column] = left;
 			}
@@ -83,11 +83,11 @@ void surface::flip_frames_horizontally(int frames) {
 }
 
 void surface::flip_horizontally() {
-	const int half_width = size.x / 2 - size.x % 2;
-	for (int x = 0; x < half_width; x++) {
-		for (int y = 0; y < size.y; y++) {
-			const int row = y * size.x;
-			uint32_t left = pixels[row + x];
+	const int half_width{ size.x / 2 - size.x % 2 };
+	for (int x{ 0 }; x < half_width; x++) {
+		for (int y{ 0 }; y < size.y; y++) {
+			const int row{ y * size.x };
+			const uint32_t left{ pixels[row + x] };
 			pixels[row + x] = pixels[row + size.x - x - 1];
 			pixels[row + size.x - x - 1] = left;
 		}
@@ -95,9 +95,9 @@ void surface::flip_horizontally() {
 }
 
 void surface::flip_vertically() {
-	const int half_height = size.y / 2;
-	uint32_t* temporary_rows = new uint32_t[size.x * sizeof(uint32_t)];
-	for (int y = 0; y < half_height; y++) {
+	const int half_height{ size.y / 2 };
+	uint32_t* temporary_rows{ new uint32_t[size.x * sizeof(uint32_t)] };
+	for (int y{ 0 }; y < half_height; y++) {
 		memcpy(temporary_rows, pixels + y * size.x, size.x * sizeof(uint32_t));
 		memcpy(pixels + y * size.x, pixels + (size.y - y - 1) * size.x, size.x * sizeof(uint32_t));
 		memcpy(pixels + (size.y - y - 1) * size.x, temporary_rows, size.x * sizeof(uint32_t));
@@ -137,7 +137,7 @@ void surface::render(uint32_t* source_pixels, int width, int height) {
 		memcpy(pixels, source_pixels, width * height * sizeof(uint32_t));
 		return;
 	}
-	for (int y = 0; y < height; y++) {
+	for (int y{ 0 }; y < height; y++) {
 		memcpy(pixels + y * size.x, source_pixels + y * width, width * sizeof(uint32_t));
 	}
 }
@@ -147,17 +147,17 @@ void surface::render_horizontal_line(uint32_t color, int x, int y, int width) {
 }
 
 void surface::render_vertical_line(uint32_t color, int x, int y, int height) {
-	const int y1 = y * size.x + x;
-	const int y2 = (y + height) * size.x + x;
-	for (int i = y1; i < y2; i += size.x) {
+	const int y1{ y * size.x + x };
+	const int y2{ (y + height) * size.x + x };
+	for (int i{ y1 }; i < y2; i += size.x) {
 		pixels[i] = color;
 	}
 }
 
 void surface::render_rectangle(uint32_t color, int x, int y, int width, int height) {
-	const int y1 = y * size.x + x;
-	const int y2 = (y + height) * size.x + x;
-	for (int i = y1; i < y2; i += size.x) {
+	const int y1{ y * size.x + x };
+	const int y2{ (y + height) * size.x + x };
+	for (int i{ y1 }; i < y2; i += size.x) {
 		std::fill_n(pixels + i, width, color);
 	}
 }
@@ -167,12 +167,12 @@ void surface::render_circle(uint32_t color, int center_x, int center_y, int radi
 	ASSERT(center_y - radius >= 0);
 	ASSERT(center_x + radius < size.x);
 	ASSERT(center_y + radius < size.y);
-	const int diameter = radius * 2;
-	int x = radius - 1;
-	int y = 0;
-	int dx = 1;
-	int dy = 1;
-	int err = dx - diameter;
+	const int diameter{ radius * 2 };
+	int x{ radius - 1 };
+	int y{ 0 };
+	int dx{ 1 };
+	int dy{ 1 };
+	int err{ dx - diameter };
 	while (x >= y) {
 		std::fill_n(pixels + (center_y + y) * size.x + center_x - x, x * 2, color);
 		std::fill_n(pixels + (center_y + x) * size.x + center_x - y, y * 2, color);

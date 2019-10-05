@@ -28,18 +28,17 @@ int add_event() {
 	for (size_t i{ 0 }; i < data.events.size(); i++) {
 		if (!data.events[i].event_exists && !data.events[i].has_listeners()) {
 			data.events[i] = { true, {} };
-			return (int)i;
+			return static_cast<int>(i);
 		}
 	}
 	data.events.push_back({ true, {} });
-	return (int)data.events.size() - 1;
+	return static_cast<int>(data.events.size()) - 1;
 }
 
 void remove_event(int event_id) {
-	if (event_id < 0 || event_id >= (int)data.events.size()) {
-		return;
+	if (event_id >= 0 && event_id < (int)data.events.size()) {
+		data.events[event_id].event_exists = false;
 	}
-	data.events[event_id].event_exists = false;
 }
 
 int add_event_listener(int event_id) {

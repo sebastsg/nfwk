@@ -80,7 +80,7 @@ int model::index_of_animation(const std::string& name) const {
 }
 
 int model::total_animations() const {
-	return (int)animations.size();
+	return static_cast<int>(animations.size());
 }
 
 model_animation& model::animation(int index) {
@@ -96,7 +96,7 @@ model_node& model::node(int index) {
 }
 
 int model::total_nodes() const {
-	return (int)nodes.size();
+	return static_cast<int>(nodes.size());
 }
 
 glm::mat4 model::bone(int index) const {
@@ -166,7 +166,7 @@ void sprite_animation::update(float delta) {
 	}
 	previous_frame = current_frame;
 	sub_frame += fps * delta;
-	current_frame = (int)sub_frame;
+	current_frame = static_cast<int>(sub_frame);
 	if (current_frame >= frames) {
 		current_frame = 0;
 		sub_frame = 0.0f;
@@ -201,20 +201,19 @@ bool sprite_animation::is_paused() const {
 }
 
 void sprite_animation::set_frame(int frame) {
-	if (frame >= frames || frame < 0) {
-		return;
+	if (frame >= 0 && frame < frames) {
+		previous_frame = current_frame;
+		current_frame = frame;
+		sub_frame = static_cast<float>(frame);
+		set_tex_coords(uv_position, uv_size);
 	}
-	previous_frame = current_frame;
-	current_frame = frame;
-	sub_frame = (float)frame;
-	set_tex_coords(uv_position, uv_size);
 }
 
 void sprite_animation::set_tex_coords(vector2f position, vector2f size) {
 	uv_position = position;
 	uv_size = size;
-	const float frame_width = uv_size.x / (float)frames;
-	rectangle.set_tex_coords(uv_position.x + frame_width * (float)current_frame, uv_position.y, frame_width, uv_size.y);
+	const float frame_width{ uv_size.x / static_cast<float>(frames) };
+	rectangle.set_tex_coords(uv_position.x + frame_width * static_cast<float>(current_frame), uv_position.y, frame_width, uv_size.y);
 }
 
 }

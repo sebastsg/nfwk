@@ -117,11 +117,11 @@ public:
 
 private:
 
-	glm::mat4 next_interpolated_position(skeletal_animation& animation, int node);
-	glm::mat4 next_interpolated_rotation(skeletal_animation& animation, int node);
-	glm::mat4 next_interpolated_scale(skeletal_animation& animation, int node);
-	void animate_node(skeletal_animation& animation, int parent, int node_index);
-	void animate(skeletal_animation& animation);
+	glm::mat4 next_interpolated_position(skeletal_animation& animation, int node) const;
+	glm::mat4 next_interpolated_rotation(skeletal_animation& animation, int node) const;
+	glm::mat4 next_interpolated_scale(skeletal_animation& animation, int node) const;
+	void animate_node(skeletal_animation& animation, int parent, int node_index) const;
+	void animate(skeletal_animation& animation) const;
 	
 	std::mutex animating;
 	mutable std::mutex reading_synced;
@@ -159,7 +159,7 @@ public:
 	void for_each(const std::function<bool(bone_attachment_mapping&)>& handler);
 	void remove_if(const std::function<bool(bone_attachment_mapping&)>& compare);
 
-	bool exists(const bone_attachment_mapping& mapping);
+	bool exists(const bone_attachment_mapping& mapping) const;
 	void add(const bone_attachment_mapping& mapping);
 	bool update(const model& root, int animation_index, const std::string& attachment_model, bone_attachment& attachment) const;
 

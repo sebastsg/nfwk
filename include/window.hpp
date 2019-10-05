@@ -29,7 +29,7 @@ public:
 	window(const std::string& title, int width, int height, int samples, bool maximized);
 	window(const std::string& title);
 	window(const window&) = delete;
-	window(window&&);
+	window(window&&) noexcept;
 	~window();
 
 	window& operator=(const window&) = delete;
@@ -71,8 +71,8 @@ public:
 
 private:
 
-	platform::platform_window* platform = nullptr;
-	display_mode last_set_display_mode = display_mode::windowed;
+	platform::platform_window* platform{ nullptr };
+	display_mode last_set_display_mode{ display_mode::windowed };
 
 };
 

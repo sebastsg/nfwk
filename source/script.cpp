@@ -1,10 +1,12 @@
 #include "script.hpp"
 #include "assets.hpp"
 
-#define NO_SCRIPT_NODE_MESSAGE 0
-#define NO_SCRIPT_NODE_CHOICE  1
-
 namespace no {
+
+namespace script_node_type {
+static constexpr int message{ 0 };
+static constexpr int choice{ 1 };
+}
 
 struct script_node_register {
 	std::unordered_map<int, std::function<script_node*()>> constructors;
@@ -13,14 +15,14 @@ struct script_node_register {
 static script_node_register node_register;
 
 static script_node* create_script_node(int type) {
-	auto it = node_register.constructors.find(type);
+	auto it{ node_register.constructors.find(type) };
 	return it != node_register.constructors.end() ? it->second() : nullptr;
 }
 
 void script_node::write(io_stream& stream) {
 	stream.write<int32_t>(id);
 	stream.write(transform);
-	stream.write((int32_t)out.size());
+	stream.write<int32_t>(static_cast<int32_t>(out.size()));
 	for (auto& j : out) {
 		stream.write<int32_t>(j.out_id);
 		stream.write<int32_t>(j.node_id);
@@ -30,8 +32,8 @@ void script_node::write(io_stream& stream) {
 void script_node::read(io_stream& stream) {
 	id = stream.read<int32_t>();
 	transform = stream.read<no::transform3>();
-	int out_count = stream.read<int32_t>();
-	for (int j = 0; j < out_count; j++) {
+	const int out_count{ stream.read<int32_t>() };
+	for (int j{ 0 }; j < out_count; j++) {
 		node_output output;
 		output.out_id = stream.read<int32_t>();
 		output.node_id = stream.read<int32_t>();
@@ -40,7 +42,7 @@ void script_node::read(io_stream& stream) {
 }
 
 void script_node::remove_output_node(int node_id) {
-	for (int i = 0; i < (int)out.size(); i++) {
+	for (int i{ 0 }; i < static_cast<int>(out.size()); i++) {
 		if (out[i].node_id == node_id) {
 			out.erase(out.begin() + i);
 			i--;
@@ -49,7 +51,7 @@ void script_node::remove_output_node(int node_id) {
 }
 
 void script_node::remove_output_type(int out_id) {
-	for (int i = 0; i < (int)out.size(); i++) {
+	for (int i{ 0 }; i < static_cast<int>(out.size()); i++) {
 		if (out[i].out_id == out_id) {
 			out.erase(out.begin() + i);
 			i--;
@@ -69,8 +71,9 @@ int script_node::get_output(int out_id) {
 int script_node::get_first_output() {
 	if (out.empty()) {
 		return -1;
+	} else {
+		return out[0].node_id;
 	}
-	return out[0].node_id;
 }
 
 void script_node::set_output_node(int out_id, int node_id) {
@@ -97,9 +100,9 @@ void script_node::set_output_node(int out_id, int node_id) {
 
 void script_tree::write(io_stream& stream) const {
 	stream.write<int32_t>(id);
-	stream.write((int32_t)nodes.size());
+	stream.write<int32_t>(static_cast<int32_t>(nodes.size()));
 	for (auto& i : nodes) {
-		stream.write((int32_t)i.second->type());
+		stream.write<int32_t>(i.second->type());
 		i.second->write(stream);
 	}
 	stream.write<int32_t>(id_counter);
@@ -108,10 +111,10 @@ void script_tree::write(io_stream& stream) const {
 
 void script_tree::read(no::io_stream & stream) {
 	id = stream.read<int32_t>();
-	int node_count = stream.read<int32_t>();
-	for (int i = 0; i < node_count; i++) {
-		int type = stream.read<int32_t>();
-		auto node = create_script_node(type);
+	const auto node_count{ stream.read<int32_t>() };
+	for (int32_t i{ 0 }; i < node_count; i++) {
+		const auto type{ stream.read<int32_t>() };
+		auto node{ create_script_node(type) };
 		node->tree = this;
 		node->read(stream);
 		nodes[node->id] = node;
@@ -157,11 +160,11 @@ bool script_tree::process_choice_selection() {
 		return false;
 	}
 	int type = nodes[current_node_id]->type();
-	if (type == NO_SCRIPT_NODE_MESSAGE) {
+	if (type == script_node_type::message) {
 		prepare_message();
 		return false;
 	}
-	if (type == NO_SCRIPT_NODE_CHOICE) {
+	if (type == script_node_type::choice) {
 		INFO("A choice cannot be the entry point of a script.");
 		return false;
 	}
@@ -171,7 +174,7 @@ bool script_tree::process_choice_selection() {
 
 void script_tree::prepare_message() {
 	choice_event event;
-	std::vector<int> choices = process_current_and_get_choices();
+	std::vector<int> choices{ process_current_and_get_choices() };
 	for (int choice : choices) {
 		event.choices.push_back({ ((choice_node*)nodes[choice])->text, choice });
 	}
@@ -184,12 +187,11 @@ void script_tree::prepare_message() {
 std::vector<int> script_tree::process_current_and_get_choices() {
 	std::vector<int> choices;
 	for (auto& output : nodes[current_node_id]->out) {
-		int out_type = nodes[output.node_id]->type();
-		if (out_type == NO_SCRIPT_NODE_CHOICE) {
+		const int out_type{ nodes[output.node_id]->type() };
+		if (out_type == script_node_type::choice) {
 			choices.push_back(output.node_id);
 		} else {
-			int traversed = process_nodes_get_choice(output.node_id, out_type);
-			if (traversed != -1) {
+			if (const int traversed{ process_nodes_get_choice(output.node_id, out_type) }; traversed != -1) {
 				choices.push_back(traversed);
 			}
 		}
@@ -199,10 +201,10 @@ std::vector<int> script_tree::process_current_and_get_choices() {
 
 int script_tree::process_nodes_get_choice(int id, int type) {
 	while (true) {
-		if (id == -1 || type == NO_SCRIPT_NODE_MESSAGE) {
+		if (id == -1 || type == script_node_type::message) {
 			return -1;
 		}
-		if (type == NO_SCRIPT_NODE_CHOICE) {
+		if (type == script_node_type::choice) {
 			return id;
 		}
 		id = process_non_ui_node(id, type);
@@ -210,7 +212,7 @@ int script_tree::process_nodes_get_choice(int id, int type) {
 			return -1;
 		}
 		type = nodes[id]->type();
-		if (type == NO_SCRIPT_NODE_CHOICE) {
+		if (type == script_node_type::choice) {
 			return id;
 		}
 	}
@@ -218,12 +220,12 @@ int script_tree::process_nodes_get_choice(int id, int type) {
 }
 
 int script_tree::process_non_ui_node(int id, int type) {
-	script_node* node = nodes[id];
-	int out = node->process();
-	if (out == -1) {
+	auto node{ nodes[id] };
+	if (const int out{ node->process() }; out >= 0) {
+		return node->get_output(out);
+	} else {
 		return -1;
 	}
-	return node->get_output(out);
 }
 
 void message_node::write(no::io_stream & stream) {
@@ -246,10 +248,9 @@ void choice_node::read(no::io_stream & stream) {
 	text = stream.read<std::string>();
 }
 
-
 int var_condition_node::process() {
-	variable_map* variables = tree->variables;
-	variable* var = nullptr;
+	variable_map* variables{ tree->variables };
+	variable* var{ nullptr };
 	if (is_global) {
 		var = variables->global(var_name);
 	} else {
@@ -262,9 +263,9 @@ int var_condition_node::process() {
 	if (comp_value == "") {
 		return var->name == "";
 	}
-	std::string value = comp_value;
+	std::string value{ comp_value };
 	if (other_type == node_other_var_type::local) {
-		variable* comp_var = variables->local(scope_id, comp_value);
+		variable* comp_var{ variables->local(scope_id, comp_value) };
 		if (comp_var) {
 			value = comp_var->value;
 		} else {
@@ -272,8 +273,7 @@ int var_condition_node::process() {
 			return false;
 		}
 	} else if (other_type == node_other_var_type::global) {
-		auto comp_var = variables->global(comp_value);
-		if (comp_var) {
+		if (const auto comp_var{ variables->global(comp_value) }) {
 			value = comp_var->value;
 		} else {
 			WARNING("Cannot compare against " << var_name << " because global variable " << comp_value << " does not exist.");
@@ -286,27 +286,27 @@ int var_condition_node::process() {
 void var_condition_node::write(io_stream& stream) {
 	script_node::write(stream);
 	stream.write<uint8_t>(is_global);
-	stream.write((int32_t)other_type);
+	stream.write<int32_t>(static_cast<int32_t>(other_type));
 	stream.write(var_name);
 	stream.write(comp_value);
-	stream.write((int32_t)comp_operator);
+	stream.write<int32_t>(static_cast<int32_t>(comp_operator));
 }
 
 void var_condition_node::read(io_stream& stream) {
 	script_node::read(stream);
 	is_global = (stream.read<uint8_t>() != 0);
-	other_type = (node_other_var_type)stream.read<int32_t>();
+	other_type = static_cast<node_other_var_type>(stream.read<int32_t>());
 	var_name = stream.read<std::string>();
 	comp_value = stream.read<std::string>();
-	comp_operator = (variable_comparison)stream.read<int32_t>();
+	comp_operator = static_cast<variable_comparison>(stream.read<int32_t>());
 }
 
 int modify_var_node::process() {
 	if (mod_value == "") {
 		return 0;
 	}
-	variable_map* variables = tree->variables;
-	variable* var = nullptr;
+	variable_map* variables{ tree->variables };
+	variable* var{ nullptr };
 	if (is_global) {
 		var = variables->global(var_name);
 	} else {
@@ -316,9 +316,9 @@ int modify_var_node::process() {
 		WARNING("Attempted to modify " << var_name << " (global: " << is_global << ") but it does not exist");
 		return 0;
 	}
-	std::string value = mod_value;
+	std::string value{ mod_value };
 	if (other_type == node_other_var_type::local) {
-		auto mod_var = variables->local(scope_id, mod_value);
+		auto mod_var{ variables->local(scope_id, mod_value) };
 		if (mod_var) {
 			value = mod_var->value;
 		} else {
@@ -326,8 +326,7 @@ int modify_var_node::process() {
 			return 0;
 		}
 	} else if (other_type == node_other_var_type::global) {
-		auto mod_var = variables->global(mod_value);
-		if (mod_var) {
+		if (const auto mod_var{ variables->global(mod_value) }) {
 			value = mod_var->value;
 		} else {
 			WARNING("Cannot modify " << var_name << " because the global variable " << mod_value << " does not exist.");
@@ -357,10 +356,9 @@ void modify_var_node::read(io_stream& stream) {
 }
 
 int create_var_node::process() {
-	variable_map* variables = tree->variables;
+	variable_map* variables{ tree->variables };
 	if (is_global) {
-		variable* old_var = variables->global(var.name);
-		if (old_var) {
+		if (auto old_var{ variables->global(var.name) }) {
 			if (overwrite) {
 				*old_var = var;
 			}
@@ -368,8 +366,7 @@ int create_var_node::process() {
 		}
 		variables->create_global(var);
 	} else {
-		variable* old_var = variables->local(scope_id, var.name);
-		if (old_var) {
+		if (auto old_var{ variables->local(scope_id, var.name) }) {
 			if (overwrite) {
 				*old_var = var;
 			}
@@ -403,8 +400,9 @@ void create_var_node::read(io_stream& stream) {
 int var_exists_node::process() {
 	if (is_global) {
 		return tree->variables->global(var_name) != nullptr ? 1 : 0;
+	} else {
+		return tree->variables->local(scope_id, var_name) != nullptr ? 1 : 0;
 	}
-	return tree->variables->local(scope_id, var_name) != nullptr ? 1 : 0;
 }
 
 void var_exists_node::read(io_stream& stream) {

@@ -8,11 +8,11 @@ namespace no {
 
 void ortho_camera::update() {
 	if (target) {
-		vector2f goal = {
+		const vector2f goal{
 			(target->position.x + target->scale.x / 2.0f) - width() / target_chase_aspect.x,
 			(target->position.y + target->scale.y / 2.0f) - height() / target_chase_aspect.y
 		};
-		vector2f delta = {
+		const vector2f delta{
 			(goal.x - x()) * target_chase_speed.x,
 			(goal.y - y()) * target_chase_speed.y
 		};
@@ -66,14 +66,10 @@ glm::mat4 ortho_camera::projection() const {
 }
 
 glm::mat4 ortho_camera::view() const {
-	vector2f rounded_position = transform.position;
+	vector2f rounded_position{ transform.position };
 	rounded_position.ceil();
-	glm::vec3 negated_position = {
-		-rounded_position.x,
-		-rounded_position.y,
-		-1.0f
-	};
-	glm::mat4 matrix = rotation() * glm::translate(glm::mat4(1.0f), negated_position);
+	const glm::vec3 negated_position{ -rounded_position.x, -rounded_position.y, -1.0f };
+	const glm::mat4 matrix{ rotation() * glm::translate(glm::mat4(1.0f), negated_position) };
 	return glm::scale(matrix, { zoom, zoom, zoom });
 }
 
@@ -91,15 +87,15 @@ void perspective_camera::update() {
 }
 
 glm::mat4 perspective_camera::translation() const {
-	glm::vec3 position = { -transform.position.x, -transform.position.y, -transform.position.z };
+	glm::vec3 position{ -transform.position.x, -transform.position.y, -transform.position.z };
 	position -= glm::vec3{ rotation_offset.x, rotation_offset.y, rotation_offset.z };
-	return glm::translate(glm::mat4(1.0f), position);
+	return glm::translate(glm::mat4{ 1.0f }, position);
 }
 
 glm::mat4 perspective_camera::rotation() const {
-	auto matrix = glm::rotate(glm::mat4(1.0f), deg_to_rad(transform.rotation.x), glm::vec3(1.0f, 0.0f, 0.0f));
-	matrix = glm::rotate(matrix, deg_to_rad(transform.rotation.y), glm::vec3(0.0f, 1.0f, 0.0f));
-	return glm::rotate(matrix, deg_to_rad(transform.rotation.z), glm::vec3(0.0f, 0.0f, 1.0f));
+	auto matrix{ glm::rotate(glm::mat4{ 1.0f }, deg_to_rad(transform.rotation.x), glm::vec3{ 1.0f, 0.0f, 0.0f }) };
+	matrix = glm::rotate(matrix, deg_to_rad(transform.rotation.y), glm::vec3{ 0.0f, 1.0f, 0.0f });
+	return glm::rotate(matrix, deg_to_rad(transform.rotation.z), glm::vec3{ 0.0f, 0.0f, 1.0f });
 }
 
 glm::mat4 perspective_camera::projection() const {
@@ -107,7 +103,7 @@ glm::mat4 perspective_camera::projection() const {
 }
 
 glm::mat4 perspective_camera::view() const {
-	auto matrix = rotation() * translation();
+	auto matrix{ rotation() * translation() };
 	return glm::scale(matrix, { transform.scale.x, transform.scale.y, transform.scale.z });
 }
 
@@ -116,17 +112,17 @@ glm::mat4 perspective_camera::view_projection() const {
 }
 
 vector3f perspective_camera::forward() const {
-	const auto result = glm::inverse(rotation()) * glm::vec4(0.0f, 0.0f, -1.0f, 1.0f);
+	const auto result{ glm::inverse(rotation()) * glm::vec4{ 0.0f, 0.0f, -1.0f, 1.0f } };
 	return { result.x, result.y, result.z };
 }
 
 vector3f perspective_camera::right() const {
-	const auto result = glm::inverse(rotation()) * glm::vec4(1.0f, 0.0f, 0.0f, 1.0f);
+	const auto result{ glm::inverse(rotation()) * glm::vec4{ 1.0f, 0.0f, 0.0f, 1.0f } };
 	return { result.x, result.y, result.z };
 }
 
 vector3f perspective_camera::up() const {
-	const auto result = glm::inverse(rotation()) * glm::vec4(0.0f, 1.0f, 0.0f, 1.0f);
+	const auto result = glm::inverse(rotation()) * glm::vec4{ 0.0f, 1.0f, 0.0f, 1.0f };
 	return { result.x, result.y, result.z };
 }
 
@@ -135,13 +131,13 @@ vector3f perspective_camera::offset() const {
 }
 
 ray perspective_camera::unproject(const vector2f& position_in_window) const {
-	glm::vec4 viewport = { 0.0f, 0.0f, size.x, size.y };
-	glm::vec3 window_near = { position_in_window.x, size.y - position_in_window.y, 0.0f };
-	glm::vec3 window_far = { position_in_window.x, size.y - position_in_window.y, 1.0f };
-	glm::vec3 world_near = glm::unProject(window_near, view(), projection(), viewport);
-	glm::vec3 world_far = glm::unProject(window_far, view(), projection(), viewport);
-	glm::vec3 origin = world_near;
-	glm::vec3 direction = glm::normalize(world_far);
+	const glm::vec4 viewport{ 0.0f, 0.0f, size.x, size.y };
+	const glm::vec3 window_near{ position_in_window.x, size.y - position_in_window.y, 0.0f };
+	const glm::vec3 window_far{ position_in_window.x, size.y - position_in_window.y, 1.0f };
+	const glm::vec3 world_near{ glm::unProject(window_near, view(), projection(), viewport) };
+	const glm::vec3 world_far{ glm::unProject(window_far, view(), projection(), viewport) };
+	const glm::vec3 origin{ world_near };
+	const glm::vec3 direction{ glm::normalize(world_far) };
 	return { { origin.x, origin.y, origin.z }, { direction.x, direction.y, direction.z } };
 }
 
@@ -150,7 +146,7 @@ ray perspective_camera::unproject(const mouse& mouse) const {
 }
 
 vector2f perspective_camera::world_to_screen(const vector3f& position) const {
-	glm::vec4 clip = projection() * view() * glm::vec4{ position.x, position.y, position.z, 1.0f };
+	const glm::vec4 clip{ projection() * view() * glm::vec4{ position.x, position.y, position.z, 1.0f } };
 	return {
 		(((clip.x / clip.w) + 1.0f) / 2.0f) * size.x,
 		((1.0f - (clip.y / clip.w)) / 2.0f) * size.y

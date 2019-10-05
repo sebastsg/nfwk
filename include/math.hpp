@@ -69,10 +69,10 @@ public:
 	template<typename T>
 	T next(T min, T max) {
 		if constexpr (std::is_integral<T>::value) {
-			std::uniform_int_distribution<T> distribution(min, max);
+			std::uniform_int_distribution<T> distribution{ min, max };
 			return distribution(mersianne_twister_engine);
 		} else if constexpr (std::is_floating_point<T>::value) {
-			std::uniform_real_distribution<T> distribution(min, max);
+			std::uniform_real_distribution<T> distribution{ min, max };
 			return distribution(mersianne_twister_engine);
 		}
 		static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "T is not an integral or floating point type");
@@ -93,7 +93,7 @@ public:
 private:
 
 	std::mt19937_64 mersianne_twister_engine;
-	unsigned long long current_seed = 0;
+	unsigned long long current_seed{ 0 };
 
 };
 

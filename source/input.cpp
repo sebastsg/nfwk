@@ -11,7 +11,7 @@
 
 namespace no {
 
-mouse::mouse(window* parent_window) : parent_window(parent_window) {
+mouse::mouse(window* parent_window) : parent_window{ parent_window } {
 
 }
 
@@ -56,15 +56,15 @@ void mouse::set_icon(cursor icon) {
 keyboard::keyboard() {
 	std::fill(std::begin(keys), std::end(keys), false);
 	press_key = press.listen([this](key pressed_key) {
-		keys[(size_t)pressed_key] = true;
+		keys[static_cast<size_t>(pressed_key)] = true;
 	});
 	release_key = release.listen([this](key released_key) {
-		keys[(size_t)released_key] = false;
+		keys[static_cast<size_t>(released_key)] = false;
 	});
 }
 
 bool keyboard::is_key_down(key check_key) const {
-	return keys[(size_t)check_key];
+	return keys[static_cast<size_t>(check_key)];
 }
 
 }
@@ -117,7 +117,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::num_7:
 	case no::key::num_8:
 	case no::key::num_9:
-		return out << (char)key;
+		return out << static_cast<char>(key);
 	case no::key::a:
 	case no::key::b:
 	case no::key::c:
@@ -144,7 +144,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::x:
 	case no::key::y:
 	case no::key::z:
-		return out << (char)key;
+		return out << static_cast<char>(key);
 	case no::key::f1:
 	case no::key::f2:
 	case no::key::f3:
@@ -157,7 +157,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::f10:
 	case no::key::f11:
 	case no::key::f12:
-		return out << 'F' << (int)key - (int)no::key::f1 + 1;
+		return out << 'F' << static_cast<char>(key) - static_cast<char>(no::key::f1) + 1;
 	case no::key::num_lock:
 		return out << "Num Lock";
 	case no::key::scroll_lock:
@@ -171,7 +171,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::right_control:
 		return out << "Right Control";
 	default:
-		return out << "Unknown (" << (char)key << ")";
+		return out << "Unknown (" << static_cast<char>(key) << ")";
 	}
 }
 

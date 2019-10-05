@@ -17,7 +17,6 @@ namespace no {
 
 namespace wasapi {
 
-
 class audio_client : public audio_player {
 public:
 
@@ -46,14 +45,14 @@ private:
 	std::thread thread;
 	pcm_stream playing_audio_stream;
 
-	std::atomic<bool> playing = false;
-	std::atomic<bool> paused = false;
+	std::atomic<bool> playing{ false };
+	std::atomic<bool> paused{ false };
 
-	IAudioClient* client = nullptr;
-	IAudioRenderClient* render_client = nullptr;
-	long long default_device_period = 0;
-	unsigned int buffer_frame_count = 0;
-	WAVEFORMATEX* wave_format = nullptr;
+	IAudioClient* client{ nullptr };
+	IAudioRenderClient* render_client{ nullptr };
+	long long default_device_period{ 0 };
+	unsigned int buffer_frame_count{ 0 };
+	WAVEFORMATEX* wave_format{ nullptr };
 
 };
 
@@ -69,7 +68,7 @@ public:
 
 private:
 
-	IMMDevice* device = nullptr;
+	IMMDevice* device{ nullptr };
 	std::vector<audio_client*> players;
 
 };

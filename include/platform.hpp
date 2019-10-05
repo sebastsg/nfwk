@@ -52,12 +52,9 @@ namespace no {
 # define CHECK_GL_ERROR(GL_CALL) \
 	GL_CALL; \
 	LOG_VERBOSE_GL(GL_CALL) \
-	{ \
-		auto gl_error = glGetError(); \
-		if (gl_error != GL_NO_ERROR) { \
-			CRITICAL(#GL_CALL << "\n" << gluErrorString(gl_error)); \
-			ASSERT(gl_error == GL_NO_ERROR); \
-		} \
+	if (const auto gl_error{ glGetError() }; gl_error != GL_NO_ERROR) { \
+		CRITICAL(#GL_CALL << "\n" << gluErrorString(gl_error)); \
+		ASSERT(gl_error == GL_NO_ERROR); \
 	}
 #else
 # define CHECK_GL_ERROR(GL_CALL) GL_CALL;

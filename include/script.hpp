@@ -13,13 +13,13 @@ enum class node_output_type { unknown, variable, single, boolean };
 enum class node_other_var_type { value, local, global };
 
 struct node_output {
-	int node_id = -1;
-	int out_id = 0;
+	int node_id{ -1 };
+	int out_id{ 0 };
 };
 
 struct node_choice_info {
 	std::string text;
-	int node_id = -1;
+	int node_id{ -1 };
 };
 
 class script_node {
@@ -27,8 +27,8 @@ public:
 
 	friend class script_tree;
 
-	int id = -1;
-	int scope_id = -1;
+	int id{ -1 };
+	int scope_id{ -1 };
 	std::vector<node_output> out;
 	transform3 transform; // transform is only used in editor
 
@@ -50,7 +50,7 @@ public:
 
 protected:
 
-	script_tree* tree = nullptr;
+	script_tree* tree{ nullptr };
 
 };
 
@@ -65,13 +65,13 @@ public:
 		event<choice_event> choice;
 	} events;
 
-	int id = -1;
-	int id_counter = 0;
-	int start_node_id = 0; // todo: when deleting node, make sure start node is valid
+	int id{ -1 };
+	int id_counter{ 0 };
+	int start_node_id{ 0 }; // todo: when deleting node, make sure start node is valid
 	std::unordered_map<int, script_node*> nodes;
 
 	// context:
-	variable_map* variables = nullptr;
+	variable_map* variables{ nullptr };
 
 	void write(io_stream& stream) const;
 	void read(io_stream& stream);
@@ -92,7 +92,7 @@ private:
 	int process_nodes_get_choice(int id, int type);
 	int process_non_ui_node(int id, int type);
 
-	int current_node_id = 0;
+	int current_node_id{ 0 };
 
 };
 
@@ -117,7 +117,7 @@ public:
 class message_node : public script_node {
 public:
 
-	std::string text = "Example text";
+	std::string text{ "Example text" };
 
 	int type() const override {
 		return 0;
@@ -135,7 +135,7 @@ public:
 class choice_node : public script_node {
 public:
 
-	std::string text = "Example text";
+	std::string text{ "Example text" };
 
 	int type() const override {
 		return 1;
@@ -154,11 +154,11 @@ public:
 class var_condition_node : public condition_node {
 public:
 
-	bool is_global = false;
-	node_other_var_type other_type = node_other_var_type::value;
+	bool is_global{ false };
+	node_other_var_type other_type{ node_other_var_type::value };
 	std::string var_name;
 	std::string comp_value;
-	variable_comparison comp_operator = variable_comparison::equal;
+	variable_comparison comp_operator{ variable_comparison::equal };
 
 	int type() const override {
 		return 2;
@@ -173,11 +173,11 @@ public:
 class modify_var_node : public effect_node {
 public:
 
-	bool is_global = false;
-	node_other_var_type other_type = node_other_var_type::value;
+	bool is_global{ false };
+	node_other_var_type other_type{ node_other_var_type::value };
 	std::string var_name;
 	std::string mod_value;
-	variable_modification mod_operator = variable_modification::set;
+	variable_modification mod_operator{ variable_modification::set };
 
 	int type() const override {
 		return 3;
@@ -193,8 +193,8 @@ class create_var_node : public effect_node {
 public:
 
 	variable var;
-	bool is_global = false;
-	bool overwrite = false;
+	bool is_global{ false };
+	bool overwrite{ false };
 
 	int type() const override {
 		return 4;
@@ -209,7 +209,7 @@ public:
 class var_exists_node : public condition_node {
 public:
 
-	bool is_global = false;
+	bool is_global{ false };
 	std::string var_name;
 
 	int type() const override {
@@ -225,7 +225,7 @@ public:
 class delete_var_node : public effect_node {
 public:
 
-	bool is_global = false;
+	bool is_global{ false };
 	std::string var_name;
 
 	int type() const override {
@@ -258,7 +258,7 @@ public:
 class random_condition_node : public condition_node {
 public:
 
-	int percent = 50;
+	int percent{ 50 };
 
 	int type() const override {
 		return 8;

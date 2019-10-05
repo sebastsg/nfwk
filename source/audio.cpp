@@ -6,7 +6,7 @@
 
 namespace no {
 
-pcm_stream::pcm_stream(audio_source* source) : source(source) {
+pcm_stream::pcm_stream(audio_source* source) : source{ source } {
 
 }
 
@@ -18,9 +18,9 @@ float pcm_stream::read_float() {
 	if (is_empty()) {
 		return 0.0f;
 	}
-	int16_t pcm = source->stream().read<int16_t>(position); // todo: check format()
+	const int16_t pcm{ source->stream().read<int16_t>(position) }; // todo: check format()
 	position += sizeof(int16_t);
-	return (float)((double)pcm / (double)SHRT_MAX);
+	return static_cast<float>(static_cast<double>(pcm) / static_cast<double>(SHRT_MAX));
 }
 
 void pcm_stream::reset() {
@@ -30,7 +30,7 @@ void pcm_stream::reset() {
 void pcm_stream::stream(pcm_format format, uint8_t* destination, size_t size, size_t channels) {
 	switch (format) {
 	case pcm_format::float_32:
-		stream((float*)destination, size / sizeof(float), channels);
+		stream(reinterpret_cast<float*>(destination), size / sizeof(float), channels);
 		break;
 	default:
 		ASSERT(false);
@@ -39,8 +39,8 @@ void pcm_stream::stream(pcm_format format, uint8_t* destination, size_t size, si
 }
 
 void pcm_stream::stream(float* destination, size_t count, size_t channels) {
-	for (size_t i = 0; i < count; i += channels) {
-		for (size_t j = 0; j < channels; j++) {
+	for (size_t i{ 0 }; i < count; i += channels) {
+		for (size_t j{ 0 }; j < channels; j++) {
 			destination[i + j] = read_float();
 		}
 	}

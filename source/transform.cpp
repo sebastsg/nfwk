@@ -2,22 +2,22 @@
 
 namespace no {
 
-transform2::transform2(vector2f position) 
-	: position(position) {
+transform2::transform2(vector2f position) : position{ position } {
+
 }
 
-transform2::transform2(vector2f position, vector2f scale) 
-	: position(position), scale(scale) {
+transform2::transform2(vector2f position, vector2f scale) : position{ position }, scale{ scale } {
+
 }
 
-transform2::transform2(vector2f position, float rotation, vector2f scale) 
-	: position(position), rotation(rotation), scale(scale) {
+transform2::transform2(vector2f position, float rotation, vector2f scale) : position{ position }, rotation{ rotation }, scale{ scale } {
+
 }
 
 glm::mat4 transform2::to_matrix4() const {
 	glm::mat4 matrix{ 1.0f };
 	if (rotation != 0.0f) {
-		const vector2f origin = position + scale / 2.0f;
+		const vector2f origin{ position + scale / 2.0f };
 		matrix = glm::translate(matrix, { origin.x, origin.y, 0.0f });
 		matrix = glm::rotate(matrix, deg_to_rad(-rotation), { 0.0f, 0.0f, 1.0f });
 		matrix = glm::translate(matrix, { -origin.x, -origin.y, 0.0f });
@@ -70,57 +70,42 @@ bool transform2::collides_with(const vector2f& b_position) const {
 }
 
 float transform2::distance_to(const transform2& b) const {
-	const float x = (position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f);
-	const float y = (position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f);
+	const float x{ position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f };
+	const float y{ position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f };
 	return std::sqrt(x * x + y * y);
 }
 
 float transform2::distance_to(const vector2f& b_position, const vector2f& b_scale) const {
-	const float x = (position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f);
-	const float y = (position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f);
+	const float x{ position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f };
+	const float y{ position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f };
 	return std::sqrt(x * x + y * y);
 }
 
 float transform2::distance_to(const vector2f& b_position) const {
-	const float x = (position.x + scale.x / 2.0f - b_position.x);
-	const float y = (position.y + scale.y / 2.0f - b_position.y);
+	const float x{ position.x + scale.x / 2.0f - b_position.x };
+	const float y{ position.y + scale.y / 2.0f - b_position.y };
 	return std::sqrt(x * x + y * y);
 }
 
 float transform2::angle_to(const transform2& b) const {
-	const float y = position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f;
-	const float x = position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f;
-	float result = rad_to_deg(std::atan2(y, x));
-	if (result > 180.0f) {
-		result = 540.0f - result;
-	} else {
-		result = 180.0f - result;
-	}
-	return result;
+	const float y{ position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f };
+	const float x{ position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f };
+	const float result{ rad_to_deg(std::atan2(y, x)) };
+	return result > 180.0f ? 540.0f - result : 180.0f - result;
 }
 
 float transform2::angle_to(const vector2f& b_position, const vector2f& b_scale) const {
-	const float y = position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f;
-	const float x = position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f;
-	float result = rad_to_deg(std::atan2(y, x));
-	if (result > 180.0f) {
-		result = 540.0f - result;
-	} else {
-		result = 180.0f - result;
-	}
-	return result;
+	const float y{ position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f };
+	const float x{ position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f };
+	const float result{ rad_to_deg(std::atan2(y, x)) };
+	return result > 180.0f ? 540.0f - result : 180.0f - result;
 }
 
 float transform2::angle_to(const vector2f& b_position) const {
-	const float y = position.y + scale.y / 2.0f - b_position.y;
-	const float x = position.x + scale.x / 2.0f - b_position.x;
-	float result = rad_to_deg(std::atan2(y, x));
-	if (result > 180.0f) {
-		result = 540.0f - result;
-	} else {
-		result = 180.0f - result;
-	}
-	return result;
+	const float y{ position.y + scale.y / 2.0f - b_position.y };
+	const float x{ position.x + scale.x / 2.0f - b_position.x };
+	const float result{ rad_to_deg(std::atan2(y, x)) };
+	return result > 180.0f ? 540.0f - result : 180.0f - result;
 }
 
 void transform2::align(align_type alignment, const transform2& parent, const vector2f& padding) {
@@ -182,20 +167,20 @@ void transform2::align(align_type alignment, const transform2& parent, const vec
 	}
 }
 
-transform3::transform3(vector3f position) 
-	: position(position) {
+transform3::transform3(vector3f position) : position{ position } {
+
 }
 
-transform3::transform3(vector3f position, vector3f scale) 
-	: position(position), scale(scale) {
+transform3::transform3(vector3f position, vector3f scale) : position{ position }, scale{ scale } {
+
 }
 
-transform3::transform3(vector3f position, vector3f rotation, vector3f scale) 
-	: position(position), rotation(rotation), scale(scale) {
+transform3::transform3(vector3f position, vector3f rotation, vector3f scale) : position{ position }, rotation{ rotation }, scale{ scale } {
+
 }
 
 glm::mat4 transform3::to_matrix4() const {
-	glm::mat4 matrix(1.0f);
+	glm::mat4 matrix{ 1.0f };
 	matrix = glm::translate(matrix, { position.x, position.y, position.z });
 	if (rotation.x != 0.0f) {
 		matrix = glm::rotate(matrix, deg_to_rad(rotation.x), { 1.0f, 0.0f, 0.0f });
@@ -211,8 +196,8 @@ glm::mat4 transform3::to_matrix4() const {
 }
 
 glm::mat4 transform3::to_matrix4_origin() const {
-	glm::mat4 matrix(1.0f);
-	no::vector3f origin = position + scale / 2.0f;
+	glm::mat4 matrix{ 1.0f };
+	const no::vector3f origin{ position + scale / 2.0f };
 	matrix = glm::translate(matrix, { origin.x, origin.y, origin.z });
 	if (rotation.x != 0.0f) {
 		matrix = glm::rotate(matrix, deg_to_rad(rotation.x), { 1.0f, 0.0f, 0.0f });
@@ -290,23 +275,23 @@ bool transform3::collides_with(const vector3f& b_position) const {
 }
 
 float transform3::distance_to(const transform3& b) const {
-	const float x = (position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f);
-	const float y = (position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f);
-	const float z = (position.z + scale.z / 2.0f - b.position.z + b.scale.z / 2.0f);
+	const float x{ position.x + scale.x / 2.0f - b.position.x + b.scale.x / 2.0f };
+	const float y{ position.y + scale.y / 2.0f - b.position.y + b.scale.y / 2.0f };
+	const float z{ position.z + scale.z / 2.0f - b.position.z + b.scale.z / 2.0f };
 	return std::sqrt(x * x + y * y + z * z);
 }
 
 float transform3::distance_to(const vector3f& b_position, const vector3f& b_scale) const {
-	const float x = (position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f);
-	const float y = (position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f);
-	const float z = (position.z + scale.z / 2.0f - b_position.z + b_scale.z / 2.0f);
+	const float x{ position.x + scale.x / 2.0f - b_position.x + b_scale.x / 2.0f };
+	const float y{ position.y + scale.y / 2.0f - b_position.y + b_scale.y / 2.0f };
+	const float z{ position.z + scale.z / 2.0f - b_position.z + b_scale.z / 2.0f };
 	return std::sqrt(x * x + y * y + z * z);
 }
 
 float transform3::distance_to(const vector3f& b_position) const {
-	const float x = (position.x + scale.x / 2.0f - b_position.x);
-	const float y = (position.y + scale.y / 2.0f - b_position.y);
-	const float z = (position.z + scale.z / 2.0f - b_position.z);
+	const float x{ position.x + scale.x / 2.0f - b_position.x };
+	const float y{ position.y + scale.y / 2.0f - b_position.y };
+	const float z{ position.z + scale.z / 2.0f - b_position.z };
 	return std::sqrt(x * x + y * y + z * z);
 }
 

@@ -50,12 +50,12 @@ public:
 
 	text_view(const program_state& state, const ortho_camera& camera);
 	text_view(const text_view&) = delete;
-	text_view(text_view&&);
+	text_view(text_view&&) noexcept;
 
 	~text_view();
 
 	text_view& operator=(const text_view&) = delete;
-	text_view& operator=(text_view&&);
+	text_view& operator=(text_view&&) noexcept;
 
 	std::string text() const;
 	void render(const font& font, const std::string& text);

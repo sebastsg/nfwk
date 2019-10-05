@@ -22,7 +22,7 @@ void timer::stop() {
 void timer::pause() {
 	if (started && !paused) {
 		paused = true;
-		long long now = platform::performance_counter();
+		const long long now{ platform::performance_counter() };
 		paused_time = ticks_to_microseconds(now - start_time);
 	}
 }
@@ -33,7 +33,7 @@ void timer::resume() {
 }
 
 void timer::go_back_in_time(long long milliseconds) {
-	if (!started) {
+	if (started) {
 		return;
 	}
 	if (paused) {
@@ -58,7 +58,7 @@ long long timer::microseconds() const {
 	if (paused) {
 		return paused_time;
 	}
-	long long now = platform::performance_counter();
+	const long long now{ platform::performance_counter() };
 	return ticks_to_microseconds(now - start_time);
 }
 

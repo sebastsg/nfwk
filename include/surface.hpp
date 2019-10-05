@@ -50,9 +50,9 @@ public:
 
 private:
 
-	uint32_t* pixels = nullptr;
+	uint32_t* pixels{ nullptr };
 	vector2i size;
-	pixel_format format_ = pixel_format::rgba;
+	pixel_format format_{ pixel_format::rgba };
 
 };
 

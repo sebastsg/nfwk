@@ -291,8 +291,8 @@ private:
 class sprite_animation {
 public:
 
-	int frames = 1;
-	float fps = 10.0f;
+	int frames{ 1 };
+	float fps{ 10.0f };
 
 	void update(float delta);
 	void draw(vector2f position, vector2f size) const;
@@ -308,12 +308,12 @@ public:
 private:
 
 	rectangle rectangle;
-	int current_frame = 0;
-	float sub_frame = 0.0f;
-	int previous_frame;
-	bool paused = false;
+	int current_frame{ 0 };
+	float sub_frame{ 0.0f };
+	int previous_frame{ 0 };
+	bool paused{ false };
 	vector2f uv_position;
-	vector2f uv_size = 1.0f;
+	vector2f uv_size{ 1.0f };
 
 };
 

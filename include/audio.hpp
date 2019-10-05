@@ -33,8 +33,8 @@ public:
 
 private:
 
-	size_t position = 0;
-	audio_source* source = nullptr;
+	size_t position{ 0 };
+	audio_source* source{ nullptr };
 
 };
 

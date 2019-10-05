@@ -15,13 +15,11 @@ namespace ft {
 static FT_Library library = nullptr;
 
 static void initialize() {
-	if (library) {
-		return;
-	}
-	MESSAGE("Initializing FreeType");
-	FT_Error error = FT_Init_FreeType(&library);
-	if (error != FT_Err_Ok) {
-		WARNING("[Error " << error << "] Failed to initialize FreeType");
+	if (!library) {
+		MESSAGE("Initializing FreeType");
+		if (const auto error{ FT_Init_FreeType(&library) }; error != FT_Err_Ok) {
+			WARNING("[Error " << error << "] Failed to initialize FreeType");
+		}
 	}
 }
 
@@ -47,22 +45,21 @@ class font::font_face {
 public:
 
 	FT_Face face;
-	bool has_kerning = false;
-	bool is_scalable = false;
-	long scale_y = 0;
-	long ascent = 0;
-	long descent = 0;
-	long height = 0;
-	long line_skip = 0;
-	long underline_offset = 0;
-	long underline_height = 0;
-	long glyph_overhang = 0;
+	bool has_kerning{ false };
+	bool is_scalable{ false };
+	long scale_y{ 0 };
+	long ascent{ 0 };
+	long descent{ 0 };
+	long height{ 0 };
+	long line_skip{ 0 };
+	long underline_offset{ 0 };
+	long underline_height{ 0 };
+	long glyph_overhang{ 0 };
 
 	font_face(const std::string& path) {
 		MESSAGE("Loading font " << path);
 		// note: to check how many faces a font has, face_index should be -1, then check face->num_faces
-		FT_Error error = FT_New_Face(ft::library, path.c_str(), 0, &face);
-		if (error != FT_Err_Ok) { // FT_Err_Unknown_File_Format
+		if (const auto error{ FT_New_Face(ft::library, path.c_str(), 0, &face) }; error != FT_Err_Ok) {
 			WARNING("[Error " << error << "] Failed to load font: " << path);
 			return;
 		}
@@ -82,8 +79,7 @@ public:
 	}
 
 	void set_size(int size) {
-		FT_Error error = FT_Set_Char_Size(face, 0, size * 64, 0, 0);
-		if (error != FT_Err_Ok) {
+		if (FT_Set_Char_Size(face, 0, size * 64, 0, 0) != FT_Err_Ok) {
 			WARNING("Failed to set char size");
 		}
 	}
@@ -93,8 +89,7 @@ public:
 	}
 
 	bool load_glyph(int index) {
-		FT_Error error = FT_Load_Glyph(face, index, FT_LOAD_DEFAULT);
-		return error == FT_Err_Ok;
+		return FT_Load_Glyph(face, index, FT_LOAD_DEFAULT) == FT_Err_Ok;
 	}
 
 	void render_glyph() {
@@ -105,18 +100,16 @@ public:
 	}
 
 	void blit(uint32_t* destination, int left, int top, int right, int bottom, uint32_t color) {
-		size_t max_size = right * bottom;
-		FT_Bitmap bitmap = face->glyph->bitmap;
-		int width = bitmap.width;
-		int height = bitmap.rows;
-		for (int y = 0; y < height; y++) {
-			for (int x = 0; x < width; x++) {
-				size_t index = y * right + x + top * right + left;
-				if (index >= max_size) {
-					continue;
+		const int max_size{ right * bottom };
+		const auto bitmap{ face->glyph->bitmap };
+		const int width{ static_cast<int>(bitmap.width) };
+		const int height{ static_cast<int>(bitmap.rows) };
+		for (int y{ 0 }; y < height; y++) {
+			for (int x{ 0 }; x < width; x++) {
+				if (const int index{ y * right + x + top * right + left }; index < max_size) {
+					const uint32_t alpha{ static_cast<uint32_t>(bitmap.buffer[y * bitmap.pitch + x]) << 24 };
+					destination[index] |= alpha | color;
 				}
-				uint32_t alpha = ((uint32_t)bitmap.buffer[y * bitmap.pitch + x]) << 24;
-				destination[index] |= alpha | color;
 			}
 		}
 	}
@@ -125,7 +118,7 @@ public:
 
 font::font(const std::string& path, int size) {
 	ft::initialize();
-	std::string final_path = path;
+	std::string final_path{ path };
 	if (!std::filesystem::exists(path)) {
 		final_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
 		if (!std::filesystem::exists(final_path)) {
@@ -146,7 +139,7 @@ font::~font() {
 	delete face;
 }
 
-font& font::operator=(font&& that) {
+font& font::operator=(font&& that) noexcept {
 	std::swap(face, that.face);
 	std::swap(line_space, that.line_space);
 	return *this;
@@ -156,7 +149,7 @@ bool font::exists(const std::string& path) {
 	if (std::filesystem::exists(path)) {
 		return true;
 	}
-	auto windows_font_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
+	auto windows_font_path{ platform::environment_variable("WINDIR") + "\\Fonts\\" + path };
 	return std::filesystem::exists(windows_font_path);
 }
 
@@ -165,11 +158,11 @@ font::text_size font::size(const std::string& text) const {
 	if (!face) {
 		return text_size;
 	}
-	int last_index = -1;
-	size_t string_index = 0;
-	int current_row_width = 0;
+	int last_index{ -1 };
+	size_t string_index{ 0 };
+	int current_row_width{ 0 };
 	while (text.size() > string_index) {
-		uint32_t character = utf8::next_character(text, &string_index);
+		const uint32_t character{ utf8::next_character(text, &string_index) };
 		if (character == unicode::byte_order_mark || character == unicode::byte_order_mark_swapped) {
 			continue;
 		}
@@ -188,17 +181,17 @@ font::text_size font::size(const std::string& text) const {
 			text_size.size.x += delta.x >> 6;
 		}
 		face->load_glyph(index);
-		FT_GlyphSlot glyph = face->face->glyph;
+		const auto glyph{ face->face->glyph };
 		current_row_width += glyph->advance.x >> 6;
-		int glyph_max_y = ft::font_to_pixel(ft::floor(glyph->metrics.horiBearingY));
-		int glyph_min_y = glyph_max_y - ft::font_to_pixel(ft::ceil(glyph->metrics.height));
+		const int glyph_max_y{ ft::font_to_pixel(ft::floor(glyph->metrics.horiBearingY)) };
+		const int glyph_min_y{ glyph_max_y - ft::font_to_pixel(ft::ceil(glyph->metrics.height)) };
 		if (glyph_min_y < text_size.min_y) {
 			text_size.min_y = glyph_min_y;
 		}
 		if (glyph_max_y > text_size.max_y) {
 			text_size.max_y = glyph_max_y;
 		}
-		text_size.size.y = std::max(text_size.size.y, (int)ft::font_to_pixel(ft::ceil(glyph->metrics.height)));
+		text_size.size.y = std::max(text_size.size.y, static_cast<int>(ft::font_to_pixel(ft::ceil(glyph->metrics.height))));
 		last_index = index;
 	}
 	if (current_row_width > text_size.size.x) {
@@ -208,7 +201,7 @@ font::text_size font::size(const std::string& text) const {
 	if (text_size.max_y > text_size.size.y) {
 		text_size.size.y = text_size.max_y;
 	}
-	text_size.size.y *= (int)((float)text_size.rows * line_space);
+	text_size.size.y *= static_cast<int>(static_cast<float>(text_size.rows) * line_space);
 	return text_size;
 }
 
@@ -217,15 +210,15 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 		return { nullptr, {} };
 	}
 	color &= 0x00FFFFFF; // alpha is added by freetype
-	text_size text_size = size(text);
-	uint32_t* destination = new uint32_t[text_size.size.x * text_size.size.y];
+	text_size text_size{ size(text) };
+	uint32_t* destination{ new uint32_t[text_size.size.x * text_size.size.y] };
 	std::fill_n(destination, text_size.size.x * text_size.size.y, 0x00000000);
-	int left = 0;
-	int last_index = -1;
-	size_t string_index = 0;
-	int row = text_size.rows - 1;
+	int left{ 0 };
+	int last_index{ -1 };
+	size_t string_index{ 0 };
+	int row{ text_size.rows - 1 };
 	while (text.size() > string_index) {
-		uint32_t character = utf8::next_character(text, &string_index);
+		const uint32_t character{ utf8::next_character(text, &string_index) };
 		if (character == unicode::byte_order_mark || character == unicode::byte_order_mark_swapped) {
 			continue;
 		}
@@ -242,11 +235,9 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 		}
 		face->load_glyph(index);
 		face->render_glyph();
-		FT_GlyphSlot glyph = face->face->glyph;
-
-		int row_y = (text_size.size.y / text_size.rows) * row;
-		int top = text_size.size.y - row_y - glyph->bitmap_top + text_size.min_y;
-
+		const auto glyph{ face->face->glyph };
+		const int row_y{ (text_size.size.y / text_size.rows) * row };
+		const int top{ text_size.size.y - row_y - glyph->bitmap_top + text_size.min_y };
 		face->blit(destination, left + glyph->bitmap_left, top, text_size.size.x, text_size.size.y, color);
 		left += glyph->advance.x >> 6;
 		last_index = index;
@@ -255,19 +246,18 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 }
 
 void font::render(surface& surface, const std::string& text, uint32_t color) const {
-	auto result = render_text(text, color);
-	if (result.first) {
+	if (auto result{ render_text(text, color) }; result.first) {
 		surface.render(result.first, result.second.x, result.second.y);
 		delete[] result.first;
 	}
 }
 
 surface font::render(const std::string& text, uint32_t color) const {
-	auto result = render_text(text, color);
-	if (!result.first) {
+	if (auto result{ render_text(text, color) }; result.first) {
+		return { result.first, result.second.x, result.second.y, pixel_format::rgba, surface::construct_by::move };
+	} else {
 		return { 2, 2, pixel_format::rgba };
 	}
-	return { result.first, result.second.x, result.second.y, pixel_format::rgba, surface::construct_by::move };
 }
 
 }
