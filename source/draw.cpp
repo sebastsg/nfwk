@@ -161,12 +161,17 @@ void rectangle::draw() const {
 }
 
 void sprite_animation::update(float delta) {
-	if (paused) {
+	if (paused || done) {
 		return;
 	}
 	previous_frame = current_frame;
 	sub_frame += fps * delta;
 	current_frame = static_cast<int>(sub_frame);
+	if (!looping && current_frame >= frames) {
+		current_frame--;
+		done = true;
+		return;
+	}
 	if (current_frame >= frames) {
 		current_frame = 0;
 		sub_frame = 0.0f;
@@ -214,6 +219,24 @@ void sprite_animation::set_tex_coords(vector2f position, vector2f size) {
 	uv_size = size;
 	const float frame_width{ uv_size.x / static_cast<float>(frames) };
 	rectangle.set_tex_coords(uv_position.x + frame_width * static_cast<float>(current_frame), uv_position.y, frame_width, uv_size.y);
+}
+
+void sprite_animation::start_looping() {
+	looping = true;
+	done = false;
+}
+
+void sprite_animation::stop_looping() {
+	looping = false;
+	done = false;
+}
+
+bool sprite_animation::is_looping() const {
+	return looping;
+}
+
+bool sprite_animation::is_done() const {
+	return done;
 }
 
 }

@@ -126,6 +126,10 @@ struct vector2 {
 		return { x / v.x, y / v.y };
 	}
 
+	constexpr vector2<T> operator%(const vector2<T>& v) const {
+		return { x % v.x, y % v.y };
+	}
+
 	constexpr vector2<T> operator+(T s) const {
 		return { x + s, y + s };
 	}
@@ -140,6 +144,10 @@ struct vector2 {
 
 	constexpr vector2<T> operator/(T s) const {
 		return { x / s, y / s };
+	}
+
+	constexpr vector2<T> operator%(T s) const {
+		return { x % s, y % s };
 	}
 
 	void operator+=(const vector2<T>& v) {
@@ -160,6 +168,11 @@ struct vector2 {
 	void operator/=(const vector2<T>& v) {
 		x /= v.x;
 		y /= v.y;
+	}
+
+	void operator%=(const vector2<T>& v) {
+		x %= v.x;
+		y %= v.y;
 	}
 
 	constexpr bool operator>(const vector2<T>& v) const {
@@ -187,9 +200,9 @@ struct vector2 {
 	}
 
 	constexpr T distance_to(const vector2<T>& v) const {
-		const T dx = x - v.x;
-		const T dy = y - v.y;
-		return (T)std::sqrt((double)(dx * dx + dy * dy));
+		const T dx{ x - v.x };
+		const T dy{ y - v.y };
+		return static_cast<T>(std::sqrt(static_cast<double>(dx * dx + dy * dy)));
 	}
 
 	void floor() {
@@ -202,13 +215,21 @@ struct vector2 {
 		y = std::ceil(y);
 	}
 
+	constexpr vector2<T> to_floor() const {
+		return { std::floor(x), std::floor(y) };
+	}
+
+	constexpr vector2<T> to_ceil() const {
+		return { std::ceil(x), std::ceil(y) };
+	}
+
 	template<typename U>
 	constexpr vector2<U> to() const {
-		return vector2<U>((U)x, (U)y);
+		return vector2<U>{ static_cast<U>(x), static_cast<U>(y) };
 	}
 
 	constexpr T magnitude() const {
-		return (T)std::sqrt((double)(x * x + y * y));
+		return static_cast<T>(std::sqrt(static_cast<double>(x * x + y * y)));
 	}
 
 	constexpr T squared_magnitude() const {
@@ -216,11 +237,11 @@ struct vector2 {
 	}
 
 	constexpr vector2<T> normalized() const {
-		const T m = magnitude();
-		if (m == (T)0) {
+		if (const T m{ magnitude() }; m != T{}) {
+			return { x / m, y / m };
+		} else {
 			return {};
 		}
-		return { x / m, y / m };
 	}
 
 	constexpr T dot(const vector2<T>& v) const {
@@ -270,6 +291,10 @@ struct vector3 {
 		return { x / v.x, y / v.y, z / v.z };
 	}
 
+	constexpr vector3<T> operator%(const vector3<T>& v) const {
+		return { x % v.x, y % v.y, z % v.z };
+	}
+
 	void operator+=(const vector3<T>& v) {
 		x += v.x;
 		y += v.y;
@@ -292,6 +317,12 @@ struct vector3 {
 		x /= v.x;
 		y /= v.y;
 		z /= v.z;
+	}
+
+	void operator%=(const vector3<T>& v) {
+		x %= v.x;
+		y %= v.y;
+		z %= v.z;
 	}
 
 	constexpr bool operator>(const vector3<T>& v) const {
@@ -337,13 +368,21 @@ struct vector3 {
 		z = std::ceil(z);
 	}
 
+	constexpr vector3<T> to_floor() const {
+		return { std::floor(x), std::floor(y), std::floor(z) };
+	}
+
+	constexpr vector3<T> to_ceil() const {
+		return { std::ceil(x), std::ceil(y), std::ceil(z) };
+	}
+
 	template<typename U>
 	constexpr vector3<U> to() const {
-		return vector3<U>((U)x, (U)y, (U)z);
+		return vector3<U>{ static_cast<U>(x), static_cast<U>(y), static_cast<U>(z) };
 	}
 
 	constexpr T magnitude() const {
-		return (T)std::sqrt((double)(x * x + y * y + z * z));
+		return static_cast<T>(std::sqrt(static_cast<double>(x * x + y * y + z * z)));
 	}
 
 	constexpr T squared_magnitude() const {
@@ -351,11 +390,11 @@ struct vector3 {
 	}
 
 	constexpr vector3<T> normalized() const {
-		const T m = magnitude();
-		if (m == (T)0) {
+		if (const T m{ magnitude() }; m != T{}) {
+			return { x / m, y / m, z / m };
+		} else {
 			return {};
 		}
-		return { x / m, y / m, z / m };
 	}
 
 	constexpr T dot(const vector3<T>& v) const {
@@ -419,6 +458,10 @@ struct vector4 {
 		return { x / v.x, y / v.y, z / v.z, w / v.w };
 	}
 
+	constexpr vector4<T> operator%(const vector4<T>& v) const {
+		return { x % v.x, y % v.y, z % v.z, w % v.w };
+	}
+
 	void operator+=(const vector4<T>& v) {
 		x += v.x;
 		y += v.y;
@@ -445,6 +488,13 @@ struct vector4 {
 		y /= v.y;
 		z /= v.z;
 		w /= v.w;
+	}
+
+	void operator%=(const vector4<T>& v) {
+		x %= v.x;
+		y %= v.y;
+		z %= v.z;
+		w %= v.w;
 	}
 
 	constexpr bool operator>(const vector4<T>& v) const {
@@ -493,13 +543,21 @@ struct vector4 {
 		w = std::ceil(w);
 	}
 
+	constexpr vector4<T> to_floor() const {
+		return { std::floor(x), std::floor(y), std::floor(z), std::floor(w) };
+	}
+
+	constexpr vector4<T> to_ceil() const {
+		return { std::ceil(x), std::ceil(y), std::ceil(z), std::ceil(w) };
+	}
+
 	template<typename U>
 	constexpr vector4<U> to() const {
-		return vector4<U>((U)x, (U)y, (U)z, (U)w);
+		return vector4<U>{ static_cast<U>(x), static_cast<U>(y), static_cast<U>(z), static_cast<U>(w) };
 	}
 
 	constexpr T magnitude() const {
-		return (T)std::sqrt((double)(x * x + y * y + z * z + w * w));
+		return static_cast<T>(std::sqrt(static_cast<double>(x * x + y * y + z * z + w * w)));
 	}
 
 	constexpr T squared_magnitude() const {
@@ -507,11 +565,11 @@ struct vector4 {
 	}
 
 	constexpr vector4<T> normalized() const {
-		const T m = magnitude();
-		if (m == (T)0) {
+		if (const T m{ magnitude() }; m != T{}) {
+			return { x / m, y / m, z / m, w / m };
+		} else {
 			return {};
 		}
-		return { x / m, y / m, z / m, w / m };
 	}
 
 	constexpr T dot(const vector4<T>& v) const {
@@ -538,7 +596,7 @@ no::vector2<T> operator*(T scalar, const no::vector2<T>& vector) {
 
 template<typename T>
 no::vector2<T> operator/(T scalar, const no::vector2<T>& vector) {
-	return no::vector2<T>(scalar) / vector;
+	return no::vector2<T>{ scalar } / vector;
 }
 
 template<typename T>

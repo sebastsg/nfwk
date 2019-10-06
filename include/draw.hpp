@@ -304,6 +304,10 @@ public:
 	bool is_paused() const;
 	void set_frame(int frame);
 	void set_tex_coords(vector2f position, vector2f size);
+	void start_looping();
+	void stop_looping();
+	bool is_looping() const;
+	bool is_done() const;
 
 private:
 
@@ -314,6 +318,8 @@ private:
 	bool paused{ false };
 	vector2f uv_position;
 	vector2f uv_size{ 1.0f };
+	bool looping{ true };
+	bool done{ false };
 
 };
 
