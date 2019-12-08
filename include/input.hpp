@@ -17,18 +17,13 @@ public:
 	enum class button { none, left, middle, right };
 	enum class cursor { arrow, pointer };
 
-	struct move_message {
-		vector2i relative;
-		vector2i position;
-	};
-
-	event<move_message> move;
+	event<vector2i, vector2i> move;
 	event<button> press;
 	event<button> release;
 	event<button> double_click;
 	event<int> scroll;
 	event<bool> visibility;
-	event<int> icon;
+	event<> icon;
 
 	mouse(window* parent_window);
 	mouse() = default;

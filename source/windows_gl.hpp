@@ -9,7 +9,7 @@
 
 #ifndef _WINDEF_
 struct HGLRC__;
-typedef HGLRC__ *HGLRC;
+typedef HGLRC__* HGLRC;
 #endif
 
 namespace no {
@@ -19,7 +19,7 @@ namespace platform {
 class windows_gl_context {
 public:
 
-	void create_dummy(HDC device_context_handle);
+	void create_default(HDC device_context_handle);
 	void create_with_attributes(HDC device_context_handle, int samples);
 	HGLRC handle() const;
 	bool exists() const;
@@ -35,15 +35,17 @@ public:
 
 	void log_renderer_info() const;
 
-	static HGLRC current_context_handle();
+	void enable_multisampling();
 
-private:
+	static HGLRC current_context_handle();
 
 	void initialize_glew();
 	void initialize_gl();
 
+private:
+
 	HGLRC gl_context = nullptr;
-	HDC device_context_handle = nullptr;
+	HDC device_context = nullptr;
 	bool is_arb_context = false;
 
 };

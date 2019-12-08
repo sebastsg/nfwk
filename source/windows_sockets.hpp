@@ -50,16 +50,16 @@ struct iocp_close_data : iocp_data<iocp_operation::close> {};
 
 struct winsock_socket {
 
-	bool alive = false;
-	SOCKET handle = INVALID_SOCKET;
-	bool connected = false;
-	bool listening = false;
+	bool alive{ false };
+	SOCKET handle{ INVALID_SOCKET };
+	bool connected{ false };
+	bool listening{ false };
 	packetizer receive_packetizer;
 	std::vector<io_stream> queued_packets;
-	WSABUF received = { 0, nullptr }; // stores received buffer until a packet is recognized
-	addrinfo hints = {};
-	SOCKADDR_IN addr = {};
-	int addr_size = sizeof(addr);
+	WSABUF received{ 0, nullptr }; // stores received buffer until a packet is recognized
+	addrinfo hints{};
+	SOCKADDR_IN addr{};
+	int addr_size{ sizeof(addr) };
 
 	struct {
 		std::unordered_set<iocp_send_data*> send;
@@ -82,13 +82,13 @@ struct winsock_socket {
 
 struct winsock_state {
 
-	static const int max_broadcasts_per_sync = 4192;
+	static const int max_broadcasts_per_sync{ 4192 };
 
-	LPFN_ACCEPTEX AcceptEx = nullptr;
-	LPFN_GETACCEPTEXSOCKADDRS GetAcceptExSockaddrs = nullptr;
+	LPFN_ACCEPTEX AcceptEx{ nullptr };
+	LPFN_GETACCEPTEXSOCKADDRS GetAcceptExSockaddrs{ nullptr };
 
-	WSADATA wsa_data = {};
-	HANDLE io_port = INVALID_HANDLE_VALUE;
+	WSADATA wsa_data{};
+	HANDLE io_port{ INVALID_HANDLE_VALUE };
 
 	std::vector<winsock_socket> sockets;
 	std::vector<std::unique_ptr<std::mutex>> mutexes;
@@ -98,7 +98,7 @@ struct winsock_state {
 	std::vector<int> destroy_queue;
 
 	// to keep broadcast packets alive until sync (instead of 1 copy per socket)
-	int broadcast_count = 0;
+	int broadcast_count{ 0 };
 	io_stream queued_packets[max_broadcasts_per_sync]; // 20 * 4192 = 82 KiB
 
 };

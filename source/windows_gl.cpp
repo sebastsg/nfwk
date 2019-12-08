@@ -11,29 +11,30 @@ namespace no {
 
 namespace platform {
 
-static void set_pixel_format(HDC device_context_handle) {
+static void set_pixel_format(HDC device_context) {
 	MESSAGE("Setting pixel format");
-	PIXELFORMATDESCRIPTOR descriptor = {};
+	PIXELFORMATDESCRIPTOR descriptor{};
 	descriptor.nSize = sizeof(descriptor);
 	descriptor.nVersion = 1;
 	descriptor.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
 	descriptor.iLayerType = PFD_MAIN_PLANE;
 	descriptor.iPixelType = PFD_TYPE_RGBA;
 	descriptor.cColorBits = 32;
-	int format = ChoosePixelFormat(device_context_handle, &descriptor);
+	const int format{ ChoosePixelFormat(device_context, &descriptor) };
 	if (format == 0) {
 		CRITICAL("Did not find suitable pixel format");
 		return;
 	}
-	DescribePixelFormat(device_context_handle, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
-	auto status = SetPixelFormat(device_context_handle, format, &descriptor);
-	if (!status) {
+	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
+	if (!SetPixelFormat(device_context, format, &descriptor)) {
 		CRITICAL("Failed to set pixel format");
 	}
+	INFO("Pixel Format: " << format << "\nDouble buffer: " << ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"));
 }
 
-static void set_pixel_format_arb(HDC device_context_handle, int samples) {
+static void set_pixel_format_arb(HDC device_context, int samples) {
 	switch (samples) {
+	case 0:
 	case 1:
 	case 2:
 	case 4:
@@ -49,7 +50,7 @@ static void set_pixel_format_arb(HDC device_context_handle, int samples) {
 		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
 		WGL_DOUBLE_BUFFER_ARB, GL_TRUE,
-		WGL_SAMPLE_BUFFERS_ARB, GL_TRUE,
+		WGL_SAMPLE_BUFFERS_ARB, samples > 0 ? 1 : 0,
 		WGL_SAMPLES_ARB, samples,
 		WGL_ACCELERATION_ARB, WGL_FULL_ACCELERATION_ARB,
 		WGL_PIXEL_TYPE_ARB, WGL_TYPE_RGBA_ARB,
@@ -64,14 +65,14 @@ static void set_pixel_format_arb(HDC device_context_handle, int samples) {
 	};
 	int format{ 0 };
 	unsigned int count{ 0 };
-	const BOOL success{ wglChoosePixelFormatARB(device_context_handle, int_attributes, float_attributes, 1, &format, &count) };
+	const BOOL success{ wglChoosePixelFormatARB(device_context, int_attributes, float_attributes, 1, &format, &count) };
 	if (!success || count == 0) {
 		WARNING("Failed to find pixel format");
 		return;
 	}
 	PIXELFORMATDESCRIPTOR descriptor{};
-	DescribePixelFormat(device_context_handle, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
-	if (!SetPixelFormat(device_context_handle, format, &descriptor)) {
+	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
+	if (!SetPixelFormat(device_context, format, &descriptor)) {
 		CRITICAL("Failed to set pixel format");
 	}
 	INFO("Pixel Format: " << format
@@ -79,62 +80,64 @@ static void set_pixel_format_arb(HDC device_context_handle, int samples) {
 		 << "\nSamples: " << samples);
 }
 
-void windows_gl_context::create_dummy(HDC device_context_handle) {
-	this->device_context_handle = device_context_handle;
-	set_pixel_format(device_context_handle);
-	MESSAGE("Creating dummy context");
-	gl_context = wglCreateContext(device_context_handle);
+void windows_gl_context::create_default(HDC device_context) {
+	this->device_context = device_context;
+	set_pixel_format(device_context);
+	MESSAGE("Creating default context");
+	gl_context = wglCreateContext(device_context);
 	if (!gl_context) {
-		CRITICAL("Failed to create dummy context");
-		return;
+		CRITICAL("Failed to create default context");
 	}
-	make_current();
-	initialize_glew();
 }
 
-void windows_gl_context::create_with_attributes(HDC device_context_handle, int samples) {
-	this->device_context_handle = device_context_handle;
-	set_pixel_format_arb(device_context_handle, samples);
+void windows_gl_context::create_with_attributes(HDC device_context, int samples) {
+	this->device_context = device_context;
+	set_pixel_format_arb(device_context, samples);
 	const int attributes[]{
 		WGL_CONTEXT_MAJOR_VERSION_ARB, 4,
 		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
 		0
 	};
 	MESSAGE("Creating context with attributes");
-	gl_context = wglCreateContextAttribsARB(device_context_handle, nullptr, attributes);
+	gl_context = wglCreateContextAttribsARB(device_context, nullptr, attributes);
 	is_arb_context = (gl_context != nullptr);
 	if (!is_arb_context) {
 		WARNING("Failed to create context. OpenGL " << attributes[1] << "." << attributes[3] << " not supported");
 		MESSAGE("Creating fallback context");
-		gl_context = wglCreateContext(device_context_handle);
+		gl_context = wglCreateContext(device_context);
 		if (!gl_context) {
 			CRITICAL("Failed to create fallback context");
 			return;
 		}
 	}
-	make_current();
-	initialize_gl();
 }
 
 void windows_gl_context::initialize_glew() {
-	const auto error{ glewInit() };
-	ASSERT(error == GLEW_OK);
-	if (error != GLEW_OK) {
+	if (const auto error = glewInit(); error != GLEW_OK) {
 		CRITICAL("Failed to initialize GLEW");
+		ASSERT(error == GLEW_OK);
 	}
 }
 
 void windows_gl_context::initialize_gl() {
+	MESSAGE("Enabling depth testing");
 	CHECK_GL_ERROR(glEnable(GL_DEPTH_TEST));
+	MESSAGE("Setting depth function: \"less than or equal\"");
 	CHECK_GL_ERROR(glDepthFunc(GL_LEQUAL));
+	MESSAGE("Enabling blending");
 	CHECK_GL_ERROR(glEnable(GL_BLEND));
+	// https://www.opengl.org/sdk/docs/man/html/glBlendFunc.xhtml
+	MESSAGE("Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
+	CHECK_GL_ERROR(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+}
+
+void windows_gl_context::enable_multisampling() {
 	if (is_arb_context) {
+		MESSAGE("Enabled multisampling");
 		CHECK_GL_ERROR(glEnable(GL_MULTISAMPLE));
 	} else {
-		WARNING("Not an ARB context. Multisampling disabled");
+		WARNING("Cannot enable multisampling on non-ARB OpenGL context.");
 	}
-	// https://www.opengl.org/sdk/docs/man/html/glBlendFunc.xhtml
-	CHECK_GL_ERROR(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 }
 
 HGLRC windows_gl_context::handle() const {
@@ -150,7 +153,7 @@ bool windows_gl_context::is_current() const {
 }
 
 void windows_gl_context::make_current() {
-	wglMakeCurrent(device_context_handle, gl_context);
+	wglMakeCurrent(device_context, gl_context);
 	initialize_glew();
 }
 
@@ -167,7 +170,7 @@ void windows_gl_context::set_clear_color(const vector3f& color) {
 }
 
 bool windows_gl_context::set_swap_interval(int interval) {
-	const auto status{ wglSwapIntervalEXT(interval) };
+	const auto status = wglSwapIntervalEXT(interval);
 	if (status) {
 		MESSAGE("Set swap interval to " << interval);
 	} else {

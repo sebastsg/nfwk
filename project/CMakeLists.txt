@@ -22,6 +22,8 @@ file(GLOB_RECURSE SOURCE_CPP_FILES ${PROJECT_SOURCE_DIR}/../source/*.cpp)
 file(GLOB_RECURSE SOURCE_HPP_FILES ${PROJECT_SOURCE_DIR}/../source/*.hpp)
 file(GLOB_RECURSE HEADER_HPP_FILES ${PROJECT_SOURCE_DIR}/../include/*.hpp)
 
+source_group("Source Files" FILES ${SOURCE_HPP_FILES})
+
 file(GLOB_RECURSE SOURCE_IMGUI_CPP_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/source/imgui/*.cpp)
 file(GLOB_RECURSE SOURCE_IMGUI_H_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/include/imgui/*.h)
 
@@ -42,7 +44,6 @@ add_definitions(-DGLEW_STATIC)
 
 set_target_properties(nfwk PROPERTIES ARCHIVE_OUTPUT_DIRECTORY "${ROOT_DIR}/lib")
 
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -fpermissive")
 set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} /MT")
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} /MTd")
 

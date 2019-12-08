@@ -156,7 +156,7 @@ bool skeletal_animator::will_be_reset(int id) const {
 	if (synced_animations[id].reference < 0) {
 		return false;
 	}
-	const auto& animation{ skeleton.animations[synced_animations[id].reference] };
+	const auto& animation = skeleton.animations[synced_animations[id].reference];
 	const double seconds{ static_cast<double>(synced_animations[id].played_for.milliseconds()) * 0.001 };
 	const double play_duration{ seconds * (double)animation.ticks_per_second };
 	return play_duration >= static_cast<double>(animation.duration);
@@ -176,7 +176,7 @@ void skeletal_animator::draw() const {
 
 void skeletal_animator::play(int id, int animation_index, int loops) {
 	std::lock_guard lock{ reading_synced };
-	auto& animation{ animation_updates[id] };
+	auto& animation = animation_updates[id];
 	if (animation.reference != animation_index) {
 		animation.reset = true;
 		animation.loops_if_reset = loops;
@@ -189,12 +189,12 @@ void skeletal_animator::play(int id, const std::string& animation_name, int loop
 }
 
 glm::mat4 skeletal_animator::next_interpolated_position(skeletal_animation& animation, int node_index) const {
-	const auto& node{ skeleton.animations[animation.reference].channels[node_index] };
+	const auto& node = skeleton.animations[animation.reference].channels[node_index];
 	for (int p{ animation.next_p }; p < static_cast<int>(node.positions.size()); p++) {
 		if (node.positions[p].time > animation.time) {
 			animation.next_p = p;
-			const auto& current{ node.positions[p - 1] };
-			const auto& next{ node.positions[p] };
+			const auto& current = node.positions[p - 1];
+			const auto& next = node.positions[p];
 			const float delta_time{ next.time - current.time };
 			const float factor{ (animation.time - current.time) / delta_time };
 			return interpolate_positions(factor, current.position, next.position);
@@ -209,12 +209,12 @@ glm::mat4 skeletal_animator::next_interpolated_position(skeletal_animation& anim
 }
 
 glm::mat4 skeletal_animator::next_interpolated_rotation(skeletal_animation& animation, int node_index) const {
-	const auto& node{ skeleton.animations[animation.reference].channels[node_index] };
+	const auto& node = skeleton.animations[animation.reference].channels[node_index];
 	for (int r{ animation.next_r }; r < static_cast<int>(node.rotations.size()); r++) {
 		if (node.rotations[r].time > animation.time) {
 			animation.next_r = r;
-			const auto& current{ node.rotations[r - 1] };
-			const auto& next{ node.rotations[r] };
+			const auto& current = node.rotations[r - 1];
+			const auto& next = node.rotations[r];
 			const float delta_time{ next.time - current.time };
 			const float factor{ (animation.time - current.time) / delta_time };
 			return interpolate_rotations(factor, current.rotation, next.rotation);
@@ -228,12 +228,12 @@ glm::mat4 skeletal_animator::next_interpolated_rotation(skeletal_animation& anim
 }
 
 glm::mat4 skeletal_animator::next_interpolated_scale(skeletal_animation& animation, int node_index) const {
-	const auto& node{ skeleton.animations[animation.reference].channels[node_index] };
+	const auto& node = skeleton.animations[animation.reference].channels[node_index];
 	for (int s{ animation.next_s }; s < static_cast<int>(node.scales.size()); s++) {
 		if (node.scales[s].time > animation.time) {
 			animation.next_s = s;
-			const auto& current{ node.scales[s - 1] };
-			const auto& next{ node.scales[s] };
+			const auto& current = node.scales[s - 1];
+			const auto& next = node.scales[s];
 			const float delta_time{ next.time - current.time };
 			const float factor{ (animation.time - current.time) / delta_time };
 			return interpolate_scales(factor, current.scale, next.scale);
@@ -243,14 +243,14 @@ glm::mat4 skeletal_animator::next_interpolated_scale(skeletal_animation& animati
 		return glm::mat4{ 1.0f };
 	}
 	animation.next_s = 1;
-	const auto& scale{ node.scales.front().scale };
+	const auto& scale = node.scales.front().scale;
 	return glm::scale(glm::mat4{ 1.0f }, { scale.x, scale.y, scale.z });
 }
 
 void skeletal_animator::animate_node(skeletal_animation& animation, int parent, int node_index) const {
-	const auto& reference{ skeleton.animations[animation.reference] };
+	const auto& reference = skeleton.animations[animation.reference];
 	glm::mat4 node_transform{ skeleton.nodes[node_index].transform };
-	const auto& node{ reference.channels[node_index] };
+	const auto& node = reference.channels[node_index];
 	if (node.positions.size() > 0 || node.rotations.size() > 0 || node.scales.size() > 0) {
 		const glm::mat4 translation{ next_interpolated_position(animation, node_index) };
 		const glm::mat4 rotation{ next_interpolated_rotation(animation, node_index) };
@@ -265,7 +265,7 @@ void skeletal_animator::animate_node(skeletal_animation& animation, int parent, 
 			animation.bones[node.bone] = skeleton.root_transform * animation.transforms[node_index] * skeleton.bones[node.bone];
 		}
 	}
-	for (int child : skeleton.nodes[node_index].children) {
+	for (const int child : skeleton.nodes[node_index].children) {
 		animate_node(animation, node_index, child);
 	}
 }
@@ -274,7 +274,7 @@ void skeletal_animator::animate(skeletal_animation& animation) const {
 	if (!animation.active || animation.reference == -1) {
 		return;
 	}
-	const auto& reference{ skeleton.animations[animation.reference] };
+	const auto& reference = skeleton.animations[animation.reference];
 	const double seconds{ static_cast<double>(animation.play_timer.milliseconds()) * 0.001 };
 	const double play_duration{ seconds * static_cast<double>(reference.ticks_per_second) };
 	const float time{ animation.time };
@@ -381,8 +381,8 @@ bool bone_attachment_mapping_list::update(const model& root, int animation_index
 	if (animation_index < 0) {
 		return false;
 	}
-	const auto& root_animation{ root.animation(animation_index) };
-	for (auto& mapping : mappings) {
+	const auto& root_animation = root.animation(animation_index);
+	for (const auto& mapping : mappings) {
 		if (mapping.root_model != root.name() || mapping.root_animation != root_animation.name) {
 			continue;
 		}
@@ -402,7 +402,7 @@ bool bone_attachment_mapping_list::update(const model& root, int animation_index
 }
 
 std::string bone_attachment_mapping_list::find_root_animation(const std::string& root_model, const std::string& attached_model, const std::string& attached_animation) const {
-	for (auto& mapping : mappings) {
+	for (const auto& mapping : mappings) {
 		if (mapping.root_model != root_model) {
 			continue;
 		}

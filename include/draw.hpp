@@ -155,7 +155,7 @@ public:
 
 private:
 
-	 int id = -1;
+	int id{ -1 };
 
 };
 
@@ -361,14 +361,14 @@ public:
 
 	quad_array(const quad_array&) = delete;
 
-	quad_array(quad_array&& that) : shape{ std::move(that.shape) } {
+	quad_array(quad_array&& that) noexcept : shape{ std::move(that.shape) } {
 		std::swap(vertices, that.vertices);
 		std::swap(indices, that.indices);
 	}
 
 	quad_array& operator=(const quad_array&) = delete;
 
-	quad_array& operator=(quad_array&& that) {
+	quad_array& operator=(quad_array&& that) noexcept {
 		std::swap(shape, that.shape);
 		std::swap(vertices, that.vertices);
 		std::swap(indices, that.indices);
@@ -381,14 +381,15 @@ public:
 		indices.insert(indices.end(), { (I)i, (I)(i + 1), (I)(i + 2), (I)i, (I)(i + 3), (I)(i + 2) });
 	}
 
-	void set(const std::vector<V>& v, const std::vector<I>& i) {
-		vertices = v;
-		indices = v;
-		refresh();
+	void clear() {
+		vertices.clear();
+		indices.clear();
 	}
 
 	void refresh() {
-		shape.set(vertices, indices);
+		if (!vertices.empty()) {
+			shape.set(vertices, indices);
+		}
 	}
 
 	void bind() const {

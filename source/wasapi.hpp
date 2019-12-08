@@ -10,6 +10,8 @@
 struct IMMDevice;
 struct IAudioClient;
 struct IAudioRenderClient;
+struct IAudioSessionManager;
+struct ISimpleAudioVolume;
 struct tWAVEFORMATEX;
 using WAVEFORMATEX = tWAVEFORMATEX;
 
@@ -33,9 +35,13 @@ public:
 	void pause() override;
 	void resume() override;
 	void stop() override;
+	void loop() override;
+	void once() override;
+	void set_volume(float volume) override;
 
 	bool is_playing() const override;
 	bool is_paused() const override;
+	bool is_looping() const override;
 
 private:
 
@@ -47,9 +53,12 @@ private:
 
 	std::atomic<bool> playing{ false };
 	std::atomic<bool> paused{ false };
+	std::atomic<bool> looping{ false };
 
 	IAudioClient* client{ nullptr };
 	IAudioRenderClient* render_client{ nullptr };
+	IAudioSessionManager* session_manager{ nullptr };
+	ISimpleAudioVolume* audio_volume{ nullptr };
 	long long default_device_period{ 0 };
 	unsigned int buffer_frame_count{ 0 };
 	WAVEFORMATEX* wave_format{ nullptr };

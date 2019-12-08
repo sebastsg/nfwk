@@ -36,7 +36,7 @@ void append(int index, message_type type, const char* file, const char* func, in
 
 # define DEBUG_LIMIT(ID, TYPE, STR, LIMIT) \
 		{ \
-			static int COUNTER = 0; \
+			static int COUNTER{ 0 }; \
 			if (++COUNTER <= (LIMIT)) { \
 				DEBUG(ID, TYPE, "[" << COUNTER << "/" << LIMIT << "] " << STR); \
 			} \

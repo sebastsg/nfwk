@@ -5,10 +5,10 @@
 
 namespace no {
 
-template<typename It>
+template<typename DirectoryIterator>
 static std::vector<std::string> iterate_entries_in_directory(const std::string& path, entry_inclusion inclusion) {
 	std::vector<std::string> files;
-	for (auto& entry : It{ path }) {
+	for (const auto& entry : DirectoryIterator{ path }) {
 		if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
 			continue;
 		}
@@ -251,12 +251,8 @@ std::string io_stream::read_line(bool remove_newline) {
 }
 
 int io_stream::find_first(const std::string& key, size_t start) const {
-	const char* search_start{ begin + start };
-	char* found{ (char*)strstr(search_start, key.c_str()) };
-	if (!found) {
-		return -1;
-	}
-	return static_cast<int>(found - begin);
+	auto found = strstr(begin + start, key.c_str());
+	return found ? static_cast<int>(found - begin) : -1;
 }
 
 int io_stream::find_last(const std::string& key, size_t start) const {

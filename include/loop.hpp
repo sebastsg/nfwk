@@ -18,11 +18,10 @@ namespace internal {
 
 using make_state_function = std::function<program_state*()>;
 
-#if ENABLE_WINDOW
-void create_state(const std::string& title, int width, int height, int samples, bool maximized, const make_state_function& make_state);
-#else
+void create_state(const std::string& title, int width, int height, int samples, const make_state_function& make_state);
+void create_state(const std::string& title, int width, int height, const make_state_function& make_state);
+void create_state(const std::string& title, int samples, const make_state_function& make_state);
 void create_state(const std::string& title, const make_state_function& make_state);
-#endif
 
 int run_main_loop();
 void destroy_main_loop();
@@ -89,19 +88,20 @@ public:
 #endif
 
 	const loop_frame_counter& frame_counter() const;
-
 	bool has_next_state() const;
 
 protected:
 
 	template<typename T>
 	void change_state() {
-		change_state([] { return new T{}; });
+		change_state([] {
+			return new T{};
+		});
 	}
 
 	loop_frame_counter& frame_counter();
 	void set_synchronization(draw_synchronization synchronization);
-	long redundant_bind_calls_this_frame();
+	long long redundant_bind_calls_this_frame();
 
 	void stop();
 
@@ -114,24 +114,28 @@ private:
 
 };
 
-event<int>& post_configure_event();
-event<int>& pre_exit_event();
-
-#if ENABLE_WINDOW
+event<>& post_configure_event();
+event<>& pre_exit_event();
 
 template<typename T>
-void create_state(const std::string& title, int width, int height, int samples, bool maximized) {
-	internal::create_state(title, width, height, samples, maximized, [] { return new T(); });
+void create_state(const std::string& title, int width, int height, int samples) {
+	internal::create_state(title, width, height, samples, [] { return new T{}; });
 }
 
-#else
+template<typename T>
+void create_state(const std::string& title, int width, int height) {
+	internal::create_state(title, width, height, [] { return new T{}; });
+}
+
+template<typename T>
+void create_state(const std::string& title, int samples) {
+	internal::create_state(title, samples, [] { return new T{}; });
+}
 
 template<typename T>
 void create_state(const std::string& title) {
-	internal::create_state(title, [] { return new T(); });
+	internal::create_state(title, [] { return new T{}; });
 }
-
-#endif
 
 std::string current_local_time_string();
 std::string curent_local_date_string();

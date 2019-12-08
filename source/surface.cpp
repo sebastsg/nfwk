@@ -6,7 +6,7 @@
 
 namespace no {
 
-surface::surface(surface&& that) {
+surface::surface(surface&& that) noexcept {
 	std::swap(pixels, that.pixels);
 	std::swap(size, that.size);
 	std::swap(format_, that.format_);
@@ -20,7 +20,7 @@ surface::surface(const std::string& path) {
 	result.pixels = nullptr;
 }
 
-surface::surface(uint32_t* source_pixels, int width, int height, pixel_format format, construct_by construction) : size(width, height), format_(format) {
+surface::surface(uint32_t* source_pixels, int width, int height, pixel_format format, construct_by construction) : size{ width, height }, format_{ format } {
 	ASSERT(source_pixels);
 	switch (construction) {
 	case construct_by::copy:
@@ -35,11 +35,11 @@ surface::surface(uint32_t* source_pixels, int width, int height, pixel_format fo
 	}
 }
 
-surface::surface(int width, int height, pixel_format format) : size(width, height), format_(format) {
+surface::surface(int width, int height, pixel_format format) : size{ width, height }, format_{ format } {
 	pixels = new uint32_t[width * height];
 }
 
-surface::surface(int width, int height, pixel_format format, uint32_t color) : surface(width, height, format) {
+surface::surface(int width, int height, pixel_format format, uint32_t color) : surface{ width, height, format } {
 	std::fill_n(pixels, width * height, color);
 }
 

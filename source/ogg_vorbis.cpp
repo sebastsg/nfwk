@@ -9,7 +9,7 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 		// read
 		[](void* pointer, size_t object_size, size_t object_count, void* source) -> size_t {
 			size_t size{ object_size * object_count };
-			auto file_stream{ static_cast<io_stream*>(source) };
+			auto file_stream = static_cast<io_stream*>(source);
 			if (const size_t remaining{ file_stream->size_left_to_read() }; size > remaining) {
 				size = remaining;
 			}
@@ -36,7 +36,7 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 		return;
 	}
 
-	const vorbis_info* info{ ov_info(&file, -1) };
+	const auto* info = ov_info(&file, -1);
 	channels = info->channels;
 	frequency = info->rate;
 	INFO("Ogg file info:" << "\nChannels: " << info->channels << "\nFrequency: " << info->rate);
@@ -44,7 +44,7 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 	char buffer[4192];
 	int bit_stream{ 0 };
 	while (true) {
-		if (const auto bytes{ ov_read(&file, buffer, sizeof(buffer), 0, 2, 1, &bit_stream) }; bytes > 0) {
+		if (const auto bytes = ov_read(&file, buffer, sizeof(buffer), 0, 2, 1, &bit_stream); bytes > 0) {
 			pcm_stream.write(buffer, static_cast<size_t>(bytes));
 		} else {
 			break;

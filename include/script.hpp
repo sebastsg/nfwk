@@ -17,11 +17,6 @@ struct node_output {
 	int out_id{ 0 };
 };
 
-struct node_choice_info {
-	std::string text;
-	int node_id{ -1 };
-};
-
 class script_node {
 public:
 
@@ -54,15 +49,16 @@ protected:
 
 };
 
+struct node_choice_info {
+	std::string text;
+	int node_id{ -1 };
+};
+
 class script_tree {
 public:
 
-	struct choice_event {
-		std::vector<node_choice_info> choices;
-	};
-
 	struct {
-		event<choice_event> choice;
+		event<std::vector<node_choice_info>> choice;
 	} events;
 
 	int id{ -1 };

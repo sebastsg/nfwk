@@ -48,9 +48,13 @@ public:
 	virtual void pause() = 0;
 	virtual void resume() = 0;
 	virtual void stop() = 0;
+	virtual void loop() = 0;
+	virtual void once() = 0;
+	virtual void set_volume(float volume) = 0;
 
 	virtual bool is_playing() const = 0;
 	virtual bool is_paused() const = 0;
+	virtual bool is_looping() const = 0;
 
 };
 

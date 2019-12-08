@@ -1,211 +1,198 @@
 #include "ui.hpp"
+#include "color.hpp"
 
 #if ENABLE_GRAPHICS
 
-#include "input.hpp"
+#include <imgui/imgui.h>
 
-namespace no {
+namespace no::ui {
 
-ui_element::ui_element(const program_state& state_, const ortho_camera& camera_) : state{ state_ }, camera{ camera_ } {
-	mouse_release = state.mouse().release.listen([this](mouse::button button) {
-		if (button == mouse::button::left && transform.collides_with(camera.mouse_position(state.mouse()))) {
-			events.click.emit();
+void separate() {
+	ImGui::Separator();
+}
+
+void inline_next() {
+	ImGui::SameLine();
+}
+
+void text(std::string_view format, ...) {
+	va_list args;
+	va_start(args, format);
+	ImGui::TextV(format.data(), args);
+	va_end(args);
+}
+
+void colored_text(no::vector3f color, std::string_view format, ...) {
+	ImGui::PushStyleColor(ImGuiCol_Text, to_rgba(color));
+	va_list args;
+	va_start(args, format);
+	ImGui::TextV(format.data(), args);
+	va_end(args);
+	ImGui::PopStyleColor();
+}
+
+void colored_text(no::vector4f color, std::string_view format, ...) {
+	ImGui::PushStyleColor(ImGuiCol_Text, to_rgba(color));
+	va_list args;
+	va_start(args, format);
+	ImGui::TextV(format.data(), args);
+	va_end(args);
+	ImGui::PopStyleColor();
+}
+
+bool button(std::string_view label) {
+	return ImGui::Button(label.data());
+}
+
+bool checkbox(std::string_view label, bool& value) {
+	return ImGui::Checkbox(label.data(), &value);
+}
+
+bool radio(std::string_view label, int& selected, int value) {
+	return ImGui::RadioButton(label.data(), &selected, value);
+}
+
+bool input(std::string_view label, std::string& value) {
+	const int flags{ ImGuiInputTextFlags_CallbackResize };
+	return ImGui::InputText(label.data(), value.data(), value.capacity(), flags, [](auto data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			auto string = static_cast<std::string*>(data->UserData);
+			string->resize(data->BufTextLen);
+			data->Buf = string->data();
 		}
-	});
+		return 0;
+	}, &value);
 }
 
-bool ui_element::is_hovered() const {
-	return transform.collides_with(camera.mouse_position(state.mouse()));
+bool input(std::string_view label, std::string& value, no::vector2f box_size) {
+	const int flags{ ImGuiInputTextFlags_CallbackResize };
+	return ImGui::InputTextMultiline(label.data(), value.data(), value.capacity(), box_size, flags, [](auto data) {
+		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
+			auto string = static_cast<std::string*>(data->UserData);
+			string->resize(data->BufTextLen);
+			data->Buf = string->data();
+		}
+		return 0;
+	}, &value);
 }
 
-bool ui_element::is_pressed() const {
-	return is_hovered() && state.mouse().is_button_down(mouse::button::left);
+bool input(std::string_view label, int& value) {
+	return ImGui::InputInt(label.data(), &value);
 }
 
-text_view::text_view(const program_state& state, const ortho_camera& camera) : ui_element{ state, camera } {
-	texture = create_texture();
+bool input(std::string_view label, long long& value) {
+	return ImGui::InputScalar(label.data(), ImGuiDataType_S64, &value);
 }
 
-text_view::text_view(text_view&& that) noexcept : ui_element{ that.state, that.camera } {
-	std::swap(transform, that.transform);
-	std::swap(rendered_text, that.rendered_text);
-	std::swap(texture, that.texture);
+bool input(std::string_view label, float& value) {
+	return ImGui::InputFloat(label.data(), &value);
 }
 
-text_view::~text_view() {
-	delete_texture(texture);
+bool input(std::string_view label, double& value) {
+	return ImGui::InputDouble(label.data(), &value);
 }
 
-text_view& text_view::operator=(text_view&& that) noexcept {
-	std::swap(transform, that.transform);
-	std::swap(rendered_text, that.rendered_text);
-	std::swap(texture, that.texture);
-	return *this;
+bool input(std::string_view label, vector2i& value) {
+	return ImGui::InputInt2(label.data(), &value.x);
 }
 
-std::string text_view::text() const {
-	return rendered_text;
+bool input(std::string_view label, vector3i& value) {
+	return ImGui::InputInt3(label.data(), &value.x);
 }
 
-void text_view::render(const font& font, const std::string& text) {
-	if (text != rendered_text) {
-		rendered_text = text;
-		load_texture(texture, font.render(rendered_text));
-		transform.scale = texture_size(texture).to<float>();
+bool input(std::string_view label, vector4i& value) {
+	return ImGui::InputInt4(label.data(), &value.x);
+}
+
+bool input(std::string_view label, vector2l& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_S64, &value.x, 2);
+}
+
+bool input(std::string_view label, vector3l& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_S64, &value.x, 3);
+}
+
+bool input(std::string_view label, vector4l& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_S64, &value.x, 4);
+}
+
+bool input(std::string_view label, vector2f& value) {
+	return ImGui::InputFloat2(label.data(), &value.x);
+}
+
+bool input(std::string_view label, vector3f& value) {
+	return ImGui::InputFloat3(label.data(), &value.x);
+}
+
+bool input(std::string_view label, vector4f& value) {
+	return ImGui::InputFloat4(label.data(), &value.x);
+}
+
+bool input(std::string_view label, vector2d& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_Double, &value.x, 2);
+}
+
+bool input(std::string_view label, vector3d& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_Double, &value.x, 3);
+}
+
+bool input(std::string_view label, vector4d& value) {
+	return ImGui::InputScalarN(label.data(), ImGuiDataType_Double, &value.x, 4);
+}
+
+void grid(no::vector2f offset, no::vector2f grid_size, no::vector4f color) {
+	auto draw_list = ImGui::GetWindowDrawList();
+	draw_list->ChannelsSplit(2);
+	const ImColor line_color{ color * 255.0f };
+	const no::vector2f win_pos{ ImGui::GetCursorScreenPos() };
+	const no::vector2f canvas_size{ ImGui::GetWindowSize() };
+	for (float x{ std::fmodf(offset.x, grid_size.x) }; x < canvas_size.x; x += grid_size.x) {
+		draw_list->AddLine({ x + win_pos.x, win_pos.y }, { x + win_pos.x, canvas_size.y + win_pos.y }, line_color);
 	}
+	for (float y{ std::fmodf(offset.y, grid_size.y) }; y < canvas_size.y; y += grid_size.y) {
+		draw_list->AddLine({ win_pos.x, y + win_pos.y }, { canvas_size.x + win_pos.x, y + win_pos.y }, line_color);
+	}
+	draw_list->ChannelsSetCurrent(0);
 }
 
-void text_view::draw(const rectangle& rectangle) const {
-	bind_texture(texture);
-	draw_shape(rectangle, transform);
-}
-
-button::button(const program_state& state, const ortho_camera& camera) : ui_element{ state, camera }, label{ state, camera } {
-	animation.pause();
-	animation.frames = 3;
-}
-
-void button::update() {
-	if (is_hovered()) {
-		if (transition.enabled) {
-			transition.current += transition.in_speed;
-			if (transition.current > 1.0f) {
-				transition.current = 1.0f;
+std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected) {
+	if (selected >= static_cast<int>(values.size())) {
+		return {};
+	}
+	std::optional<int> clicked;
+	if (ImGui::BeginCombo(label.data(), values[selected].c_str())) {
+		for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
+			if (ImGui::Selectable(values[i].c_str())) {
+				clicked = i;
+				break;
 			}
-			if (state.mouse().is_button_down(mouse::button::left)) {
-				transition.previous_frame = 1.0f;
-				transition.next_frame = 2.0f;
-			} else {
-				transition.previous_frame = 0.0f;
-				transition.next_frame = 1.0f;
+		}
+		ImGui::EndCombo();
+	}
+	return clicked;
+}
+
+std::optional<int> popup(std::string_view id, const get_popup_item& get_item) {
+	if (!get_item) {
+		return {};
+	}
+	std::optional<int> clicked;
+	if (ImGui::BeginPopup(id.data())) {
+		int index{ 0 };
+		while (true) {
+			const auto optional_item = get_item(index);
+			if (!optional_item.has_value()) {
+				break;
 			}
-		} else {
-			animation.set_frame(1);
-			if (state.mouse().is_button_down(mouse::button::left)) {
-				animation.set_frame(2);
+			const auto item{ optional_item.value() };
+			if (ImGui::MenuItem(item.label.c_str(), item.shortcut.c_str(), &item.selected, item.enabled)) {
+				clicked = index;
 			}
+			index++;
 		}
-	} else {
-		if (transition.enabled) {
-			transition.current -= transition.out_speed;
-			if (transition.current < 0.0f) {
-				transition.current = 0.0f;
-			}
-			transition.previous_frame = 0.0f;
-			transition.next_frame = 1.0f;
-		} else {
-			animation.set_frame(0);
-		}
+		ImGui::EndPopup();
 	}
-	label.transform.align(label_alignment, transform, label_padding);
-}
-
-void button::draw_button() {
-	if (transition.enabled) {
-		color.set({ 1.0f, 1.0f, 1.0f, 1.0f });
-		animation.set_frame(static_cast<int>(transition.previous_frame));
-		animation.draw(transform);
-		color.set({ 1.0f, 1.0f, 1.0f, transition.current });
-		animation.set_frame(static_cast<int>(transition.next_frame));
-	}
-	animation.draw(transform);
-}
-
-void button::draw_label() {
-	if (label.text().empty()) {
-		return;
-	}
-	color.set({ label_color.x, label_color.y, label_color.z, 1.0f });
-	label.draw(text_rectangle);
-	if (transition.enabled) {
-		color.set({ label_hover_color.x, label_hover_color.y, label_hover_color.z, transition.current });
-		label.draw(text_rectangle);
-	}
-}
-
-void button::set_tex_coords(vector2f position, vector2f size) {
-	animation.set_tex_coords(position, size);
-}
-
-input_field::input_field(const program_state& state_, const ortho_camera& camera_, const font& font)
-	: ui_element{ state_, camera_ }, label{ state_, camera_ }, input_font{ font } {
-	animation.pause();
-	animation.frames = 3;
-	click = events.click.listen([this](int) {
-		focus();
-	});
-	mouse_press = state.mouse().press.listen([this](mouse::button button) {
-		if (button == mouse::button::left) {
-			if (transform.collides_with(camera.mouse_position(state.mouse()))) {
-				focus();
-			} else {
-				blur();
-			}
-		}
-	});
-}
-
-void input_field::update() {
-	if (key_input.exists()) {
-		animation.set_frame(2);
-	} else if (transform.collides_with(camera.mouse_position(state.mouse()))) {
-		if (state.mouse().is_button_down(mouse::button::left)) {
-			animation.set_frame(2);
-		} else {
-			animation.set_frame(1);
-		}
-	} else {
-		animation.set_frame(0);
-	}
-	label.transform.align(align_type::left, transform, padding);
-	const std::string text{ censor ? std::string(input.size(), '*') : input };
-	label.render(input_font, key_input.exists() ? text + "|" : text);
-}
-
-void input_field::draw(int sprite) {
-	draw_background(sprite);
-	draw_text();
-}
-
-void input_field::focus() {
-	if (key_input.exists()) {
-		return;
-	}
-	key_input = state.keyboard().input.listen([this](unsigned int character) {
-		if (character == static_cast<unsigned int>(key::enter)) {
-			return;
-		}
-		if (character == static_cast<unsigned int>(key::backspace)) {
-			if (!input.empty()) {
-				input = input.substr(0, input.size() - 1);
-			}
-		} else if (character < 0x7F) {
-			input += static_cast<char>(character);
-		}
-	});
-}
-
-void input_field::blur() {
-	key_input.stop();
-}
-
-void input_field::draw_background(int sprite) {
-	bind_texture(sprite);
-	animation.draw(transform);
-}
-
-void input_field::draw_text() {
-	if (!label.text().empty()) {
-		label.draw(text_rectangle);
-	}
-}
-
-std::string input_field::value() const {
-	return input;
-}
-
-void input_field::set_value(const std::string& value) {
-	input = value;
+	return clicked;
 }
 
 }

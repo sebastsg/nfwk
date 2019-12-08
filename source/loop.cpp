@@ -70,18 +70,18 @@ static struct {
 
 	std::vector<program_state*> states_to_stop;
 
-	long redundant_bind_calls_this_frame{ 0 };
+	long long redundant_bind_calls_this_frame{ 0 };
 
-	event<int> post_configure;
-	event<int> pre_exit;
+	event<> post_configure;
+	event<> pre_exit;
 
 } loop;
 
-event<int>& post_configure_event() {
+event<>& post_configure_event() {
 	return loop.post_configure;
 }
 
-event<int>& pre_exit_event() {
+event<>& pre_exit_event() {
 	return loop.pre_exit;
 }
 
@@ -97,7 +97,7 @@ static int state_index(const program_state* state) {
 static void update_windows() {
 	for (auto state : loop.states) {
 #if ENABLE_WINDOW
-		auto window{ loop.windows[state_index(state)] };
+		auto window = loop.windows[state_index(state)];
 		window->poll();
 #endif
 		state->update();
@@ -107,7 +107,7 @@ static void update_windows() {
 static void draw_windows() {
 #if ENABLE_WINDOW
 	for (auto state : loop.states) {
-		auto window{ loop.windows[state_index(state)] };
+		auto window = loop.windows[state_index(state)];
 		window->clear();
 		state->draw();
 		window->swap();
@@ -118,15 +118,15 @@ static void draw_windows() {
 static void destroy_stopped_states() {
 	for (auto state : loop.states_to_stop) {
 		if (const int index{ state_index(state) }; index != -1) {
-			bool is_closing{ !loop.states[index]->has_next_state() };
-			if (is_closing) {
+			const bool closing{ !loop.states[index]->has_next_state() };
+			if (closing) {
 #if ENABLE_AUDIO
 				loop.audio->stop_all_players();
 #endif
 			}
 			delete loop.states[index];
 			loop.states.erase(loop.states.begin() + index);
-			if (is_closing) {
+			if (closing) {
 #if ENABLE_WINDOW
 				delete loop.windows[index];
 				loop.windows.erase(loop.windows.begin() + index);
@@ -142,7 +142,7 @@ static void destroy_stopped_states() {
 
 program_state::program_state() {
 #if ENABLE_WINDOW
-	window_close = window().close.listen([this](int) {
+	window_close = window().close.listen([this] {
 		loop.states_to_stop.push_back(this);
 	});
 #endif
@@ -198,7 +198,7 @@ void program_state::set_synchronization(draw_synchronization synchronization) {
 	loop.synchronization = synchronization;
 }
 
-long program_state::redundant_bind_calls_this_frame() {
+long long program_state::redundant_bind_calls_this_frame() {
 	return loop.redundant_bind_calls_this_frame;
 }
 
@@ -239,21 +239,29 @@ std::string curent_local_date_string() {
 
 namespace internal {
 
-#if ENABLE_WINDOW
-
-void create_state(const std::string& title, int width, int height, int samples, bool maximized, const make_state_function& make_state) {
-	loop.windows.emplace_back(new window{ title, width, height, samples, maximized });
+void create_state(const std::string& title, int width, int height, int samples, const make_state_function& make_state) {
+	loop.windows.emplace_back(new window{ title, width, height, samples });
 	loop.states.emplace_back(make_state());
 }
 
-#else
+void create_state(const std::string& title, int width, int height, const make_state_function& make_state) {
+	loop.windows.emplace_back(new window{ title, width, height });
+	loop.states.emplace_back(make_state());
+}
+
+void create_state(const std::string& title, int samples, const make_state_function& make_state) {
+	loop.windows.emplace_back(new window{ title, samples });
+	loop.states.emplace_back(make_state());
+}
 
 void create_state(const std::string& title, const make_state_function& make_state) {
+#if ENABLE_WINDOW
+	loop.windows.emplace_back(new window{ title });
+#else
 	loop.windows.emplace_back(nullptr);
+#endif
 	loop.states.emplace_back(make_state());
 }
-
-#endif
 
 int run_main_loop() {
 	configure();
@@ -276,18 +284,18 @@ int run_main_loop() {
 		const long long frame_skip{ 1000000 / loop.ticks_per_second };
 		const long long reference_ticks{ loop.frame_counter.ticks() };
 
-		bool is_updated{ false };
+		bool updated{ false };
 		while (reference_ticks - next_tick > frame_skip && update_count < loop.max_update_count) {
 			update_windows();
 			next_tick += frame_skip;
 			update_count++;
-			is_updated = true;
+			updated = true;
 		}
 
-		if (is_updated || loop.synchronization == draw_synchronization::always) {
-			long current_redundant_bind_calls{ 0 };// total_redundant_bind_calls();
+		if (updated || loop.synchronization == draw_synchronization::always) {
+			const auto current_redundant_bind_calls{ total_redundant_bind_calls() };
 			draw_windows();
-			loop.redundant_bind_calls_this_frame = /*total_redundant_bind_calls()*/0 - current_redundant_bind_calls;
+			loop.redundant_bind_calls_this_frame = total_redundant_bind_calls() - current_redundant_bind_calls;
 			loop.frame_counter.next_frame();
 		}
 

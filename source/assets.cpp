@@ -26,7 +26,7 @@ static std::unordered_set<std::string> to_be_released;
 namespace internal {
 
 void* require_asset(const std::string& name) {
-	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+	if (auto asset = assets.find(name); asset != assets.end()) {
 		asset->second.holders++;
 		if (asset->second.is_loaded) {
 			to_be_released.erase(name);
@@ -55,7 +55,7 @@ std::string asset_path(const std::string& path) {
 }
 
 void free_asset(const std::string& name) {
-	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+	if (auto asset = assets.find(name); asset != assets.end()) {
 		asset->second.free(asset->second.any);
 		asset->second.any = nullptr;
 		asset->second.is_loaded = false;
@@ -77,7 +77,7 @@ void register_asset(const std::string& name, const load_asset_func& load, const 
 }
 
 void unregister_asset(const std::string& name) {
-	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+	if (auto asset = assets.find(name); asset != assets.end()) {
 		asset->second.free(asset->second.any);
 		assets.erase(asset);
 	} else {
@@ -86,7 +86,7 @@ void unregister_asset(const std::string& name) {
 }
 
 void release_asset(const std::string& name) {
-	if (auto asset{ assets.find(name) }; asset != assets.end()) {
+	if (auto asset = assets.find(name); asset != assets.end()) {
 		asset->second.holders--;
 		if (asset->second.holders <= 0 && asset->second.is_loaded) {
 			to_be_released.insert(name);
@@ -96,14 +96,14 @@ void release_asset(const std::string& name) {
 
 void register_texture(const std::string& name) {
 	register_asset("textures/" + name, [name]() -> void* {
-		return (void*)create_texture({ no::asset_path("textures/" + name + ".png") });
+		return (void*)create_texture({ asset_path("textures/" + name + ".png") });
 	}, [](void* data) {
-		delete_texture((int)data);
+		delete_texture(reinterpret_cast<int>(data));
 	});
 }
 
 void register_all_textures() {
-	for (auto& texture : std::filesystem::recursive_directory_iterator{ no::asset_path("textures") }) {
+	for (const auto& texture : std::filesystem::recursive_directory_iterator{ asset_path("textures") }) {
 		register_texture(texture.path().stem().string());
 	}
 }
@@ -118,7 +118,7 @@ void release_texture(const std::string& name) {
 
 void register_font(const std::string& name, int size) {
 	register_asset("fonts/" + name + " " + std::to_string(size), [name, size]() -> void* {
-		return new font{ no::asset_path("fonts/" + name + ".ttf"), size };
+		return new font{ asset_path("fonts/" + name + ".ttf"), size };
 	}, [](void* data) {
 		delete data;
 	});
@@ -134,9 +134,9 @@ void release_font(const std::string& name, int size) {
 
 void register_shader(const std::string& name) {
 	register_asset("shaders/" + name, [name]() -> void* {
-		return (void*)create_shader({ no::asset_path("shaders/" + name) });
+		return reinterpret_cast<void*>(create_shader({ asset_path("shaders/" + name) }));
 	}, [](void* data) {
-		delete_shader((int)data);
+		delete_shader(reinterpret_cast<int>(data));
 	});
 }
 
@@ -150,7 +150,7 @@ void release_shader(const std::string& name) {
 
 void register_sound(const std::string& name) {
 	register_asset("sounds/" + name, [name]() -> void* {
-		return static_cast<void*>(new ogg_vorbis_audio_source{ no::asset_path("sounds/" + name + ".ogg") });
+		return new ogg_vorbis_audio_source{ asset_path("sounds/" + name + ".ogg") };
 	}, [](void* data) {
 		delete static_cast<ogg_vorbis_audio_source*>(data);
 	});

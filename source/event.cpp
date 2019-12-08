@@ -36,38 +36,38 @@ int add_event() {
 }
 
 void remove_event(int event_id) {
-	if (event_id >= 0 && event_id < (int)data.events.size()) {
+	if (event_id >= 0 && event_id < static_cast<int>(data.events.size())) {
 		data.events[event_id].event_exists = false;
 	}
 }
 
 int add_event_listener(int event_id) {
-	if (event_id < 0 || event_id >= (int)data.events.size() || !data.events[event_id].event_exists) {
+	if (event_id < 0 || event_id >= static_cast<int>(data.events.size()) || !data.events[event_id].event_exists) {
 		WARNING("Trying to add event listener to non-existing event " << event_id);
 		return -1;
 	}
-	auto& event{ data.events[event_id] };
+	auto& event = data.events[event_id];
 	event.listeners.push_back(true);
-	return (int)event.listeners.size() - 1;
+	return static_cast<int>(event.listeners.size()) - 1;
 }
 
 void remove_event_listener(int event_id, int listener_id) {
-	if (event_id < 0 || event_id >= (int)data.events.size()) {
+	if (event_id < 0 || event_id >= static_cast<int>(data.events.size())) {
 		return;
 	}
 	auto& event{ data.events[event_id] };
-	if (listener_id < 0 || listener_id >= (int)event.listeners.size()) {
+	if (listener_id < 0 || listener_id >= static_cast<int>(event.listeners.size())) {
 		return;
 	}
 	event.listeners[listener_id] = false;
 }
 
 bool is_event_listener(int event_id, int listener_id) {
-	if (event_id < 0 || listener_id < 0 || event_id >= (int)data.events.size()) {
+	if (event_id < 0 || listener_id < 0 || event_id >= static_cast<int>(data.events.size())) {
 		return false;
 	}
-	const auto& event{ data.events[event_id] };
-	if (!event.event_exists || listener_id >= (int)event.listeners.size()) {
+	const auto& event = data.events[event_id];
+	if (!event.event_exists || listener_id >= static_cast<int>(event.listeners.size())) {
 		return false;
 	}
 	return event.listeners[listener_id];

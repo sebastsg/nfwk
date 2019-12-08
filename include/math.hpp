@@ -1,28 +1,35 @@
 #pragma once
 
 #include <ostream>
-#include <random>
+#include <cstdint>
 
 namespace no {
 
-constexpr float pi() {
-	return 3.14159265359f;
-}
+constexpr float pi_f{ 3.14159265359f };
+constexpr double pi{ 3.14159265359 };
 
-inline float rad_to_deg(float x) {
+constexpr float rad_to_deg(float x) {
 	return x * 57.295779513082320876f; // x * (180 / pi)
 }
 
-inline double rad_to_deg(double x) {
+constexpr double rad_to_deg(double x) {
 	return x * 57.295779513082320876; // x * (180 / pi)
 }
 
-inline float deg_to_rad(float x) {
+constexpr float deg_to_rad(float x) {
 	return x * 0.0174532925199432957f; // x * (pi / 180)
 }
 
-inline double deg_to_rad(double x) {
+constexpr double deg_to_rad(double x) {
 	return x * 0.0174532925199432957; // x * (pi / 180)
+}
+
+constexpr int mod(int a, int b) {
+	return (a % b + b) % b;
+}
+
+constexpr int divide_leftwards(int a, int b) {
+	return a / b - (a < 0 && a % b != 0);
 }
 
 template<typename T>
@@ -45,66 +52,15 @@ inline T inverse_clamp(T value, T min, T max) {
 	return value;
 }
 
-class random_number_generator {
-public:
-
-	random_number_generator() {
-		seed(std::random_device{}());
-	}
-
-	random_number_generator(unsigned long long seed) {
-		mersianne_twister_engine.seed(seed);
-	}
-
-	void seed(unsigned long long seed) {
-		current_seed = seed;
-		mersianne_twister_engine.seed(seed);
-	}
-
-	unsigned long long seed() const {
-		return current_seed;
-	}
-
-	// min and max are inclusive
-	template<typename T>
-	T next(T min, T max) {
-		if constexpr (std::is_integral<T>::value) {
-			std::uniform_int_distribution<T> distribution{ min, max };
-			return distribution(mersianne_twister_engine);
-		} else if constexpr (std::is_floating_point<T>::value) {
-			std::uniform_real_distribution<T> distribution{ min, max };
-			return distribution(mersianne_twister_engine);
-		}
-		static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "T is not an integral or floating point type");
-	}
-
-	// max is inclusive
-	template<typename T>
-	T next(T max) {
-		return next<T>(static_cast<T>(0), max);
-	}
-
-	// chance must be between 0.0f and 1.0f
-	// the higher chance is, the more likely this function returns true
-	bool chance(float chance) {
-		return chance >= next<float>(0.0f, 1.0f);
-	}
-
-private:
-
-	std::mt19937_64 mersianne_twister_engine;
-	unsigned long long current_seed{ 0 };
-
-};
-
 template<typename T>
 struct vector2 {
 
-	T x, y;
+	T x{};
+	T y{};
 
-	constexpr vector2() : x((T)0), y((T)0) {}
-	constexpr vector2(T i) : x(i), y(i) {}
-	constexpr vector2(T x, T y) : x(x), y(y) {}
+	constexpr vector2() = default;
+	constexpr vector2(T i) : x{ i }, y{ i } {}
+	constexpr vector2(T x, T y) : x{ x }, y{ y } {}
 
 	constexpr vector2<T> operator-() const {
 		return { -x, -y };
@@ -223,6 +179,15 @@ struct vector2 {
 		return { std::ceil(x), std::ceil(y) };
 	}
 
+	void abs() {
+		x = std::abs(x);
+		y = std::abs(y);
+	}
+
+	constexpr vector2<T> to_abs() const {
+		return{ std::abs(x), std::abs(y) };
+	}
+
 	template<typename U>
 	constexpr vector2<U> to() const {
 		return vector2<U>{ static_cast<U>(x), static_cast<U>(y) };
@@ -250,9 +215,10 @@ struct vector2 {
 
 };
 
-typedef vector2<int> vector2i;
-typedef vector2<float> vector2f;
-typedef vector2<double> vector2d;
+using vector2i = vector2<int32_t>;
+using vector2l = vector2<int64_t>;
+using vector2f = vector2<float>;
+using vector2d = vector2<double>;
 
 template<typename T>
 struct vector3 {
@@ -267,9 +233,9 @@ struct vector3 {
 		};
 	};
 
-	constexpr vector3() : x((T)0), y((T)0), z((T)0) {}
-	constexpr vector3(T i) : x(i), y(i), z(i) {}
-	constexpr vector3(T x, T y, T z) : x(x), y(y), z(z) {}
+	constexpr vector3() : x{}, y{}, z{} {}
+	constexpr vector3(T i) : x{ i }, y{ i }, z{ i } {}
+	constexpr vector3(T x, T y, T z) : x{ x }, y{ y }, z{ z } {}
 
 	constexpr vector3<T> operator-() const {
 		return { -x, -y, -z };
@@ -350,10 +316,10 @@ struct vector3 {
 	}
 
 	constexpr T distance_to(const vector3<T>& v) const {
-		const T dx = x - v.x;
-		const T dy = y - v.y;
-		const T dz = z - v.z;
-		return (T)std::sqrt((double)(dx * dx + dy * dy + dz * dz));
+		const T dx{ x - v.x };
+		const T dy{ y - v.y };
+		const T dz{ z - v.z };
+		return static_cast<T>(std::sqrt(static_cast<double>(dx * dx + dy * dy + dz * dz)));
 	}
 
 	void floor() {
@@ -374,6 +340,16 @@ struct vector3 {
 
 	constexpr vector3<T> to_ceil() const {
 		return { std::ceil(x), std::ceil(y), std::ceil(z) };
+	}
+
+	void abs() {
+		x = std::abs(x);
+		y = std::abs(y);
+		z = std::abs(z);
+	}
+
+	constexpr vector3<T> to_abs() const {
+		return{ std::abs(x), std::abs(y), std::abs(z) };
 	}
 
 	template<typename U>
@@ -407,9 +383,10 @@ struct vector3 {
 
 };
 
-typedef vector3<int> vector3i;
-typedef vector3<float> vector3f;
-typedef vector3<double> vector3d;
+using vector3i = vector3<int32_t>;
+using vector3l = vector3<int64_t>;
+using vector3f = vector3<float>;
+using vector3d = vector3<double>;
 
 template<typename T>
 struct vector4 {
@@ -434,9 +411,9 @@ struct vector4 {
 		};
 	};
 
-	constexpr vector4() : x((T)0), y((T)0), z((T)0), w((T)0) {}
-	constexpr vector4(T i) : x(i), y(i), z(i), w(i) {}
-	constexpr vector4(T x, T y, T z, T w) : x(x), y(y), z(z), w(w) {}
+	constexpr vector4() : x{}, y{}, z{}, w{} {}
+	constexpr vector4(T i) : x{ i }, y{ i }, z{ i }, w{ i } {}
+	constexpr vector4(T x, T y, T z, T w) : x{ x }, y{ y }, z{ z }, w{ w } {}
 
 	constexpr vector4<T> operator-() const {
 		return { -x, -y, -z, -w };
@@ -522,11 +499,11 @@ struct vector4 {
 	}
 
 	constexpr T distance_to(const vector4<T>& v) const {
-		const T dx = x - v.x;
-		const T dy = y - v.y;
-		const T dz = z - v.z;
-		const T dw = w - v.w;
-		return (T)std::sqrt((double)(dx * dx + dy * dy + dz * dz + dw * dw));
+		const T dx{ x - v.x };
+		const T dy{ y - v.y };
+		const T dz{ z - v.z };
+		const T dw{ w - v.w };
+		return static_cast<T>(std::sqrt(static_cast<double>(dx * dx + dy * dy + dz * dz + dw * dw)));
 	}
 
 	void floor() {
@@ -549,6 +526,17 @@ struct vector4 {
 
 	constexpr vector4<T> to_ceil() const {
 		return { std::ceil(x), std::ceil(y), std::ceil(z), std::ceil(w) };
+	}
+
+	void abs() {
+		x = std::abs(x);
+		y = std::abs(y);
+		z = std::abs(z);
+		w = std::abs(w);
+	}
+
+	constexpr vector4<T> to_abs() const {
+		return{ std::abs(x), std::abs(y), std::abs(z), std::abs(w) };
 	}
 
 	template<typename U>
@@ -578,15 +566,27 @@ struct vector4 {
 
 };
 
-typedef vector4<int> vector4i;
-typedef vector4<float> vector4f;
-typedef vector4<double> vector4d;
+using vector4i = vector4<int32_t>;
+using vector4l = vector4<int64_t>;
+using vector4f = vector4<float>;
+using vector4d = vector4<double>;
 
+constexpr int reduce_index(vector2i index, int width) {
+	return index.x * width + index.y;
 }
 
-template<typename T>
-std::ostream& operator<<(std::ostream& out, const no::vector2<T>& vector) {
-	return out << vector.x << ", " << vector.y;
+constexpr int reduce_index(int x, int y, int width) {
+	return x * width + y;
+}
+
+constexpr vector2i expand_index(int index, vector2i size) {
+	return { index / size.x, index % size.y };
+}
+
+constexpr vector2i expand_index(int index, int width, int height) {
+	return { index / width, index % height };
+}
+
 }
 
 template<typename T>
@@ -600,21 +600,133 @@ no::vector2<T> operator/(T scalar, const no::vector2<T>& vector) {
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& out, const no::vector3<T>& vector) {
-	return out << vector.x << ", " << vector.y << ", " << vector.z;
-}
-
-template<typename T>
 no::vector3<T> operator*(T scalar, const no::vector3<T>& vector) {
 	return vector * scalar;
 }
 
 template<typename T>
-std::ostream& operator<<(std::ostream& out, const no::vector4<T>& vector) {
-	return out << vector.x << ", " << vector.y << ", " << vector.z << ", " << vector.w;
+no::vector3<T> operator/(T scalar, const no::vector3<T>& vector) {
+	return no::vector3<T>{ scalar } / vector;
 }
 
 template<typename T>
 no::vector4<T> operator*(T scalar, const no::vector4<T>& vector) {
 	return vector * scalar;
+}
+
+template<typename T>
+no::vector4<T> operator/(T scalar, const no::vector4<T>& vector) {
+	return no::vector4<T>{ scalar } / vector;
+}
+
+namespace std {
+
+// vector2
+
+template<typename T>
+ostream& operator<<(ostream& out, const no::vector2<T>& vector) {
+	return out << vector.x << ", " << vector.y;
+}
+
+template <typename T>
+struct tuple_size<no::vector2<T>> : integral_constant<size_t, 2> {};
+
+template <size_t Index, typename T>
+struct tuple_element<Index, const no::vector2<T>> {
+	static_assert(Index < 2, "Vector2 index is out of bounds");
+	using type = T;
+};
+
+template <typename T>
+constexpr T vector2_get(const no::vector2<T>& vector, integral_constant<size_t, 0>) noexcept {
+	return vector.x;
+}
+
+template <typename T>
+constexpr T vector2_get(const no::vector2<T>& vector, integral_constant<size_t, 1>) noexcept {
+	return vector.y;
+}
+
+template <size_t Index, class T>
+[[nodiscard]] constexpr tuple_element_t<Index, const no::vector2<T>> get(const no::vector2<T>& vector) noexcept {
+	return vector2_get<T>(vector, integral_constant<size_t, Index>());
+}
+
+// vector3
+
+template<typename T>
+ostream& operator<<(ostream& out, const no::vector3<T>& vector) {
+	return out << vector.x << ", " << vector.y << ", " << vector.z;
+}
+
+template <typename T>
+struct tuple_size<no::vector3<T>> : integral_constant<size_t, 3> {};
+
+template <size_t Index, typename T>
+struct tuple_element<Index, const no::vector3<T>> {
+	static_assert(Index < 3, "Vector3 index is out of bounds");
+	using type = T;
+};
+
+template <typename T>
+constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 0>) noexcept {
+	return vector.x;
+}
+
+template <typename T>
+constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 1>) noexcept {
+	return vector.y;
+}
+
+template <typename T>
+constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 2>) noexcept {
+	return vector.z;
+}
+
+template <size_t Index, class T>
+[[nodiscard]] constexpr tuple_element_t<Index, const no::vector3<T>> get(const no::vector3<T>& vector) noexcept {
+	return vector3_get<T>(vector, integral_constant<size_t, Index>());
+}
+
+// vector4
+
+template<typename T>
+ostream& operator<<(ostream& out, const no::vector4<T>& vector) {
+	return out << vector.x << ", " << vector.y << ", " << vector.z << ", " << vector.w;
+}
+
+template <typename T>
+struct tuple_size<no::vector4<T>> : integral_constant<size_t, 4> {};
+
+template <size_t Index, typename T>
+struct tuple_element<Index, const no::vector4<T>> {
+	static_assert(Index < 4, "Vector4 index is out of bounds");
+	using type = T;
+};
+
+template <typename T>
+constexpr T vector4_get(const no::vector4<T>& vector, integral_constant<size_t, 0>) noexcept {
+	return vector.x;
+}
+
+template <typename T>
+constexpr T vector4_get(const no::vector4<T>& vector, integral_constant<size_t, 1>) noexcept {
+	return vector.y;
+}
+
+template <typename T>
+constexpr T vector4_get(const no::vector4<T>& vector, integral_constant<size_t, 2>) noexcept {
+	return vector.z;
+}
+
+template <typename T>
+constexpr T vector4_get(const no::vector4<T>& vector, integral_constant<size_t, 3>) noexcept {
+	return vector.w;
+}
+
+template <size_t Index, class T>
+[[nodiscard]] constexpr tuple_element_t<Index, const no::vector4<T>> get(const no::vector4<T>& vector) noexcept {
+	return vector4_get<T>(vector, integral_constant<size_t, Index>());
+}
+
 }

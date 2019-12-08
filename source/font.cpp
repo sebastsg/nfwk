@@ -12,7 +12,7 @@ namespace no {
 
 namespace ft {
 
-static FT_Library library = nullptr;
+static FT_Library library{ nullptr };
 
 static void initialize() {
 	if (!library) {
@@ -59,7 +59,7 @@ public:
 	font_face(const std::string& path) {
 		MESSAGE("Loading font " << path);
 		// note: to check how many faces a font has, face_index should be -1, then check face->num_faces
-		if (const auto error{ FT_New_Face(ft::library, path.c_str(), 0, &face) }; error != FT_Err_Ok) {
+		if (const auto error = FT_New_Face(ft::library, path.c_str(), 0, &face); error != FT_Err_Ok) {
 			WARNING("[Error " << error << "] Failed to load font: " << path);
 			return;
 		}
@@ -126,7 +126,7 @@ font::font(const std::string& path, int size) {
 			return;
 		}
 	}
-	face = new font_face(final_path);
+	face = new font_face{ final_path };
 	face->set_size(size);
 }
 
@@ -149,7 +149,7 @@ bool font::exists(const std::string& path) {
 	if (std::filesystem::exists(path)) {
 		return true;
 	}
-	auto windows_font_path{ platform::environment_variable("WINDIR") + "\\Fonts\\" + path };
+	auto windows_font_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
 	return std::filesystem::exists(windows_font_path);
 }
 
@@ -174,7 +174,7 @@ font::text_size font::size(const std::string& text) const {
 			text_size.rows++;
 			continue;
 		}
-		int index = face->char_index(character);
+		uint32_t index{ face->char_index(character) };
 		if (face->has_kerning && last_index > 0 && index > 0) {
 			FT_Vector delta;
 			FT_Get_Kerning(face->face, last_index, index, FT_KERNING_DEFAULT, &delta);
@@ -211,7 +211,7 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 	}
 	color &= 0x00FFFFFF; // alpha is added by freetype
 	text_size text_size{ size(text) };
-	uint32_t* destination{ new uint32_t[text_size.size.x * text_size.size.y] };
+	auto destination = new uint32_t[text_size.size.x * text_size.size.y];
 	std::fill_n(destination, text_size.size.x * text_size.size.y, 0x00000000);
 	int left{ 0 };
 	int last_index{ -1 };
@@ -246,14 +246,14 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 }
 
 void font::render(surface& surface, const std::string& text, uint32_t color) const {
-	if (auto result{ render_text(text, color) }; result.first) {
+	if (auto result = render_text(text, color); result.first) {
 		surface.render(result.first, result.second.x, result.second.y);
 		delete[] result.first;
 	}
 }
 
 surface font::render(const std::string& text, uint32_t color) const {
-	if (auto result{ render_text(text, color) }; result.first) {
+	if (auto result = render_text(text, color); result.first) {
 		return { result.first, result.second.x, result.second.y, pixel_format::rgba, surface::construct_by::move };
 	} else {
 		return { 2, 2, pixel_format::rgba };

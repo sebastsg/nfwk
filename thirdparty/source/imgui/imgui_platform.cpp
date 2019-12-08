@@ -21,7 +21,7 @@
 
 namespace no {
 
-namespace imgui {
+namespace ui {
 
 static struct {
 	window* window{ nullptr };
@@ -75,15 +75,15 @@ static void update_cursor_icon() {
 static void update_mouse_position() {
 	auto& io{ ImGui::GetIO() };
 	if (io.WantSetMousePos) {
-		POINT pos{ static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y) };
-		ClientToScreen(data.window->platform_window()->handle(), &pos);
-		SetCursorPos(pos.x, pos.y);
+		POINT position{ static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y) };
+		ClientToScreen(data.window->platform_window()->handle(), &position);
+		SetCursorPos(position.x, position.y);
 	}
 	io.MousePos = { -FLT_MAX, -FLT_MAX };
-	POINT pos;
-	if (GetActiveWindow() == data.window->platform_window()->handle() && GetCursorPos(&pos)) {
-		if (ScreenToClient(data.window->platform_window()->handle(), &pos)) {
-			io.MousePos = { static_cast<float>(pos.x), static_cast<float>(pos.y) };
+	POINT position;
+	if (GetActiveWindow() == data.window->platform_window()->handle() && GetCursorPos(&position)) {
+		if (ScreenToClient(data.window->platform_window()->handle(), &position)) {
+			io.MousePos = { static_cast<float>(position.x), static_cast<float>(position.y) };
 		}
 	}
 }
@@ -109,8 +109,8 @@ void create(window& window) {
 	ASSERT(!data.window);
 	ImGui::CreateContext();
 	data.window = &window;
-	QueryPerformanceFrequency((LARGE_INTEGER*)&data.ticks_per_second);
-	QueryPerformanceCounter((LARGE_INTEGER*)&data.time);
+	QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&data.ticks_per_second));
+	QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&data.time));
 	auto& io{ ImGui::GetIO() };
 	io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 	io.BackendPlatformName = "win32";
@@ -154,7 +154,7 @@ void create(window& window) {
 	data.mouse_scroll = window.mouse.scroll.listen([&](int steps) {
 		io.MouseWheel += steps;
 	});
-	data.mouse_cursor = window.mouse.icon.listen([](int) {
+	data.mouse_cursor = window.mouse.icon.listen([] {
 		update_cursor_icon();
 	});
 	data.mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
@@ -188,9 +188,9 @@ void create(window& window) {
 
 	data.font_texture_id = create_texture();
 	bind_texture(data.font_texture_id);
-	load_texture(data.font_texture_id, { (uint32_t*)pixels, width, height, pixel_format::rgba, surface::construct_by::copy });
+	load_texture(data.font_texture_id, { reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
 
-	io.Fonts->TexID = (ImTextureID)data.font_texture_id;
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data.font_texture_id);
 }
 
 void destroy() {
@@ -259,13 +259,13 @@ void draw() {
 	vertex_array<imgui_vertex, unsigned short> vertex_array;
 	for (int list_index{ 0 }; list_index < draw_data->CmdListsCount; list_index++) {
 		const auto cmd_list{ draw_data->CmdLists[list_index] };
-		const auto vertex_data{ (uint8_t*)cmd_list->VtxBuffer.Data };
-		const auto index_data{ (uint8_t*)cmd_list->IdxBuffer.Data };
+		const auto vertex_data{ reinterpret_cast<uint8_t*>(cmd_list->VtxBuffer.Data) };
+		const auto index_data{ reinterpret_cast<uint8_t*>(cmd_list->IdxBuffer.Data) };
 		vertex_array.set(vertex_data, cmd_list->VtxBuffer.Size, index_data, cmd_list->IdxBuffer.Size);
 		size_t offset{ 0 };
 		for (int buffer_index = 0; buffer_index < cmd_list->CmdBuffer.Size; buffer_index++) {
 			auto buffer = &cmd_list->CmdBuffer[buffer_index];
-			const size_t current_offset = offset;
+			const size_t current_offset{ offset };
 			offset += buffer->ElemCount;
 			if (buffer->UserCallback) {
 				buffer->UserCallback(cmd_list, buffer);
@@ -280,7 +280,7 @@ void draw() {
 			if (clip_rect.x >= fb_width || clip_rect.y >= fb_height || clip_rect.z < 0 || clip_rect.w < 0) {
 				continue;
 			}
-			bind_texture((int)buffer->TextureId);
+			bind_texture(reinterpret_cast<int>(buffer->TextureId));
 			vertex_array.draw(current_offset, buffer->ElemCount);
 		}
 	}

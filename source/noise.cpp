@@ -1,5 +1,5 @@
 #include "noise.hpp"
-#include "math.hpp"
+#include "random.hpp"
 
 #include <cmath>
 

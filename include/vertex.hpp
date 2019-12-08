@@ -207,7 +207,7 @@ model_data<V, I> create_box_model_data(const std::function<V(const vector3f&)>& 
 		{ 1.0f, 0.0f, 1.0f }, // (bottom right) lower - 6
 		{ 1.0f, 1.0f, 1.0f }, // (bottom right) upper - 7
 	};
-	for (constexpr auto vertex : vertices) {
+	for (const auto vertex : vertices) {
 		data.shape.vertices.push_back(mapper(vertex));
 	}
 	data.shape.indices = {

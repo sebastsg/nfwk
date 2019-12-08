@@ -9,12 +9,24 @@
 
 namespace no {
 
-window::window(const std::string& title, int width, int height, int samples, bool maximized) : mouse{ this } {
-	platform = new platform::platform_window{ this, title, width, height, samples, maximized };
+window::window(std::string_view title, int width, int height, int samples) : mouse{ this } {
+	platform = new platform::platform_window{ *this, title, width, height, samples };
+	set_clear_color(0.1f);
 }
 
-window::window(const std::string& title) : mouse{ this } {
-	platform = new platform::platform_window{ this, title, 0, 0, 1, true };
+window::window(std::string_view title, int width, int height) : mouse{ this } {
+	platform = new platform::platform_window{ *this, title, width, height };
+	set_clear_color(0.1f);
+}
+
+window::window(std::string_view title, int samples) : mouse{ this } {
+	platform = new platform::platform_window{ *this, title, samples };
+	set_clear_color(0.1f);
+}
+
+window::window(std::string_view title) : mouse{ this } {
+	platform = new platform::platform_window{ *this, title };
+	set_clear_color(0.1f);
 }
 
 window::window(window&& that) noexcept {
@@ -22,7 +34,7 @@ window::window(window&& that) noexcept {
 	close = std::move(that.close);
 	resize = std::move(that.resize);
 	platform = that.platform;
-	platform->set_base_window(this);
+	platform->set_base_window(*this);
 	mouse = { this };
 	that.platform = nullptr;
 	that.mouse = { nullptr };

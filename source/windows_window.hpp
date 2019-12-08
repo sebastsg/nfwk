@@ -21,7 +21,10 @@ namespace platform {
 class windows_window {
 public:
 
-	windows_window(window* window, const std::string& title, int width, int height, int samples, bool is_maximized);
+	windows_window(window& window, std::string_view title, int width, int height, int samples);
+	windows_window(window& window, std::string_view title, int width, int height);
+	windows_window(window& window, std::string_view title, int samples);
+	windows_window(window& window, std::string_view title);
 
 	windows_window(const windows_window&) = delete;
 	windows_window(windows_window&&) = delete;
@@ -32,7 +35,7 @@ public:
 	windows_window& operator=(windows_window&&) = delete;
 
 	void poll();
-	void set_base_window(window* window);
+	void set_base_window(window& window);
 
 	bool is_open() const;
 	vector2i position() const;
@@ -41,7 +44,7 @@ public:
 	std::string title() const;
 
 	void set_size(const vector2i& size);
-	void set_title(const std::string& title);
+	void set_title(std::string_view title);
 	void set_icon_from_resource(int resource_id);
 	void set_cursor(mouse::cursor icon);
 	void set_viewport(int x, int y, int width, int height);
@@ -56,10 +59,14 @@ public:
 
 private:
 
-	HWND window_handle = nullptr;
-	HDC device_context_handle = nullptr;
-	window* base_window = nullptr;
-	platform_render_context context;
+	void create_default_window(window& window, std::string_view title, int width, int height, bool maximized);
+	void create_arb_window(window& window, std::string_view title, int width, int height, int samples, bool maximized);
+	void show(bool maximized);
+
+	HWND window_handle{ nullptr };
+	HDC device_context{ nullptr };
+	window* base_window{ nullptr };
+	platform_render_context render_context;
 
 };
 

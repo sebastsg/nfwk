@@ -112,8 +112,10 @@ void relaunch() {
 int WINAPI WinMain(HINSTANCE current_instance, HINSTANCE previous_instance, LPSTR command_line, int show_command) {
 	no::platform::windows::current_instance_arg = current_instance;
 	no::platform::windows::show_command_arg = show_command;
-	CoInitialize(nullptr);
-	int result = no::internal::run_main_loop();
+	if (const auto result = CoInitialize(nullptr); result != S_OK && result != S_FALSE) {
+		WARNING("Failed to run CoInitialize.");
+	}
+	const int result{ no::internal::run_main_loop() };
 	CoUninitialize();
 	return result;
 }

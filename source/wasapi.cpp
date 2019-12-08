@@ -10,6 +10,7 @@
 
 #include <mmdeviceapi.h>
 #include <Audioclient.h>
+#include <audiopolicy.h>
 
 namespace no {
 
@@ -42,8 +43,8 @@ static auto get() {
 
 }
 
-static pcm_format wave_format_to_audio_data_format(WAVEFORMATEX* wave_format) {
-	const auto extended_format{ (WAVEFORMATEXTENSIBLE*)wave_format };
+static pcm_format wave_format_to_audio_data_format(const WAVEFORMATEX* wave_format) {
+	const auto* extended_format = reinterpret_cast<const WAVEFORMATEXTENSIBLE*>(wave_format);
 	switch (wave_format->wFormatTag) {
 	case WAVE_FORMAT_IEEE_FLOAT:
 		return pcm_format::float_32;
@@ -63,28 +64,36 @@ static pcm_format wave_format_to_audio_data_format(WAVEFORMATEX* wave_format) {
 	}
 }
 
-audio_client::audio_client(IMMDevice* device) : playing_audio_stream(nullptr) {
-	if (const auto result{ device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)& client) }; result != S_OK) {
+audio_client::audio_client(IMMDevice* device) : playing_audio_stream{ nullptr } {
+	if (const auto result = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client); result != S_OK) {
 		WARNING("Failed to activate audio client. Error: " << result);
 		return;
 	}
-	if (const auto result{ client->GetMixFormat(&wave_format) }; result != S_OK) {
+	if (const auto result = device->Activate(__uuidof(IAudioSessionManager), CLSCTX_ALL, nullptr, (void**)&session_manager); result != S_OK) {
+		WARNING("Failed to activate session manager. Error: " << result);
+		return;
+	}
+	if (const auto result = session_manager->GetSimpleAudioVolume(nullptr, FALSE, &audio_volume); result != S_OK || !audio_volume) {
+		WARNING("Failed to get simple audio volume interface. Error: " << result);
+		return;
+	}
+	if (const auto result = client->GetMixFormat(&wave_format); result != S_OK) {
 		WARNING("Failed to get mix format. Error : " << result);
 		return;
 	}
-	if (const auto result{ client->GetDevicePeriod(&default_device_period, nullptr) }; result != S_OK) {
+	if (const auto result = client->GetDevicePeriod(&default_device_period, nullptr); result != S_OK) {
 		WARNING("Failed to get device period. Error : " << result);
 		return;
 	}
-	if (const auto result{ client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, default_device_period, 0, wave_format, nullptr) }; result != S_OK) {
+	if (const auto result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, default_device_period, 0, wave_format, nullptr); result != S_OK) {
 		WARNING("Failed to initialize the audio client. Error: " << result);
 		return;
 	}
-	if (const auto result{ client->GetBufferSize(&buffer_frame_count) }; result != S_OK) {
+	if (const auto result = client->GetBufferSize(&buffer_frame_count); result != S_OK) {
 		WARNING("Failed to get buffer size. Error: " << result);
 		return;
 	}
-	if (const auto result{ client->GetService(__uuidof(IAudioRenderClient), (void**)&render_client) }; result != S_OK) {
+	if (const auto result = client->GetService(__uuidof(IAudioRenderClient), (void**)&render_client); result != S_OK) {
 		WARNING("Failed to get audio render client. Error: " << result);
 		return;
 	}
@@ -115,8 +124,8 @@ void audio_client::stream() {
 		WARNING_X(1, "Failed to play audio. Error: " << result);
 		return;
 	}
-	const long long one_millisecond{ 10000 };
-	const long long sleep_period_ms{ default_device_period / one_millisecond / 2 };
+	const int one_millisecond{ 10000 };
+	const int sleep_period_ms{ static_cast<int>(default_device_period) / one_millisecond / 2 };
 	bool has_been_stopped{ false };
 	while (true) {
 		if (!playing) {
@@ -124,7 +133,14 @@ void audio_client::stream() {
 			return;
 		}
 		if (playing_audio_stream.is_empty()) {
-			break;
+			if (looping) {
+				playing_audio_stream.reset();
+				client->Reset();
+				client->Start();
+				upload(buffer_frame_count);
+			} else {
+				break;
+			}
 		}
 		platform::sleep(sleep_period_ms);
 		if (paused) {
@@ -148,6 +164,7 @@ void audio_client::stream() {
 	}
 	platform::sleep(sleep_period_ms);
 	client->Stop();
+	playing = false;
 }
 
 void audio_client::play(const pcm_stream& new_audio_stream) {
@@ -169,6 +186,20 @@ void audio_client::resume() {
 	paused = false;
 }
 
+void audio_client::loop() {
+	looping = true;
+}
+
+void audio_client::once() {
+	looping = false;
+}
+
+void audio_client::set_volume(float volume) {
+	if (audio_volume) {
+		audio_volume->SetMasterVolume(volume, nullptr);
+	}
+}
+
 bool audio_client::is_playing() const {
 	return playing;
 }
@@ -177,13 +208,17 @@ bool audio_client::is_paused() const {
 	return paused;
 }
 
+bool audio_client::is_looping() const {
+	return looping;
+}
+
 void audio_client::stop() {
 	playing = false;
 	if (thread.joinable()) {
 		thread.join();
 	}
 	playing_audio_stream.reset();
-	if (const HRESULT result{ client->Reset() }; result != S_OK) {
+	if (const auto result = client->Reset(); result != S_OK) {
 		WARNING("Failed to reset the audio client. Error: " << result);
 	}
 	paused = false;
@@ -195,7 +230,7 @@ void audio_client::upload(unsigned int frames) {
 		WARNING_X(1, "Failed to get buffer. Error: " << result);
 		return;
 	}
-	const auto format{ wave_format_to_audio_data_format(wave_format) };
+	const auto format = wave_format_to_audio_data_format(wave_format);
 	const size_t size{ frames * wave_format->nBlockAlign };
 	const size_t channels{ wave_format->nChannels };
 	playing_audio_stream.stream(format, buffer, size, channels);

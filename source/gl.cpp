@@ -105,13 +105,13 @@ int create_vertex_array(const vertex_specification& specification) {
 	CHECK_GL_ERROR(glGenBuffers(1, &vertex_array.index_buffer.id));
 	bind_vertex_array(id);
 	int vertex_size{ 0 };
-	for (auto& attribute : specification) {
+	for (const auto& attribute : specification) {
 		vertex_size += attribute.components * static_cast<int>(size_of_attribute_component(attribute.type));
 	}
-	char* attribute_pointer = nullptr;
-	for (int i = 0; i < (int)specification.size(); i++) {
-		auto& attribute = specification[i];
-		int normalized = (attribute.normalized ? GL_TRUE : GL_FALSE);
+	char* attribute_pointer{ nullptr };
+	for (int i = 0; i < static_cast<int>(specification.size()); i++) {
+		const auto& attribute = specification[i];
+		const int normalized{ attribute.normalized ? GL_TRUE : GL_FALSE };
 		switch (attribute.type) {
 		case attribute_component::is_float:
 			CHECK_GL_ERROR(glVertexAttribPointer(i, attribute.components, GL_FLOAT, normalized, vertex_size, attribute_pointer));
@@ -138,7 +138,7 @@ void bind_vertex_array(int id) {
 
 void set_vertex_array_vertices(int id, uint8_t* data, size_t size) {
 	ASSERT(data && size > 0);
-	auto& vertex_array{ renderer.vertex_arrays[id] };
+	auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, vertex_array.vertex_buffer.id));
 	if (vertex_array.vertex_buffer.exists && vertex_array.vertex_buffer.allocated >= size) {
 		CHECK_GL_ERROR(glBufferSubData(GL_ARRAY_BUFFER, 0, size, data));
@@ -178,12 +178,12 @@ void set_vertex_array_indices(int id, uint8_t* data, size_t size, size_t element
 }
 
 void draw_vertex_array(int id) {
-	const auto& vertex_array{ renderer.vertex_arrays[id] };
+	const auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, vertex_array.indices, vertex_array.index_type, nullptr));
 }
 
 void draw_vertex_array(int id, size_t offset, int count) {
-	const auto& vertex_array{ renderer.vertex_arrays[id] };
+	const auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, count, vertex_array.index_type, (void*)offset));
 }
 
@@ -191,7 +191,7 @@ void delete_vertex_array(int id) {
 	if (id < 0) {
 		return;
 	}
-	auto& vertex_array{ renderer.vertex_arrays[id] };
+	auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glDeleteVertexArrays(1, &vertex_array.id));
 	CHECK_GL_ERROR(glDeleteBuffers(1, &vertex_array.vertex_buffer.id));
 	CHECK_GL_ERROR(glDeleteBuffers(1, &vertex_array.index_buffer.id));
@@ -199,8 +199,8 @@ void delete_vertex_array(int id) {
 }
 
 int create_texture() {
-	int id = -1;
-	for (size_t i = 0; i < renderer.textures.size(); i++) {
+	int id{ -1 };
+	for (size_t i{ 0 }; i < renderer.textures.size(); i++) {
 		if (renderer.textures[i].id == 0) {
 			id = static_cast<int>(i);
 			break;
@@ -210,7 +210,7 @@ int create_texture() {
 		renderer.textures.emplace_back();
 		id = static_cast<int>(renderer.textures.size()) - 1;
 	}
-	auto& texture{ renderer.textures[id] };
+	auto& texture = renderer.textures[id];
 	CHECK_GL_ERROR(glGenTextures(1, &texture.id));
 	return id;
 }
@@ -253,7 +253,7 @@ void bind_texture(int id, int slot) {
 }
 
 void load_texture(int id, const surface& surface, scale_option scaling, bool mipmap) {
-	auto& texture{ renderer.textures[id] };
+	auto& texture = renderer.textures[id];
 	texture.size = surface.dimensions();
 	const int format{ gl_pixel_format(surface.format()) };
 	bind_texture(id);
@@ -272,7 +272,7 @@ void load_texture(int id, const surface& surface) {
 }
 
 void load_texture_from_screen(int id, int bottom_y, int x, int y, int width, int height) {
-	auto& texture{ renderer.textures[id] };
+	auto& texture = renderer.textures[id];
 	texture.size = { width, height };
 	bind_texture(id);
 	CHECK_GL_ERROR(glCopyTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, x, bottom_y - y - height, width, height, 0));
@@ -284,7 +284,7 @@ vector2i texture_size(int id) {
 
 void delete_texture(int id) {
 	if (id >= 0) {
-		auto& texture{ renderer.textures[id] };
+		auto& texture = renderer.textures[id];
 		CHECK_GL_ERROR(glDeleteTextures(1, &texture.id));
 		texture = {};
 	}
@@ -295,7 +295,7 @@ static int create_shader_script(const std::string& source, unsigned int type) {
 	CHECK_GL_ERROR(const unsigned int id{ glCreateShader(type) });
 	CHECK_GL_ERROR(glShaderSource(id, 1, &source_cstring, 0));
 	CHECK_GL_ERROR(glCompileShader(id));
-#if DEBUG_ENABLED
+#if _DEBUG
 	int length{ 0 };
 	char buffer[1024];
 	CHECK_GL_ERROR(glGetShaderInfoLog(id, 1024, &length, buffer));
@@ -342,7 +342,7 @@ std::vector<std::string> find_vertex_shader_attributes(const std::string& source
 
 int create_shader(const std::string& path) {
 	int id{ -1 };
-	for (size_t i = 0; i < renderer.shaders.size(); i++) {
+	for (size_t i{ 0 }; i < renderer.shaders.size(); i++) {
 		if (renderer.shaders[i].id == 0) {
 			id = static_cast<int>(i);
 			break;
@@ -410,7 +410,7 @@ shader_variable get_shader_variable(const std::string& name) {
 }
 
 void set_shader_model(const glm::mat4& transform) {
-	auto& shader{ renderer.shaders[renderer.bound_shader] };
+	auto& shader = renderer.shaders[renderer.bound_shader];
 	shader.model = transform;
 	const auto model_view_projection{ shader.projection * shader.view * shader.model };
 	CHECK_GL_ERROR(glUniformMatrix4fv(shader.model_view_projection_location, 1, false, glm::value_ptr(model_view_projection)));
@@ -426,10 +426,10 @@ void set_shader_model(const transform3& transform) {
 }
 
 void set_shader_view_projection(const glm::mat4& view, const glm::mat4& projection) {
-	auto& shader{ renderer.shaders[renderer.bound_shader] };
+	auto& shader = renderer.shaders[renderer.bound_shader];
 	shader.view = view;
 	shader.projection = projection;
-	const auto model_view_projection{ shader.projection * shader.view * shader.model };
+	const auto model_view_projection = shader.projection * shader.view * shader.model;
 	CHECK_GL_ERROR(glUniformMatrix4fv(shader.model_view_projection_location, 1, false, glm::value_ptr(model_view_projection)));
 	CHECK_GL_ERROR(glUniformMatrix4fv(shader.view_location, 1, false, glm::value_ptr(shader.view)));
 	CHECK_GL_ERROR(glUniformMatrix4fv(shader.projection_location, 1, false, glm::value_ptr(shader.projection)));
@@ -445,7 +445,7 @@ void set_shader_view_projection(const perspective_camera& camera) {
 
 void delete_shader(int id) {
 	if (id >= 0) {
-		auto& shader{ renderer.shaders[id] };
+		auto& shader = renderer.shaders[id];
 		CHECK_GL_ERROR(glDeleteProgram(shader.id));
 		shader = {};
 	}

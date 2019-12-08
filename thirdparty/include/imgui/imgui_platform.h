@@ -4,7 +4,7 @@ namespace no {
 
 class window;
 
-namespace imgui {
+namespace ui {
 
 void create(window& window);
 void destroy();

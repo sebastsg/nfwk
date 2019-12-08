@@ -24,8 +24,8 @@ std::ostream& operator<<(std::ostream& out, no::debug::message_type message) {
 namespace no::debug {
 
 static std::string current_time_ms_string() {
-	const auto time_since_epoch{ std::chrono::system_clock::now().time_since_epoch() };
-	const auto milliseconds{ std::chrono::duration_cast<std::chrono::milliseconds>(time_since_epoch).count() };
+	const auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
+	const auto milliseconds = std::chrono::duration_cast<std::chrono::milliseconds>(time_since_epoch).count();
 	return std::to_string(milliseconds % 1000);
 }
 
@@ -45,7 +45,7 @@ public:
 	void add(int index, message_type type, const char* file, const char* func, int line) {
 		if (template_buffer.empty()) {
 			template_buffer = file::read(asset_path("debug/template.html"));
-			for (auto& log : html_logs) {
+			for (const auto& log : html_logs) {
 				file::write(log.path, template_buffer);
 			}
 		}
@@ -91,15 +91,15 @@ public:
 private:
 
 	void initialize_html_log(int index) {
-		html_logs[index].path = "_Debug_Log_" + std::to_string(index) + ".html";
+		html_logs[index].path = "debug-log-" + std::to_string(index) + ".html";
 		file::write(html_logs[index].path, template_buffer);
 	}
 
 	void replace_substring(std::string& string, const std::string& substring, const std::string& replace_with) {
-		auto pos{ string.find(substring) };
-		while (pos != std::string::npos) {
-			string.replace(pos, substring.size(), replace_with);
-			pos = string.find(substring, pos + replace_with.size());
+		auto index = string.find(substring);
+		while (index != std::string::npos) {
+			string.replace(index, substring.size(), replace_with);
+			index = string.find(substring, index + replace_with.size());
 		}
 	}
 
@@ -118,7 +118,7 @@ void append(int index, message_type type, const char* file, const char* func, in
 	static logger_state logger;
 	std::lock_guard lock{ logger.mutex };
 #if ENABLE_HTML_LOG
-	if (auto log{ logger.get_html_log(index) }) {
+	if (auto log = logger.get_html_log(index)) {
 		log->temp_buffer = logger.get_html_compatible_string(message);
 		logger.add(index, type, file, func, line);
 	}

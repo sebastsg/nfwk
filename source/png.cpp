@@ -9,7 +9,7 @@
 namespace no {
 
 surface load_png(const std::string& path) {
-	if (!std::filesystem::is_regular_file(path) || std::filesystem::path(path).extension() != ".png") {
+	if (!std::filesystem::is_regular_file(path) || std::filesystem::path{ path }.extension() != ".png") {
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
@@ -69,7 +69,7 @@ surface load_png(const std::string& path) {
 	}
 	png_read_update_info(png, info);
 
-	uint8_t** rows{ new uint8_t* [height] };
+	auto rows = new uint8_t* [height];
 	const size_t row_size{ png_get_rowbytes(png, info) };
 	for (uint32_t y{ 0 }; y < height; y++) {
 		rows[y] = new uint8_t[row_size];
@@ -80,8 +80,8 @@ surface load_png(const std::string& path) {
 
 	uint32_t* pixels = new uint32_t[width * height];
 	for (uint32_t y{ 0 }; y < height; y++) {
-		uint8_t* dest{ (uint8_t*)(pixels + y * width) };
-		memcpy(dest, rows[y], row_size);
+		auto destination = reinterpret_cast<uint8_t*>(pixels + y * width);
+		memcpy(destination, rows[y], row_size);
 		delete[] rows[y];
 	}
 	delete[] rows;

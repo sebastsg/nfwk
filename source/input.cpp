@@ -36,14 +36,10 @@ vector2i mouse::position() const {
 bool mouse::is_button_down(button button) const {
 #if PLATFORM_WINDOWS && ENABLE_WINDOW
 	switch (button) {
-	case button::left:
-		return (GetAsyncKeyState(VK_LBUTTON) & 0b1000000000000000) == 0b1000000000000000;
-	case button::middle:
-		return (GetAsyncKeyState(VK_MBUTTON) & 0b1000000000000000) == 0b1000000000000000;
-	case button::right:
-		return (GetAsyncKeyState(VK_RBUTTON) & 0b1000000000000000) == 0b1000000000000000;
-	default:
-		return false;
+	case button::left: return (GetAsyncKeyState(VK_LBUTTON) & 0b1000000000000000) == 0b1000000000000000;
+	case button::middle: return (GetAsyncKeyState(VK_MBUTTON) & 0b1000000000000000) == 0b1000000000000000;
+	case button::right: return (GetAsyncKeyState(VK_RBUTTON) & 0b1000000000000000) == 0b1000000000000000;
+	default: return false;
 	}
 #endif
 	return false; // todo: implement
@@ -81,32 +77,19 @@ std::ostream& operator<<(std::ostream& out, no::mouse::button button) {
 
 std::ostream& operator<<(std::ostream& out, no::key key) {
 	switch (key) {
-	case no::key::backspace:
-		return out << "Backspace";
-	case no::key::tab:
-		return out << "Tab";
-	case no::key::enter:
-		return out << "Enter";
-	case no::key::pause:
-		return out << "Pause";
-	case no::key::caps_lock:
-		return out << "Caps Lock";
-	case no::key::escape:
-		return out << "Escape";
-	case no::key::space:
-		return out << "Space";
-	case no::key::left:
-		return out << "Left";
-	case no::key::up:
-		return out << "Up";
-	case no::key::right:
-		return out << "Right";
-	case no::key::down:
-		return out << "Down";
-	case no::key::print_screen:
-		return out << "Print Screen";
-	case no::key::del:
-		return out << "Delete";
+	case no::key::backspace: return out << "Backspace";
+	case no::key::tab: return out << "Tab";
+	case no::key::enter: return out << "Enter";
+	case no::key::pause: return out << "Pause";
+	case no::key::caps_lock: return out << "Caps Lock";
+	case no::key::escape: return out << "Escape";
+	case no::key::space: return out << "Space";
+	case no::key::left: return out << "Left";
+	case no::key::up: return out << "Up";
+	case no::key::right: return out << "Right";
+	case no::key::down: return out << "Down";
+	case no::key::print_screen: return out << "Print Screen";
+	case no::key::del: return out << "Delete";
 	case no::key::num_0:
 	case no::key::num_1:
 	case no::key::num_2:
@@ -116,8 +99,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::num_6:
 	case no::key::num_7:
 	case no::key::num_8:
-	case no::key::num_9:
-		return out << static_cast<char>(key);
+	case no::key::num_9: return out << static_cast<char>(key);
 	case no::key::a:
 	case no::key::b:
 	case no::key::c:
@@ -143,8 +125,7 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::w:
 	case no::key::x:
 	case no::key::y:
-	case no::key::z:
-		return out << static_cast<char>(key);
+	case no::key::z: return out << static_cast<char>(key);
 	case no::key::f1:
 	case no::key::f2:
 	case no::key::f3:
@@ -156,22 +137,14 @@ std::ostream& operator<<(std::ostream& out, no::key key) {
 	case no::key::f9:
 	case no::key::f10:
 	case no::key::f11:
-	case no::key::f12:
-		return out << 'F' << static_cast<char>(key) - static_cast<char>(no::key::f1) + 1;
-	case no::key::num_lock:
-		return out << "Num Lock";
-	case no::key::scroll_lock:
-		return out << "Scroll Lock";
-	case no::key::left_shift:
-		return out << "Left Shift";
-	case no::key::right_shift:
-		return out << "Right Shift";
-	case no::key::left_control:
-		return out << "Left Control";
-	case no::key::right_control:
-		return out << "Right Control";
-	default:
-		return out << "Unknown (" << static_cast<char>(key) << ")";
+	case no::key::f12: return out << 'F' << static_cast<char>(key) - static_cast<char>(no::key::f1) + 1;
+	case no::key::num_lock: return out << "Num Lock";
+	case no::key::scroll_lock: return out << "Scroll Lock";
+	case no::key::left_shift: return out << "Left Shift";
+	case no::key::right_shift: return out << "Right Shift";
+	case no::key::left_control: return out << "Left Control";
+	case no::key::right_control: return out << "Right Control";
+	default: return out << "Unknown (" << static_cast<char>(key) << ")";
 	}
 }
 

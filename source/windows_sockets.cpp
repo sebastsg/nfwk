@@ -118,7 +118,7 @@ static void destroy_socket(int id) {
 }
 
 static bool create_socket(int id) {
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	if (socket.handle != INVALID_SOCKET) {
 		return true;
 	}
@@ -132,7 +132,7 @@ static bool create_socket(int id) {
 }
 
 static bool connect_socket(int id) {
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	create_socket(id);
 	if (const int success{ ::connect(socket.handle, (SOCKADDR*)& socket.addr, socket.addr_size) }; success != 0) {
 		WS_PRINT_LAST_ERROR();
@@ -143,7 +143,7 @@ static bool connect_socket(int id) {
 }
 
 static bool connect_socket(int id, const std::string& address, int port) {
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
 		WARNING("Failed to get address info for " << address << ":" << port <<"\nStatus: " << status);
@@ -159,17 +159,17 @@ static bool connect_socket(int id, const std::string& address, int port) {
 }
 
 static bool socket_receive(int id) {
-	auto& socket{ winsock.sockets[id] };
-	auto data{ new iocp_receive_data{} };
+	auto& socket = winsock.sockets[id];
+	auto data = new iocp_receive_data{};
 	socket.io.receive.emplace(data);
 	// unlike regular non-blocking recv(), WSARecv() will complete asynchronously. this can happen before it returns
 	DWORD flags{ 0 };
-	int result = WSARecv(socket.handle, &data->buffer, 1, &data->bytes, &flags, &data->overlapped, nullptr);
+	const int result{ WSARecv(socket.handle, &data->buffer, 1, &data->bytes, &flags, &data->overlapped, nullptr) };
 	if (result == SOCKET_ERROR) {
 		int error = WSAGetLastError();
 		switch (error) {
 		case WSAECONNRESET:
-			socket.sync.disconnect.emplace_and_push(socket_close_status::connection_reset);
+			socket.sync.disconnect.emplace(socket_close_status::connection_reset);
 			return false;
 		case WSAENOTSOCK:
 			WS_PRINT_ERROR(error);
@@ -185,8 +185,8 @@ static bool socket_receive(int id) {
 }
 
 static bool socket_send(int id, const io_stream& packet) {
-	auto& socket{ winsock.sockets[id] };
-	auto data{ new iocp_send_data{} };
+	auto& socket = winsock.sockets[id];
+	auto data = new iocp_send_data{};
 	socket.io.send.emplace(data);
 	data->buffer = { (ULONG)packet.write_index(), packet.data() };
 	// unlike regular non-blocking send(), WSASend() will complete the operation asynchronously,
@@ -196,7 +196,7 @@ static bool socket_send(int id, const io_stream& packet) {
 		const int error{ WSAGetLastError() };
 		switch (error) {
 		case WSAECONNRESET:
-			socket.sync.disconnect.emplace_and_push(socket_close_status::connection_reset);
+			socket.sync.disconnect.emplace(socket_close_status::connection_reset);
 			return false;
 		case WSA_IO_PENDING:
 			return true; // normal error message if the data wasn't sent immediately
@@ -212,7 +212,7 @@ static bool accept_ex(int id) {
 	if (!winsock.AcceptEx) {
 		return false;
 	}
-	auto data{ new iocp_accept_data{} };
+	auto data = new iocp_accept_data{};
 	data->accepted_id = open_socket();
 	create_socket(data->accepted_id);
 	const auto& accepted = winsock.sockets[data->accepted_id];
@@ -255,39 +255,39 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 			// the socket probably disconnected, but that will be handled below
 		}
 		// reference for the macro: https://msdn.microsoft.com/en-us/library/aa447688.aspx
-		auto data{ CONTAINING_RECORD(overlapped, iocp_data<iocp_operation::invalid>, overlapped) };
+		auto data = CONTAINING_RECORD(overlapped, iocp_data<iocp_operation::invalid>, overlapped);
 		if (data->operation == iocp_operation::close) {
 			INFO_X(log, "Leaving thread");
 			return 0;
 		}
 		const int socket_id{ static_cast<int>(completion_key) };
 		std::lock_guard lock{ *winsock.mutexes[socket_id] };
-		auto& socket{ winsock.sockets[socket_id] };
+		auto& socket = winsock.sockets[socket_id];
 
 		if (data->operation == iocp_operation::send) {
 			if (transferred == 0) {
-				socket.sync.disconnect.emplace_and_push(socket_close_status::disconnected_gracefully);
+				socket.sync.disconnect.emplace(socket_close_status::disconnected_gracefully);
 				continue;
 			}
-			auto send_data{ (iocp_send_data*)data };
+			auto send_data = reinterpret_cast<iocp_send_data*>(data);
 			socket.io.send.erase(send_data);
 			delete send_data;
 
 		} else if (data->operation == iocp_operation::receive) {
 			if (transferred == 0) {
-				socket.sync.disconnect.emplace_and_push(socket_close_status::disconnected_gracefully);
+				socket.sync.disconnect.emplace(socket_close_status::disconnected_gracefully);
 				continue;
 			}
-			auto receive_data{ (iocp_receive_data*)data };
+			auto receive_data = reinterpret_cast<iocp_receive_data*>(data);
 			const size_t previous_write{ socket.receive_packetizer.write_index() };
 			socket.receive_packetizer.write(receive_data->buffer.buf, transferred);
 			// queue the stream events. use the packetizer's buffer
 			char* stream_begin{ socket.receive_packetizer.data() + previous_write };
-			socket.sync.stream.emplace_and_push(stream_begin, transferred, io_stream::construct_by::shallow_copy);
+			socket.sync.stream.emplace(io_stream{ stream_begin, transferred, io_stream::construct_by::shallow_copy });
 			// parse buffer and queue packet events
 			while (true) {
 				if (io_stream packet{ socket.receive_packetizer.next() }; !packet.empty()) {
-					socket.sync.packet.emplace_and_push(packet.data(), packet.size_left_to_read(), io_stream::construct_by::shallow_copy);
+					socket.sync.packet.emplace(io_stream{ packet.data(), packet.size_left_to_read(), io_stream::construct_by::shallow_copy });
 				} else {
 					break;
 				}
@@ -297,16 +297,16 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 			socket_receive(socket_id);
 
 		} else if (data->operation == iocp_operation::accept) {
-			auto accept_data{ (iocp_accept_data*)data };
+			auto accept_data = reinterpret_cast<iocp_accept_data*>(data);
 			get_accept_sockaddrs(*accept_data);
-			auto& accepted{ winsock.sockets[accept_data->accepted_id] };
+			auto& accepted = winsock.sockets[accept_data->accepted_id];
 			if (const int status{ update_accept_context(accepted.handle, socket.handle) }; status != NO_ERROR) {
 				WARNING_X(log, "Failed to update context for accepted socket " << accept_data->accepted_id);
 				WS_PRINT_LAST_ERROR_X(log);
 				// todo: should the socket be closed here?
 			}
 			accepted.connected = true;
-			socket.sync.accept.emplace_and_push(accept_data->accepted_id);
+			socket.sync.accept.emplace(accept_data->accepted_id);
 			socket.io.accept.erase(accept_data);
 			delete accept_data;
 			increment_socket_accepts(socket_id);
@@ -366,7 +366,7 @@ void close_socket(int id) {
 
 void synchronize_socket(int id) {
 	std::lock_guard lock{ *winsock.mutexes[id] };
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	if (socket.sync.disconnect.size() > 0) {
 		socket.sync.disconnect.emit(socket.events.disconnect);
 		close_socket(id);
@@ -376,7 +376,7 @@ void synchronize_socket(int id) {
 		socket.sync.stream.emit(socket.events.stream);
 		socket.sync.packet.emit(socket.events.packet);
 		socket.receive_packetizer.clean();
-		for (auto& packet : socket.queued_packets) {
+		for (const auto& packet : socket.queued_packets) {
 			socket_send(id, packet);
 		}
 	}
@@ -403,7 +403,7 @@ void synchronize_sockets() {
 }
 
 bool bind_socket(int id, const std::string& address, int port) {
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
 		WARNING("Failed to get address info for " << address << ":" << port << "\nStatus: " << status);
@@ -424,7 +424,7 @@ bool bind_socket(int id, const std::string& address, int port) {
 }
 
 bool listen_socket(int id) {
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	if (::listen(socket.handle, SOMAXCONN)) {
 		WS_PRINT_LAST_ERROR();
 		return false;
@@ -440,7 +440,7 @@ bool increment_socket_accepts(int id) {
 		return true;
 	}
 	// use regular accept instead
-	auto& socket{ winsock.sockets[id] };
+	auto& socket = winsock.sockets[id];
 	const SOCKET accepted_handle{ ::accept(socket.handle, (SOCKADDR*)& socket.addr, &socket.addr_size) };
 	if (accepted_handle == SOCKET_ERROR) {
 		// if the socket is non-blocking, there probably weren't any connections to be accepted

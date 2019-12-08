@@ -16,18 +16,16 @@ public:
 
 	enum class display_mode { windowed, fullscreen, fullscreen_desktop };
 
-	struct resize_message {
-		vector2i size;
-	};
-
-	event<int> close;
-	event<resize_message> resize;
+	event<> close;
+	event<int, int> resize;
 
 	keyboard keyboard;
 	mouse mouse;
 
-	window(const std::string& title, int width, int height, int samples, bool maximized);
-	window(const std::string& title);
+	window(std::string_view title, int width, int height, int samples);
+	window(std::string_view title, int width, int height);
+	window(std::string_view title, int samples);
+	window(std::string_view title);
 	window(const window&) = delete;
 	window(window&&) noexcept;
 	~window();

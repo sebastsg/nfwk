@@ -15,7 +15,7 @@ struct script_node_register {
 static script_node_register node_register;
 
 static script_node* create_script_node(int type) {
-	auto it{ node_register.constructors.find(type) };
+	auto it = node_register.constructors.find(type);
 	return it != node_register.constructors.end() ? it->second() : nullptr;
 }
 
@@ -23,7 +23,7 @@ void script_node::write(io_stream& stream) {
 	stream.write<int32_t>(id);
 	stream.write(transform);
 	stream.write<int32_t>(static_cast<int32_t>(out.size()));
-	for (auto& j : out) {
+	for (const auto& j : out) {
 		stream.write<int32_t>(j.out_id);
 		stream.write<int32_t>(j.node_id);
 	}
@@ -60,7 +60,7 @@ void script_node::remove_output_type(int out_id) {
 }
 
 int script_node::get_output(int out_id) {
-	for (auto& i : out) {
+	for (const auto& i : out) {
 		if (i.out_id == out_id) {
 			return i.node_id;
 		}
@@ -101,9 +101,9 @@ void script_node::set_output_node(int out_id, int node_id) {
 void script_tree::write(io_stream& stream) const {
 	stream.write<int32_t>(id);
 	stream.write<int32_t>(static_cast<int32_t>(nodes.size()));
-	for (auto& i : nodes) {
-		stream.write<int32_t>(i.second->type());
-		i.second->write(stream);
+	for (const auto& node : nodes) {
+		stream.write<int32_t>(node.second->type());
+		node.second->write(stream);
 	}
 	stream.write<int32_t>(id_counter);
 	stream.write<int32_t>(start_node_id);
@@ -111,7 +111,7 @@ void script_tree::write(io_stream& stream) const {
 
 void script_tree::read(no::io_stream & stream) {
 	id = stream.read<int32_t>();
-	const auto node_count{ stream.read<int32_t>() };
+	const auto node_count = stream.read<int32_t>();
 	for (int32_t i{ 0 }; i < node_count; i++) {
 		const auto type{ stream.read<int32_t>() };
 		auto node{ create_script_node(type) };
@@ -173,20 +173,20 @@ bool script_tree::process_choice_selection() {
 }
 
 void script_tree::prepare_message() {
-	choice_event event;
+	std::vector<node_choice_info> choice_infos;
 	std::vector<int> choices{ process_current_and_get_choices() };
-	for (int choice : choices) {
-		event.choices.push_back({ ((choice_node*)nodes[choice])->text, choice });
+	for (const int choice : choices) {
+		choice_infos.push_back({ static_cast<choice_node*>(nodes[choice])->text, choice });
 	}
-	if (event.choices.empty()) {
-		event.choices.push_back({ "Oops, I encountered a bug. Gotta go!", -1 });
+	if (choice_infos.empty()) {
+		choice_infos.push_back({ "Oops, I encountered a bug. Gotta go!", -1 });
 	}
-	events.choice.emit(event);
+	events.choice.emit(choice_infos);
 }
 
 std::vector<int> script_tree::process_current_and_get_choices() {
 	std::vector<int> choices;
-	for (auto& output : nodes[current_node_id]->out) {
+	for (const auto& output : nodes[current_node_id]->out) {
 		const int out_type{ nodes[output.node_id]->type() };
 		if (out_type == script_node_type::choice) {
 			choices.push_back(output.node_id);
@@ -220,7 +220,7 @@ int script_tree::process_nodes_get_choice(int id, int type) {
 }
 
 int script_tree::process_non_ui_node(int id, int type) {
-	auto node{ nodes[id] };
+	auto node = nodes[id];
 	if (const int out{ node->process() }; out >= 0) {
 		return node->get_output(out);
 	} else {
@@ -265,16 +265,15 @@ int var_condition_node::process() {
 	}
 	std::string value{ comp_value };
 	if (other_type == node_other_var_type::local) {
-		variable* comp_var{ variables->local(scope_id, comp_value) };
-		if (comp_var) {
-			value = comp_var->value;
+		if (const auto* local_variable = variables->local(scope_id, comp_value)) {
+			value = local_variable->value;
 		} else {
 			WARNING("Cannot compare against " << var_name << " because local variable " << comp_value << " does not exist.");
 			return false;
 		}
 	} else if (other_type == node_other_var_type::global) {
-		if (const auto comp_var{ variables->global(comp_value) }) {
-			value = comp_var->value;
+		if (const auto* global_variable = variables->global(comp_value)) {
+			value = global_variable->value;
 		} else {
 			WARNING("Cannot compare against " << var_name << " because global variable " << comp_value << " does not exist.");
 			return false;
@@ -318,16 +317,15 @@ int modify_var_node::process() {
 	}
 	std::string value{ mod_value };
 	if (other_type == node_other_var_type::local) {
-		auto mod_var{ variables->local(scope_id, mod_value) };
-		if (mod_var) {
-			value = mod_var->value;
+		if (const auto* local_variable = variables->local(scope_id, mod_value)) {
+			value = local_variable->value;
 		} else {
 			WARNING("Cannot modify " << var_name << " because the local variable " << mod_value << " does not exist.");
 			return 0;
 		}
 	} else if (other_type == node_other_var_type::global) {
-		if (const auto mod_var{ variables->global(mod_value) }) {
-			value = mod_var->value;
+		if (const auto* global_variable = variables->global(mod_value)) {
+			value = global_variable->value;
 		} else {
 			WARNING("Cannot modify " << var_name << " because the global variable " << mod_value << " does not exist.");
 			return 0;
@@ -358,17 +356,17 @@ void modify_var_node::read(io_stream& stream) {
 int create_var_node::process() {
 	variable_map* variables{ tree->variables };
 	if (is_global) {
-		if (auto old_var{ variables->global(var.name) }) {
+		if (auto old_variable = variables->global(var.name)) {
 			if (overwrite) {
-				*old_var = var;
+				*old_variable = var;
 			}
 			return 0;
 		}
 		variables->create_global(var);
 	} else {
-		if (auto old_var{ variables->local(scope_id, var.name) }) {
+		if (auto old_variable = variables->local(scope_id, var.name)) {
 			if (overwrite) {
-				*old_var = var;
+				*old_variable = var;
 			}
 			return 0;
 		}
@@ -399,9 +397,9 @@ void create_var_node::read(io_stream& stream) {
 
 int var_exists_node::process() {
 	if (is_global) {
-		return tree->variables->global(var_name) != nullptr ? 1 : 0;
+		return tree->variables->global(var_name) ? 1 : 0;
 	} else {
-		return tree->variables->local(scope_id, var_name) != nullptr ? 1 : 0;
+		return tree->variables->local(scope_id, var_name) ? 1 : 0;
 	}
 }
 
@@ -439,7 +437,7 @@ void delete_var_node::read(io_stream& stream) {
 }
 
 int random_node::process() {
-	if (out.size() == 0) {
+	if (out.empty()) {
 		WARNING("No nodes attached.");
 		return -1;
 	}

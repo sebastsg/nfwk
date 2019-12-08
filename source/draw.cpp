@@ -71,9 +71,9 @@ model& model::operator=(model&& that) noexcept {
 }
 
 int model::index_of_animation(const std::string& name) const {
-	for (int i = 0; i < (int)animations.size(); i++) {
+	for (size_t i{ 0 }; i < animations.size(); i++) {
 		if (animations[i].name == name) {
-			return i;
+			return static_cast<int>(i);
 		}
 	}
 	return -1;

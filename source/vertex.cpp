@@ -62,7 +62,7 @@ static glm::mat4 ai_mat4_to_glm_mat4(const aiMatrix4x4& ai_matrix) {
 }
 
 static glm::quat ai_quat_to_glm_quat(const aiQuaternion& ai_quat) {
-	return glm::quat(ai_quat.w, ai_quat.x, ai_quat.y, ai_quat.z);
+	return { ai_quat.w, ai_quat.x, ai_quat.y, ai_quat.z };
 }
 
 class assimp_importer {
@@ -79,7 +79,7 @@ private:
 	void load_node(aiNode* node);
 
 	model_import_options options;
-	aiScene* scene{ nullptr };
+	const aiScene* scene{ nullptr };
 	int node_depth{ 0 };
 
 };
@@ -101,7 +101,7 @@ assimp_importer::assimp_importer(const std::string& input, model_import_options 
 		| aiProcess_OptimizeGraph
 	};
 	Assimp::Importer importer;
-	scene = (aiScene*)importer.ReadFile(input, flags);
+	scene = static_cast<const aiScene*>(importer.ReadFile(input, flags));
 	if (!scene || !scene->mRootNode) {
 		WARNING("No scene. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
 		return;
@@ -131,7 +131,7 @@ void assimp_importer::load_animations() {
 		animation.duration = static_cast<float>(scene->mAnimations[a]->mDuration);
 		animation.ticks_per_second = static_cast<float>(scene->mAnimations[a]->mTicksPerSecond);
 		animation.channels.insert(animation.channels.begin(), model.nodes.size(), {});
-		for (unsigned int c = 0; c < scene->mAnimations[a]->mNumChannels; c++) {
+		for (unsigned int c{ 0 }; c < scene->mAnimations[a]->mNumChannels; c++) {
 			const std::string animation_node_name{ scene->mAnimations[a]->mChannels[c]->mNodeName.C_Str() };
 			animation_channel node;
 			for (int bone_index{ 0 }; bone_index < static_cast<int>(model.bone_names.size()); bone_index++) {
@@ -142,15 +142,15 @@ void assimp_importer::load_animations() {
 			}
 			auto ai_channel = scene->mAnimations[a]->mChannels[c];
 			for (unsigned int p{ 0 }; p < ai_channel->mNumPositionKeys; p++) {
-				const auto& key{ ai_channel->mPositionKeys[p] };
+				const auto& key = ai_channel->mPositionKeys[p];
 				node.positions.emplace_back(static_cast<float>(key.mTime), vector3f{ key.mValue.x, key.mValue.y, key.mValue.z });
 			}
 			for (unsigned int r{ 0 }; r < ai_channel->mNumRotationKeys; r++) {
-				const auto& key{ ai_channel->mRotationKeys[r] };
+				const auto& key = ai_channel->mRotationKeys[r];
 				node.rotations.emplace_back(static_cast<float>(key.mTime), ai_quat_to_glm_quat(key.mValue));
 			}
 			for (unsigned int s{ 0 }; s < ai_channel->mNumScalingKeys; s++) {
-				const auto& key{ ai_channel->mScalingKeys[s] };
+				const auto& key = ai_channel->mScalingKeys[s];
 				node.scales.emplace_back(static_cast<float>(key.mTime), vector3f{ key.mValue.x, key.mValue.y, key.mValue.z });
 			}
 			bool found_node{ false };

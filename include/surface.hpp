@@ -17,7 +17,7 @@ public:
 	surface(int width, int height, pixel_format format, uint32_t color);
 	surface() = default;
 	surface(const surface&) = delete;
-	surface(surface&&);
+	surface(surface&&) noexcept;
 	~surface();
 
 	surface& operator=(const surface&) = delete;

@@ -5,6 +5,7 @@
 #include <functional>
 #include <vector>
 #include <queue>
+#include <unordered_set>
 
 namespace no {
 
@@ -21,7 +22,7 @@ bool is_event_listener(int event_id, int listener_id);
 class event_listener {
 public:
 
-	template<typename T>
+	template<typename... T>
 	friend class event;
 
 	event_listener() = default;
@@ -45,23 +46,25 @@ private:
 
 };
 
-template<typename T>
+template<typename... T>
 class event {
 public:
 
-	using handler_function = std::function<void(const T&)>;
+	using handler_function = std::function<void(T...)>;
 
 	event() {
 		id = internal::add_event();
 	}
 
 	event(const event&) = delete;
-	event(event&& that) : id{ std::move(that.id) }, handlers{ std::move(that.handlers) } {
 
+	event(event&& that) noexcept : id{ std::move(that.id) }, handlers{ std::move(that.handlers) } {
+	
 	}
 
 	event& operator=(const event&) = delete;
-	event& operator=(event&& that) {
+
+	event& operator=(event&& that) noexcept {
 		std::swap(id, that.id);
 		std::swap(handlers, that.handlers);
 		return *this;
@@ -71,11 +74,11 @@ public:
 		internal::remove_event(id);
 	}
 
-	[[nodiscard]] event_listener listen(handler_function&& handler) {
+	[[nodiscard]] event_listener listen(const handler_function& handler) {
 		if (!handler) {
 			return {};
 		}
-		int listener_id{ internal::add_event_listener(id) };
+		const int listener_id{ internal::add_event_listener(id) };
 		for (auto& existing_handler : handlers) {
 			if (existing_handler.first == -1) {
 				existing_handler = { listener_id, handler };
@@ -86,31 +89,39 @@ public:
 		return { id, listener_id };
 	}
 
-	void emit(const T& event) const {
-		for (auto& handler : handlers) {
-			if (internal::is_event_listener(id, handler.first) && handler.second) {
-				handler.second(event);
-			}
-		}
-	}
-
 	template<typename... Args>
 	void emit(Args... args) const {
-		emit(T{ std::forward<Args>(args)... });
+		for (auto& handler : handlers) {
+			if (internal::is_event_listener(id, handler.first) && handler.second) {
+				handler.second(std::forward<T>(args)...);
+			}
+		}
+		for (auto& forward_event : forward_events) {
+			forward_event->emit(std::forward<T>(args)...);
+		}
 	}
 
 	int total_listeners() const {
 		return (int)handlers.size();
 	}
 
+	void start_forwarding_to(event& event) {
+		forward_events.insert(&event);
+	}
+
+	void stop_forwarding_to(event& event) {
+		forward_events.erase(&event);
+	}
+
 private:
 
 	int id{ -1 };
 	std::vector<std::pair<int, handler_function>> handlers;
+	std::unordered_set<event*> forward_events;
 
 };
 
-template<typename T>
+template<typename... T>
 class event_queue {
 public:
 
@@ -118,38 +129,36 @@ public:
 
 	event_queue(const event_queue&) = delete;
 
-	event_queue(event_queue&& that) : messages{ std::move(that.messages) } {
+	event_queue(event_queue&& that) noexcept : messages{ std::move(that.messages) } {
 	
 	}
 
 	event_queue& operator=(const event_queue&) = delete;
 
-	event_queue& operator=(event_queue&& that) {
+	event_queue& operator=(event_queue&& that) noexcept {
 		std::swap(messages, that.messages);
 		return *this;
 	}
 
-	void move_and_push(T&& message) {
-		messages.push(std::move(message));
-	}
-
 	template<typename... Args>
-	void emplace_and_push(Args... args) {
-		messages.emplace(T{ std::forward<Args>(args)... });
+	void emplace(Args... args) {
+		messages.emplace(std::forward<Args>(args)...);
 	}
-
-	void all(const std::function<void(const T&)>& function) {
-		if (function) {
+	
+	void all(const std::function<void(T...)>& handler) {
+		if (handler) {
 			while (!messages.empty()) {
-				function(messages.front());
+				std::apply(handler, messages.front());
 				messages.pop();
 			}
 		}
 	}
 
-	void emit(const event<T>& listener) {
+	void emit(const event<T...>& event_) {
 		while (!messages.empty()) {
-			listener.emit(messages.front());
+			std::apply([&](auto&&... args) {
+				event_.emit(std::forward<T>(args)...);
+			}, messages.front());
 			messages.pop();
 		}
 	}
@@ -160,7 +169,7 @@ public:
 
 private:
 
-	std::queue<T> messages;
+	std::queue<std::tuple<T...>> messages;
 
 };
 

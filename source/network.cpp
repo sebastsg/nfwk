@@ -16,7 +16,7 @@ void packetizer::end(io_stream& stream) {
 	// go back to the beginning and write the size
 	const size_t size{ stream.write_index() - header_size };
 	stream.set_write_index(sizeof(magic_type));
-	stream.write((body_size_type)size);
+	stream.write(static_cast<body_size_type>(size));
 	stream.move_write_index(size);
 }
 
@@ -40,7 +40,7 @@ io_stream packetizer::next() {
 	if (header_size > stream.size_left_to_read()) {
 		return {};
 	}
-	auto body_size{ stream.peek<body_size_type>(sizeof(magic_type)) };
+	auto body_size = stream.peek<body_size_type>(sizeof(magic_type));
 	if (header_size + body_size > stream.size_left_to_read()) {
 		return {};
 	}
@@ -50,7 +50,7 @@ io_stream packetizer::next() {
 		return {};
 	}
 	stream.move_read_index(header_size);
-	auto body_begin{ stream.at_read() };
+	auto body_begin = stream.at_read();
 	stream.move_read_index(body_size);
 	return { body_begin, body_size, io_stream::construct_by::shallow_copy };
 }

@@ -139,7 +139,7 @@ public:
 
 	template<typename Dest, typename Src = Dest>
 	void write_array(const std::vector<Src>& values) {
-		write((int32_t)values.size());
+		write(static_cast<int32_t>(values.size()));
 		for (auto& value : values) {
 			write((Dest)value);
 		}
