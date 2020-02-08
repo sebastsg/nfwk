@@ -2,8 +2,8 @@
 
 #include "io.hpp"
 
-#include <unordered_map>
 #include <functional>
+#include <optional>
 
 namespace no {
 
@@ -21,10 +21,10 @@ enum class variable_modification { set, negate, add, multiply, divide };
 
 struct variable {
 
-	variable_type type = variable_type::string;
+	variable_type type{ variable_type::string };
 	std::string name;
 	std::string value;
-	bool is_persistent = true;
+	bool persistent{ true };
 
 	variable() = default;
 	variable(variable_type type, std::string name, std::string value, bool persistent);
@@ -34,28 +34,44 @@ struct variable {
 
 };
 
-class variable_map {
+class variable_scope {
 public:
 
-	variable* global(const std::string& name);
-	variable* local(int scope_id, const std::string& name);
+	int id() const;
 
-	void create_global(variable var);
-	void create_local(int scope_id, variable var);
-
-	void delete_global(const std::string& name);
-	void delete_local(int scope_id, const std::string& name);
-
-	void for_each_global(const std::function<void(const variable&)>& function) const;
-	void for_each_local(const std::function<void(int, const variable&)>& function) const;
+	variable* find(const std::string& name);
+	void add(variable variable);
+	void remove(const std::string& name);
+	void for_each(const std::function<void(const variable&)>& function) const;
 
 	void write(io_stream& stream) const;
 	void read(io_stream& stream);
 
 private:
 
-	std::vector<variable> globals;
-	std::unordered_map<int, std::vector<variable>> locals;
+	std::vector<variable> variables;
+	int scope_id{ 0 };
+
+};
+
+class variable_registry {
+public:
+
+	variable* find(std::optional<int> scope, const std::string& name);
+	void add(std::optional<int> scope, variable variable);
+	void remove(std::optional<int> scope, const std::string& name);
+	void for_each(std::optional<int> scope, const std::function<void(const variable&)>& function) const;
+
+	void write(io_stream& stream) const;
+	void read(io_stream& stream);
+	
+private:
+
+	variable_scope* find_scope(std::optional<int> scope);
+	const variable_scope* find_scope(std::optional<int> scope) const;
+
+	std::vector<variable_scope> scopes;
+	variable_scope global_scope;
 
 };
 

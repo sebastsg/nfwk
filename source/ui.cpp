@@ -3,8 +3,6 @@
 
 #if ENABLE_GRAPHICS
 
-#include <imgui/imgui.h>
-
 namespace no::ui {
 
 void separate() {
@@ -22,7 +20,7 @@ void text(std::string_view format, ...) {
 	va_end(args);
 }
 
-void colored_text(no::vector3f color, std::string_view format, ...) {
+void colored_text(vector3f color, std::string_view format, ...) {
 	ImGui::PushStyleColor(ImGuiCol_Text, to_rgba(color));
 	va_list args;
 	va_start(args, format);
@@ -31,7 +29,7 @@ void colored_text(no::vector3f color, std::string_view format, ...) {
 	ImGui::PopStyleColor();
 }
 
-void colored_text(no::vector4f color, std::string_view format, ...) {
+void colored_text(vector4f color, std::string_view format, ...) {
 	ImGui::PushStyleColor(ImGuiCol_Text, to_rgba(color));
 	va_list args;
 	va_start(args, format);
@@ -64,7 +62,7 @@ bool input(std::string_view label, std::string& value) {
 	}, &value);
 }
 
-bool input(std::string_view label, std::string& value, no::vector2f box_size) {
+bool input(std::string_view label, std::string& value, vector2f box_size) {
 	const int flags{ ImGuiInputTextFlags_CallbackResize };
 	return ImGui::InputTextMultiline(label.data(), value.data(), value.capacity(), box_size, flags, [](auto data) {
 		if (data->EventFlag == ImGuiInputTextFlags_CallbackResize) {
@@ -140,12 +138,12 @@ bool input(std::string_view label, vector4d& value) {
 	return ImGui::InputScalarN(label.data(), ImGuiDataType_Double, &value.x, 4);
 }
 
-void grid(no::vector2f offset, no::vector2f grid_size, no::vector4f color) {
+void grid(vector2f offset, vector2f grid_size, vector4f color) {
 	auto draw_list = ImGui::GetWindowDrawList();
 	draw_list->ChannelsSplit(2);
 	const ImColor line_color{ color * 255.0f };
-	const no::vector2f win_pos{ ImGui::GetCursorScreenPos() };
-	const no::vector2f canvas_size{ ImGui::GetWindowSize() };
+	const vector2f win_pos{ ImGui::GetCursorScreenPos() };
+	const vector2f canvas_size{ ImGui::GetWindowSize() };
 	for (float x{ std::fmodf(offset.x, grid_size.x) }; x < canvas_size.x; x += grid_size.x) {
 		draw_list->AddLine({ x + win_pos.x, win_pos.y }, { x + win_pos.x, canvas_size.y + win_pos.y }, line_color);
 	}
@@ -153,23 +151,6 @@ void grid(no::vector2f offset, no::vector2f grid_size, no::vector4f color) {
 		draw_list->AddLine({ win_pos.x, y + win_pos.y }, { canvas_size.x + win_pos.x, y + win_pos.y }, line_color);
 	}
 	draw_list->ChannelsSetCurrent(0);
-}
-
-std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected) {
-	if (selected >= static_cast<int>(values.size())) {
-		return {};
-	}
-	std::optional<int> clicked;
-	if (ImGui::BeginCombo(label.data(), values[selected].c_str())) {
-		for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
-			if (ImGui::Selectable(values[i].c_str())) {
-				clicked = i;
-				break;
-			}
-		}
-		ImGui::EndCombo();
-	}
-	return clicked;
 }
 
 std::optional<int> popup(std::string_view id, const get_popup_item& get_item) {
@@ -193,6 +174,22 @@ std::optional<int> popup(std::string_view id, const get_popup_item& get_item) {
 		ImGui::EndPopup();
 	}
 	return clicked;
+}
+
+void push_static_window(std::string_view label, vector2f position, vector2f size) {
+	const ImGuiWindowFlags flags{
+		  ImGuiWindowFlags_NoMove
+		| ImGuiWindowFlags_NoResize
+		| ImGuiWindowFlags_NoCollapse
+		| ImGuiWindowFlags_NoTitleBar
+	};
+	ImGui::SetNextWindowPos(position, ImGuiSetCond_Once);
+	ImGui::SetNextWindowSize(size, ImGuiSetCond_Always);
+	ImGui::Begin(label.data(), nullptr, flags);
+}
+
+void pop_window() {
+	ImGui::End();
 }
 
 }

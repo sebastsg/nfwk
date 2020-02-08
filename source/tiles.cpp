@@ -17,6 +17,19 @@ struct {
 	int tileset_texture{ 0 };
 } level;
 
+tile::tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right)
+	: top_left{ top_left }, top_right{ top_right }, bottom_left{ bottom_left }, bottom_right{ bottom_right } {
+
+}
+
+tile::tile(unsigned char type) : top_left{ type }, top_right{ type }, bottom_left{ type }, bottom_right{ type } {
+
+}
+
+bool tile::is_only(unsigned char type) const {
+	return top_left == type && top_right == type && bottom_left == type && bottom_right == type;
+}
+
 chunk::chunk(int x, int y, int tiles_per_axis, vector2i grid, tiles::layer* layer)
 	: chunk_index{ x, y }, tiles_per_axis{ tiles_per_axis }, grid{ grid }, layer{ layer } {
 	tile_index = chunk_index * tiles_per_axis;
@@ -103,12 +116,12 @@ chunk* chunk::get_relative_chunk(int tile_x, int tile_y) {
 	if (auto next = layer->get_tile_chunk(i, j)) {
 		return next->get_relative_chunk(tile_x, tile_y);
 	} else {
-		return {};
+		return nullptr;
 	}
 }
 
 vector2i chunk::global_to_local_tile_index(int tile_x, int tile_y) const {
-	return vector2i{ tile_x, tile_y } -get_tile_index();
+	return vector2i{ tile_x, tile_y } - get_tile_index();
 }
 
 vector2i chunk::get_tile_index() const {
@@ -399,6 +412,62 @@ void bordered_renderer::register_subtile(int type, location location, int x, int
 	};
 }
 
+autotile_renderer::autotile_renderer(vector2i size, int tileset_texture) : tile_size{ size } {
+	
+}
+
+void autotile_renderer::render_area(layer& layer, int x, int y, int width, int height) {
+	
+}
+
+void autotile_renderer::render_chunk(layer& layer, chunk& chunk) {
+
+}
+
+vector2i autotile_renderer::get_uv(const tile& tile) const {
+	if (const auto it = uv.find(tile.value); it != uv.end()) {
+		return it->second * tile_size;
+	} else {
+		return 0;
+	}
+}
+
+void autotile_renderer::load_main_tiles(int count) {
+	for (unsigned char i{ 0 }; i < count; i++) {
+		const tile tile{ i };
+		uv[tile.value] = { i, 0 };
+	}
+}
+
+void autotile_renderer::load_tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right, int x, int y) {
+	uv[tile{ top_left, top_right, bottom_left, bottom_right }.value] = { x, y };
+}
+
+void autotile_renderer::load_group(int primary, int sub, int x, int y) {
+	load_tile(primary, primary, primary, sub, x, y);
+	load_tile(primary, primary, sub, sub, x + 1, y);
+	load_tile(primary, primary, sub, primary, x + 2, y);
+	load_tile(primary, sub, primary, primary, x, y + 1);
+	load_tile(sub, sub, primary, primary, x + 1, y + 1);
+	load_tile(sub, primary, primary, primary, x + 2, y + 1);
+	y += 2;
+	load_tile(sub, sub, sub, primary, x, y);
+	load_tile(sub, sub, primary, primary, x + 1, y);
+	load_tile(sub, sub, primary, sub, x + 2, y);
+	load_tile(sub, primary, sub, sub, x, y + 1);
+	load_tile(primary, primary, sub, sub, x + 1, y + 1);
+	load_tile(primary, sub, sub, sub, x + 2, y + 1);
+	y += 2;
+	load_tile(sub, primary, primary, sub, x, y);
+	load_tile(primary, sub, primary, sub, x + 2, y);
+	load_tile(primary, sub, sub, primary, x, y + 1);
+	load_tile(sub, primary, sub, primary, x + 2, y + 1);
+}
+
+vector2i tile_index_from_mouse(const mouse& mouse, const ortho_camera& camera) {
+	return level.active_layer->position_to_tile_index(camera.mouse_position(mouse));
+}
+
 void create(int tileset_texture, int total_tile_types) {
 	level.total_tile_types = total_tile_types;
 	level.tileset_texture = tileset_texture;
@@ -421,6 +490,8 @@ void make_layer(int depth, int chunk_tiles_per_axis, vector2i grid, renderer::me
 	auto layer = level.layers.emplace_back(std::make_shared<tiles::layer>(depth, chunk_tiles_per_axis, grid, method));
 	if (method == renderer::method::bordered) {
 		layer->set_renderer(std::make_unique<bordered_renderer>(level.total_tile_types, grid.x, level.tileset_texture));
+	} else if (method == renderer::method::autotile) {
+		layer->set_renderer(std::make_unique<autotile_renderer>(grid, level.tileset_texture));
 	} else {
 		CRITICAL("Invalid render method.");
 	}

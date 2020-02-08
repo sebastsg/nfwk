@@ -6,10 +6,12 @@
 
 #include <array>
 #include <optional>
+#include <unordered_map>
 
 namespace no {
 class ortho_camera;
 class io_stream;
+class mouse;
 }
 
 namespace no::tiles {
@@ -24,6 +26,28 @@ struct tile_vertex {
 	static constexpr vertex_attribute_specification attributes[]{ 2, 2 };
 	vector2f position;
 	vector2f tex_coords;
+};
+
+class tile {
+public:
+
+	union {
+		int value{};
+		unsigned char corner[4];
+		struct {
+			unsigned char top_left;
+			unsigned char top_right;
+			unsigned char bottom_left;
+			unsigned char bottom_right;
+		};
+	};
+	
+	tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right);
+	tile(unsigned char type);
+	tile() = default;
+
+	bool is_only(unsigned char type) const;
+
 };
 
 class chunk {
@@ -151,6 +175,7 @@ private:
 
 };
 
+// todo: bordered renderer still has bugs.
 class bordered_renderer : public renderer {
 public:
 
@@ -173,6 +198,29 @@ private:
 	vector2f y_size;
 
 };
+
+class autotile_renderer : public renderer {
+public:
+
+	autotile_renderer(vector2i size, int tileset_texture);
+
+	void render_area(layer& layer, int x, int y, int width, int height) override;
+	void render_chunk(layer& layer, chunk& chunk) override;
+
+	void load_main_tiles(int count);
+	void load_group(int primary, int sub, int x, int y);
+
+private:
+
+	std::unordered_map<unsigned int, vector2i> uv;
+	vector2i tile_size;
+
+	vector2i get_uv(const tile& tile) const;
+	void load_tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right, int x, int y);
+
+};
+
+vector2i tile_index_from_mouse(const mouse& mouse, const ortho_camera& camera);
 
 void create(int tileset_texture, int total_tile_types);
 void destroy();

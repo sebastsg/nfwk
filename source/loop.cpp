@@ -1,4 +1,5 @@
 #include "loop.hpp"
+#include "script.hpp"
 
 #if ENABLE_WINDOW
 #include "window.hpp"
@@ -266,6 +267,8 @@ void create_state(const std::string& title, const make_state_function& make_stat
 int run_main_loop() {
 	configure();
 	loop.post_configure.emit();
+
+	initialize_scripts();
 
 #if ENABLE_WASAPI
 	loop.audio = new wasapi::audio_device{};
