@@ -58,7 +58,7 @@ vector2f ortho_camera::mouse_position(const mouse& mouse) const {
 }
 
 glm::mat4 ortho_camera::rotation() const {
-	return glm::rotate(glm::mat4(1.0f), transform.rotation, glm::vec3(0.0f, 0.0f, 1.0f));
+	return glm::rotate(glm::mat4{ 1.0f }, transform.rotation, glm::vec3{ 0.0f, 0.0f, 1.0f });
 }
 
 glm::mat4 ortho_camera::projection() const {
@@ -69,7 +69,7 @@ glm::mat4 ortho_camera::view() const {
 	vector2f rounded_position{ transform.position };
 	rounded_position.ceil();
 	const glm::vec3 negated_position{ -rounded_position.x, -rounded_position.y, -1.0f };
-	const glm::mat4 matrix{ rotation() * glm::translate(glm::mat4(1.0f), negated_position) };
+	const glm::mat4 matrix{ rotation() * glm::translate(glm::mat4{ 1.0f }, negated_position) };
 	return glm::scale(matrix, { zoom, zoom, zoom });
 }
 

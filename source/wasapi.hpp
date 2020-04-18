@@ -12,6 +12,7 @@ struct IAudioClient;
 struct IAudioRenderClient;
 struct IAudioSessionManager;
 struct ISimpleAudioVolume;
+struct IAudioClockAdjustment;
 struct tWAVEFORMATEX;
 using WAVEFORMATEX = tWAVEFORMATEX;
 
@@ -59,6 +60,7 @@ private:
 	IAudioRenderClient* render_client{ nullptr };
 	IAudioSessionManager* session_manager{ nullptr };
 	ISimpleAudioVolume* audio_volume{ nullptr };
+	IAudioClockAdjustment* clock_adjustment{ nullptr };
 	long long default_device_period{ 0 };
 	unsigned int buffer_frame_count{ 0 };
 	WAVEFORMATEX* wave_format{ nullptr };

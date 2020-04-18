@@ -18,6 +18,7 @@ public:
 	size_t size() const override;
 	pcm_format format() const override;
 	const io_stream& stream() const override;
+	int sample_rate() const override;
 
 private:
 

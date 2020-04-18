@@ -1,5 +1,6 @@
 #pragma once
 
+#include <ostream>
 #include <cstdint>
 #include <cstddef>
 
@@ -17,6 +18,7 @@ public:
 	virtual size_t size() const = 0;
 	virtual pcm_format format() const = 0;
 	virtual const io_stream& stream() const = 0;
+	virtual int sample_rate() const = 0;
 
 };
 
@@ -30,6 +32,7 @@ public:
 	void reset();
 	void stream(pcm_format format, uint8_t* destination, size_t size, size_t channels);
 	void stream(float* destination, size_t count, size_t channels);
+	int sample_rate() const;
 
 private:
 
@@ -70,3 +73,5 @@ public:
 };
 
 }
+
+std::ostream& operator<<(std::ostream& out, no::pcm_format format);

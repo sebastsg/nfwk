@@ -25,7 +25,7 @@ void register_asset(const std::string& name, const load_asset_func& load, const 
 
 template<typename T>
 T require_asset(const std::string& name) {
-	return (T)internal::require_asset(name);
+	return reinterpret_cast<T>(internal::require_asset(name));
 }
 
 void release_asset(const std::string& name);

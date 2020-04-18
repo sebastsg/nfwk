@@ -12,9 +12,7 @@
 #include <Audioclient.h>
 #include <audiopolicy.h>
 
-namespace no {
-
-namespace wasapi {
+namespace no::wasapi {
 
 namespace device_enumerator {
 
@@ -85,7 +83,8 @@ audio_client::audio_client(IMMDevice* device) : playing_audio_stream{ nullptr } 
 		WARNING("Failed to get device period. Error : " << result);
 		return;
 	}
-	if (const auto result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, 0, default_device_period, 0, wave_format, nullptr); result != S_OK) {
+	const DWORD stream_flags{ AUDCLNT_STREAMFLAGS_RATEADJUST /*| AUDCLNT_STREAMFLAGS_EVENTCALLBACK*/ };
+	if (const auto result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, stream_flags, default_device_period, 0, wave_format, nullptr); result != S_OK) {
 		WARNING("Failed to initialize the audio client. Error: " << result);
 		return;
 	}
@@ -96,6 +95,9 @@ audio_client::audio_client(IMMDevice* device) : playing_audio_stream{ nullptr } 
 	if (const auto result = client->GetService(__uuidof(IAudioRenderClient), (void**)&render_client); result != S_OK) {
 		WARNING("Failed to get audio render client. Error: " << result);
 		return;
+	}
+	if (const auto result = client->GetService(__uuidof(IAudioClockAdjustment), (void**)&clock_adjustment); result != S_OK) {
+		WARNING("Failed to get audio clock adjustment. Audio might play at wrong rate. Error: " << result);
 	}
 	INFO("-- [b]WASAPI Audio Client[/b] --"
 		 << "\n[b]Device Period:[/b] " << default_device_period
@@ -112,6 +114,12 @@ audio_client::~audio_client() {
 	if (render_client) {
 		render_client->Release();
 	}
+	if (audio_volume) {
+		audio_volume->Release();
+	}
+	if (clock_adjustment) {
+		clock_adjustment->Release();
+	}
 }
 
 void audio_client::stream() {
@@ -124,6 +132,8 @@ void audio_client::stream() {
 		WARNING_X(1, "Failed to play audio. Error: " << result);
 		return;
 	}
+	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
+	clock_adjustment->SetSampleRate(static_cast<float>(playing_audio_stream.sample_rate()));
 	const int one_millisecond{ 10000 };
 	const int sleep_period_ms{ static_cast<int>(default_device_period) / one_millisecond / 2 };
 	bool has_been_stopped{ false };
@@ -273,8 +283,6 @@ void audio_device::clear_players() {
 		delete player;
 	}
 	players.clear();
-}
-
 }
 
 }

@@ -41,7 +41,7 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 	frequency = info->rate;
 	INFO("Ogg file info:" << "\nChannels: " << info->channels << "\nFrequency: " << info->rate);
 
-	char buffer[4192];
+	char buffer[8192];
 	int bit_stream{ 0 };
 	while (true) {
 		if (const auto bytes = ov_read(&file, buffer, sizeof(buffer), 0, 2, 1, &bit_stream); bytes > 0) {
@@ -50,10 +50,11 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 			break;
 		}
 	}
+	ov_clear(&file);
 }
 
 ogg_vorbis_audio_source::~ogg_vorbis_audio_source() {
-	ov_clear(&file);
+	//ov_clear(&file);
 }
 
 size_t ogg_vorbis_audio_source::size() const {
@@ -66,6 +67,10 @@ pcm_format ogg_vorbis_audio_source::format() const {
 
 const io_stream& ogg_vorbis_audio_source::stream() const {
 	return pcm_stream;
+}
+
+int ogg_vorbis_audio_source::sample_rate() const {
+	return frequency;
 }
 
 }
