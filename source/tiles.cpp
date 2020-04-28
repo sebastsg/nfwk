@@ -41,7 +41,7 @@ void chunk::write(io_stream& stream) const {
 	stream.write(tile_index);
 	stream.write(static_cast<int16_t>(tiles_per_axis));
 	stream.write(grid);
-	stream.write_array<int32_t, int>(tiles);
+	//stream.write_array<int32_t, tile>(tiles);
 	stream.write<int8_t>(rendered ? 1 : 0);
 	if (rendered) {
 		stream.write(static_cast<int32_t>(rendered->tiles.size()));
@@ -61,7 +61,7 @@ void chunk::read(io_stream& stream) {
 	tile_index = stream.read<vector2i>();
 	tiles_per_axis = static_cast<int>(stream.read<int16_t>());
 	grid = stream.read<vector2i>();
-	tiles = stream.read_array<int, int32_t>();
+	//tiles = stream.read_array<tile, int32_t>();
 	const bool has_render_data{ stream.read<int8_t>() != 0 };
 	if (has_render_data) {
 		rendered = std::make_unique<rendered_chunk>();
@@ -83,12 +83,12 @@ bool chunk::is_at(int x, int y) const {
 	return chunk_index.x == x && chunk_index.y == y;
 }
 
-int chunk::get_tile(int tile_x, int tile_y) const {
+tile chunk::get_tile(int tile_x, int tile_y) const {
 	return tiles[global_to_reduced_local_tile_index(tile_x, tile_y)];
 }
 
-void chunk::set_tile(int tile_x, int tile_y, int tile) {
-	tiles[global_to_reduced_local_tile_index(tile_x, tile_y)] = tile;
+void chunk::set_tile(int tile_x, int tile_y, tile new_tile) {
+	tiles[global_to_reduced_local_tile_index(tile_x, tile_y)] = new_tile;
 	dirty = true;
 }
 
@@ -184,8 +184,8 @@ void layer::view(const ortho_camera& camera) {
 	}
 	const auto [x1, y1] = position_to_chunk_index(camera.position());
 	const auto [x2, y2] = position_to_chunk_index(camera.size()) + vector2i{ x1, y1 };
-	for (int x{ x1 }; x <= x2; x++) {
-		for (int y{ y1 }; y <= y2; y++) {
+	for (int x{ x1 - 1 }; x <= x2 + 1; x++) {
+		for (int y{ y1 - 1 }; y <= y2 + 1; y++) {
 			if (auto chunk = get_tile_chunk(x, y)) {
 				chunk->visible = true;
 				continue;
@@ -241,19 +241,69 @@ chunk* layer::find_chunk(vector2f position) {
 	}
 }
 
-int layer::get(int x, int y) {
+std::optional<tile> layer::get(int x, int y) {
 	const auto [chunk_x, chunk_y] = tile_index_to_chunk_index(x, y);
 	if (const auto* chunk = get_tile_chunk(chunk_x, chunk_y)) {
 		return chunk->get_tile(x, y);
 	} else {
-		return 0;
+		return std::nullopt;
 	}
 }
 
-void layer::set(int x, int y, int tile) {
+chunk* layer::get_tile_chunk_on_tile(int x, int y) {
 	const auto [chunk_x, chunk_y] = tile_index_to_chunk_index(x, y);
-	if (auto chunk = get_tile_chunk(chunk_x, chunk_y)) {
-		chunk->set_tile(x, y, tile);
+	return get_tile_chunk(chunk_x, chunk_y);
+}
+
+void layer::set(int x, int y, unsigned char type) {
+	if (auto chunk = get_tile_chunk_on_tile(x, y)) {
+		chunk->set_tile(x, y, tile{ type });
+		if (autotile_neighbours) {
+			if (auto neighbour = get_tile_chunk_on_tile(x - 1, y - 1)) {
+				auto old_tile = neighbour->get_tile(x - 1, y - 1);
+				old_tile.bottom_right = type;
+				neighbour->set_tile(x - 1, y - 1, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x, y - 1)) {
+				auto old_tile = neighbour->get_tile(x, y - 1);
+				old_tile.bottom_left = type;
+				old_tile.bottom_right = type;
+				neighbour->set_tile(x, y - 1, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x + 1, y - 1)) {
+				auto old_tile = neighbour->get_tile(x + 1, y - 1);
+				old_tile.bottom_left = type;
+				neighbour->set_tile(x + 1, y - 1, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x - 1, y)) {
+				auto old_tile = neighbour->get_tile(x - 1, y);
+				old_tile.top_right = type;
+				old_tile.bottom_right = type;
+				neighbour->set_tile(x - 1, y, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x + 1, y)) {
+				auto old_tile = neighbour->get_tile(x + 1, y);
+				old_tile.top_left = type;
+				old_tile.bottom_left = type;
+				neighbour->set_tile(x + 1, y, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x - 1, y + 1)) {
+				auto old_tile = neighbour->get_tile(x - 1, y + 1);
+				old_tile.top_right = type;
+				neighbour->set_tile(x - 1, y + 1, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x, y + 1)) {
+				auto old_tile = neighbour->get_tile(x, y + 1);
+				old_tile.top_left = type;
+				old_tile.top_right = type;
+				neighbour->set_tile(x, y + 1, old_tile);
+			}
+			if (auto neighbour = get_tile_chunk_on_tile(x + 1, y + 1)) {
+				auto old_tile = neighbour->get_tile(x + 1, y + 1);
+				old_tile.top_left = type;
+				neighbour->set_tile(x + 1, y + 1, old_tile);
+			}
+		}
 		dirty = true;
 	}
 }
@@ -349,12 +399,12 @@ void bordered_renderer::render_area(layer& layer, int start_x, int start_y, int 
 		for (int y{ start_y }; y < start_y + height; y++) {
 			const vector2f position{ layer.tile_index_to_position(x, y) };
 			clear_tile(layer, position);
-			if (const int middle{ layer.get(x, y) }; middle != 0) {
-				const int left{ layer.get(x - 1, y) };
-				const int right{ layer.get(x + 1, y) };
-				const int top{ layer.get(x, y - 1) };
-				const int bottom{ layer.get(x, y + 1) };
-				render_bordered_tile(layer, position, middle, left, right, top, bottom);
+			if (const auto middle = layer.get(x, y)) {
+				const auto left = layer.get(x - 1, y)->value;
+				const auto right = layer.get(x + 1, y)->value;
+				const auto top = layer.get(x, y - 1)->value;
+				const auto bottom = layer.get(x, y + 1)->value;
+				render_bordered_tile(layer, position, middle->value, left, right, top, bottom);
 			}
 		}
 	}
@@ -370,12 +420,12 @@ void bordered_renderer::render_chunk(layer& layer, chunk& chunk) {
 	render_area(layer, start_x, start_y + tiles_per_axis - 1, tiles_per_axis, 1);
 	for (int x{ start_x + 1}; x < start_x + tiles_per_axis - 1; x++) {
 		for (int y{ start_y + 1 }; y < start_y + tiles_per_axis - 1; y++) {
-			if (const int middle{ chunk.get_tile(x, y) }; middle != 0) {
-				const int left{ chunk.get_tile(x - 1, y) };
-				const int right{ chunk.get_tile(x + 1, y) };
-				const int top{ chunk.get_tile(x, y - 1) };
-				const int bottom{ chunk.get_tile(x, y + 1) };
-				render_bordered_tile(layer, layer.tile_index_to_position(x, y), middle, left, right, top, bottom);
+			if (const auto middle = chunk.get_tile(x, y); middle.value != 0) {
+				const auto left{ chunk.get_tile(x - 1, y).value };
+				const auto right{ chunk.get_tile(x + 1, y).value };
+				const auto top{ chunk.get_tile(x, y - 1).value };
+				const auto bottom{ chunk.get_tile(x, y + 1).value };
+				render_bordered_tile(layer, layer.tile_index_to_position(x, y), middle.value, left, right, top, bottom);
 			}
 		}
 	}
@@ -412,35 +462,66 @@ void bordered_renderer::register_subtile(int type, location location, int x, int
 	};
 }
 
-autotile_renderer::autotile_renderer(vector2i size, int tileset_texture) : tile_size{ size } {
-	
+autotile_renderer::autotile_renderer(vector2i size, int types, int tileset_texture) : tile_size{ size } {
+	tileset_size = texture_size(tileset_texture).to<float>();
+	load_main_tiles(types);
 }
 
-void autotile_renderer::render_area(layer& layer, int x, int y, int width, int height) {
-	
+void autotile_renderer::render_area(layer& layer, int start_x, int start_y, int width, int height) {
+	for (int x{ start_x }; x < start_x + width; x++) {
+		for (int y{ start_y }; y < start_y + height; y++) {
+			const vector2f position{ layer.tile_index_to_position(x, y) };
+			clear_tile(layer, position);
+			if (const auto current = layer.get(x, y)) {
+				vector4i current_uv_i{ uv[current->value].x, uv[current->value].y, tile_size.x, tile_size.y };
+				current_uv_i.z += current_uv_i.x;
+				current_uv_i.w += current_uv_i.y;
+				const vector4f current_uv{ current_uv_i.to<float>() / tileset_size.x };
+				const auto [chunk_x, chunk_y] = layer.position_to_chunk_index(position);
+				auto& chunk = *layer.get_tile_chunk(chunk_x, chunk_y);
+				render_tile(std::nullopt, layer, chunk, position, tile_size.to<float>(), current_uv);
+			}
+		}
+	}
 }
 
 void autotile_renderer::render_chunk(layer& layer, chunk& chunk) {
-
+	chunk.rendered = std::make_unique<chunk::rendered_chunk>();
+	const auto [start_x, start_y] = chunk.get_tile_index();
+	const int tiles_per_axis{ layer.tiles_per_axis_in_chunk() };
+	render_area(layer, start_x, start_y, tiles_per_axis, 1);
+	render_area(layer, start_x, start_y, 1, tiles_per_axis);
+	render_area(layer, start_x + tiles_per_axis - 1, start_y, 1, tiles_per_axis);
+	render_area(layer, start_x, start_y + tiles_per_axis - 1, tiles_per_axis, 1);
+	for (int x{ start_x + 1 }; x < start_x + tiles_per_axis - 1; x++) {
+		for (int y{ start_y + 1 }; y < start_y + tiles_per_axis - 1; y++) {
+			if (const tile current{ chunk.get_tile(x, y) }; current.value != 0) {
+				vector4i current_uv_i{ uv[current.value].x, uv[current.value].y, tile_size.x, tile_size.y };
+				current_uv_i.z += current_uv_i.x;
+				current_uv_i.w += current_uv_i.y;
+				const vector4f current_uv{ current_uv_i.to<float>() / tileset_size.x };
+				render_tile(std::nullopt, layer, chunk, layer.tile_index_to_position(x, y), tile_size.to<float>(), current_uv);
+			}
+		}
+	}
 }
 
-vector2i autotile_renderer::get_uv(const tile& tile) const {
+std::optional<vector2i> autotile_renderer::find_uv(const tile& tile) const {
 	if (const auto it = uv.find(tile.value); it != uv.end()) {
-		return it->second * tile_size;
+		return it->second;
 	} else {
-		return 0;
+		return std::nullopt;
 	}
 }
 
 void autotile_renderer::load_main_tiles(int count) {
 	for (unsigned char i{ 0 }; i < count; i++) {
-		const tile tile{ i };
-		uv[tile.value] = { i, 0 };
+		uv[tile{ static_cast<unsigned char>(i + 1) }.value] = { i, 0 };
 	}
 }
 
 void autotile_renderer::load_tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right, int x, int y) {
-	uv[tile{ top_left, top_right, bottom_left, bottom_right }.value] = { x, y };
+	uv[tile{ top_left, top_right, bottom_left, bottom_right }.value] = { x * tile_size.x, y * tile_size.y };
 }
 
 void autotile_renderer::load_group(int primary, int sub, int x, int y) {
@@ -452,10 +533,10 @@ void autotile_renderer::load_group(int primary, int sub, int x, int y) {
 	load_tile(sub, primary, primary, primary, x + 2, y + 1);
 	y += 2;
 	load_tile(sub, sub, sub, primary, x, y);
-	load_tile(sub, sub, primary, primary, x + 1, y);
+	//load_tile(sub, sub, primary, primary, x + 1, y);
 	load_tile(sub, sub, primary, sub, x + 2, y);
 	load_tile(sub, primary, sub, sub, x, y + 1);
-	load_tile(primary, primary, sub, sub, x + 1, y + 1);
+	//load_tile(primary, primary, sub, sub, x + 1, y + 1);
 	load_tile(primary, sub, sub, sub, x + 2, y + 1);
 	y += 2;
 	load_tile(sub, primary, primary, sub, x, y);
@@ -469,8 +550,8 @@ vector2i tile_index_from_mouse(const mouse& mouse, const ortho_camera& camera) {
 }
 
 void create(int tileset_texture, int total_tile_types) {
-	level.total_tile_types = total_tile_types;
 	level.tileset_texture = tileset_texture;
+	level.total_tile_types = total_tile_types;
 }
 
 void destroy() {
@@ -491,7 +572,7 @@ void make_layer(int depth, int chunk_tiles_per_axis, vector2i grid, renderer::me
 	if (method == renderer::method::bordered) {
 		layer->set_renderer(std::make_unique<bordered_renderer>(level.total_tile_types, grid.x, level.tileset_texture));
 	} else if (method == renderer::method::autotile) {
-		layer->set_renderer(std::make_unique<autotile_renderer>(grid, level.tileset_texture));
+		layer->set_renderer(std::make_unique<autotile_renderer>(grid, level.total_tile_types, level.tileset_texture));
 	} else {
 		CRITICAL("Invalid render method.");
 	}
@@ -536,12 +617,12 @@ std::shared_ptr<layer> find_layer(int depth) {
 	return nullptr;
 }
 
-int get(int x, int y) {
+std::optional<tile> get(int x, int y) {
 	return level.active_layer->get(x, y);
 }
 
-void set(int x, int y, int tile) {
-	level.active_layer->set(x, y, tile);
+void set(int x, int y, unsigned char type) {
+	level.active_layer->set(x, y, type);
 }
 
 void draw() {

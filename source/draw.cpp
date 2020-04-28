@@ -221,6 +221,10 @@ void sprite_animation::set_tex_coords(vector2f position, vector2f size) {
 	rectangle.set_tex_coords(uv_position.x + frame_width * static_cast<float>(current_frame), uv_position.y, frame_width, uv_size.y);
 }
 
+void sprite_animation::set_tex_coords(vector4f tex_coords) {
+	set_tex_coords(tex_coords.xy, tex_coords.zw);
+}
+
 void sprite_animation::start_looping() {
 	looping = true;
 	done = false;

@@ -83,8 +83,8 @@ public:
 	void read(io_stream& stream);
 
 	bool is_at(int x, int y) const;
-	int get_tile(int x, int y) const;
-	void set_tile(int x, int y, int tile);
+	tile get_tile(int x, int y) const;
+	void set_tile(int x, int y, tile new_tile);
 	chunk* get_relative_chunk(int x, int y);
 	vector2i global_to_local_tile_index(int x, int y) const;
 	vector2i get_tile_index() const;
@@ -95,7 +95,7 @@ private:
 
 	int global_to_reduced_local_tile_index(int x, int y) const;
 
-	std::vector<int> tiles;
+	std::vector<tile> tiles;
 	layer* layer{ nullptr };
 	vector2i chunk_index;
 	vector2i tile_index;
@@ -130,6 +130,8 @@ protected:
 class layer {
 public:
 
+	bool autotile_neighbours{ true };
+
 	struct {
 		event<int, int, int, int, int> load_area;
 	} events;
@@ -157,13 +159,18 @@ public:
 
 	chunk& create_tile_chunk(int x, int y);
 	chunk* get_tile_chunk(int x, int y);
+	chunk* get_tile_chunk_on_tile(int x, int y);
 	chunk* find_chunk(vector2f position);
 
-	int get(int x, int y);
-	void set(int x, int y, int tile);
+	std::optional<tile> get(int x, int y);
+	void set(int x, int y, unsigned char tile);
 
 	void set_renderer(std::unique_ptr<renderer> renderer);
 	int tiles_per_axis_in_chunk() const;
+
+	renderer& get_renderer() {
+		return *renderer;
+	}
 
 private:
 
@@ -202,7 +209,7 @@ private:
 class autotile_renderer : public renderer {
 public:
 
-	autotile_renderer(vector2i size, int tileset_texture);
+	autotile_renderer(vector2i size, int types, int tileset_texture);
 
 	void render_area(layer& layer, int x, int y, int width, int height) override;
 	void render_chunk(layer& layer, chunk& chunk) override;
@@ -214,8 +221,9 @@ private:
 
 	std::unordered_map<unsigned int, vector2i> uv;
 	vector2i tile_size;
+	vector2f tileset_size;
 
-	vector2i get_uv(const tile& tile) const;
+	std::optional<vector2i> find_uv(const tile& tile) const;
 	void load_tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right, int x, int y);
 
 };
@@ -236,8 +244,8 @@ void hide_layer(int depth);
 
 std::shared_ptr<layer> find_layer(int depth);
 
-int get(int x, int y);
-void set(int x, int y, int tile);
+std::optional<tile> get(int x, int y);
+void set(int x, int y, unsigned char tile);
 
 void draw();
 void view(const ortho_camera& camera);

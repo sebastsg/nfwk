@@ -30,6 +30,7 @@ void initialize_scripts() {
 	register_script_node<random_node>();
 	register_script_node<random_condition_node>();
 	register_script_node<execute_node>();
+	register_script_node<code_function_node>();
 }
 
 void script_node::write(io_stream& stream) const {
@@ -443,7 +444,6 @@ void random_condition_node::read(io_stream& stream) {
 }
 
 int execute_node::process() {
-	
 	return 0;
 }
 

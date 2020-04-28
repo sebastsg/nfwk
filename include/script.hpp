@@ -279,4 +279,29 @@ public:
 
 };
 
+template<typename Code>
+class code_node : public effect_node {
+public:
+
+	NFWK_SCRIPT_CORE_NODE(10);
+
+	Code code;
+
+	int process() override {
+		code();
+		return 0;
+	}
+
+	void write(io_stream& stream) const override {
+		script_node::write(stream);
+	}
+
+	void read(io_stream& stream) override {
+		script_node::read(stream);
+	}
+
+};
+
+using code_function_node = code_node<std::function<void()>>;
+
 }

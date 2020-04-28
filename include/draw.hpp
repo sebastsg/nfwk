@@ -304,6 +304,7 @@ public:
 	bool is_paused() const;
 	void set_frame(int frame);
 	void set_tex_coords(vector2f position, vector2f size);
+	void set_tex_coords(vector4f tex_coords);
 	void start_looping();
 	void stop_looping();
 	bool is_looping() const;
