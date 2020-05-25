@@ -7,9 +7,7 @@
 
 #include "debug.hpp"
 
-namespace no {
-
-namespace platform {
+namespace no::platform {
 
 static void set_pixel_format(HDC device_context) {
 	MESSAGE("Setting pixel format");
@@ -129,6 +127,8 @@ void windows_gl_context::initialize_gl() {
 	// https://www.opengl.org/sdk/docs/man/html/glBlendFunc.xhtml
 	MESSAGE("Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
 	CHECK_GL_ERROR(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
+	MESSAGE("Enabling scissor testing");
+	CHECK_GL_ERROR(glEnable(GL_SCISSOR_TEST));
 }
 
 void windows_gl_context::enable_multisampling() {
@@ -214,8 +214,6 @@ void windows_gl_context::log_renderer_info() const {
 
 HGLRC windows_gl_context::current_context_handle() {
 	return wglGetCurrentContext();
-}
-
 }
 
 }

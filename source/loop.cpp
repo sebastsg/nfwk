@@ -1,5 +1,6 @@
 #include "loop.hpp"
 #include "script.hpp"
+#include "imgui/imgui_platform.hpp"
 
 #if ENABLE_WINDOW
 #include "window.hpp"
@@ -101,7 +102,9 @@ static void update_windows() {
 		auto window = loop.windows[state_index(state)];
 		window->poll();
 #endif
+		ui::start_frame();
 		state->update();
+		ui::end_frame();
 	}
 }
 
@@ -111,6 +114,7 @@ static void draw_windows() {
 		auto window = loop.windows[state_index(state)];
 		window->clear();
 		state->draw();
+		ui::draw();
 		window->swap();
 	}
 #endif

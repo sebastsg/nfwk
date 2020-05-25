@@ -6,6 +6,7 @@
 #if PLATFORM_WINDOWS
 
 #include <Windows.h>
+#include <ShObjIdl.h>
 
 #include "windows_platform.hpp"
 
@@ -13,11 +14,7 @@
 extern int __argc;
 extern char** __argv;
 
-namespace no {
-
-namespace platform {
-
-namespace windows {
+namespace no::platform::windows {
 
 static HINSTANCE current_instance_arg{ nullptr };
 static int show_command_arg{ 0 };
@@ -30,6 +27,30 @@ int show_command() {
 	return show_command_arg;
 }
 
+}
+
+namespace no::platform {
+
+static LPCSTR get_system_cursor_resource(system_cursor cursor) {
+	switch (cursor) {
+	case system_cursor::arrow: return IDC_ARROW;
+	case system_cursor::beam: return IDC_IBEAM;
+	case system_cursor::resize_all: return IDC_SIZEALL;
+	case system_cursor::resize_horizontal: return IDC_SIZEWE;
+	case system_cursor::resize_vertical: return IDC_SIZENS;
+	case system_cursor::resize_diagonal_from_bottom_left: return IDC_SIZENESW;
+	case system_cursor::resize_diagonal_from_top_left: return IDC_SIZENWSE;
+	case system_cursor::block: return IDC_NO;
+	case system_cursor::hand: return IDC_HAND;
+	case system_cursor::help: return IDC_HELP;
+	case system_cursor::cross: return IDC_CROSS;
+	case system_cursor::wait: return IDC_WAIT;
+	default: return IDC_ARROW;
+	}
+}
+
+void set_system_cursor(system_cursor cursor) {
+	SetCursor(LoadCursor(nullptr, get_system_cursor_resource(cursor)));
 }
 
 long long performance_frequency() {
@@ -79,6 +100,46 @@ std::string open_file_browse_window() {
 	return file;
 }
 
+surface bitmap_as_surface(HBITMAP bitmap_handle) {
+	DIBSECTION dib_section{};
+	GetObject(bitmap_handle, sizeof(DIBSECTION), &dib_section);
+	const BITMAP& bitmap{ dib_section.dsBm };
+	auto pixels = static_cast<uint32_t*>(bitmap.bmBits);
+	surface result{ pixels, bitmap.bmWidth, bitmap.bmHeight, pixel_format::bgra, surface::construct_by::copy };
+	// todo: figure out when bitmap is flipped. docs are a bit confusing.
+	//if (dib_section.dsBmih.biHeight < 0) {
+	//	result.flip_vertically();
+	//}
+	return result;
+}
+
+surface load_file_thumbnail(std::filesystem::path path, int scale) {
+	path.make_preferred();
+	IShellItemImageFactory* factory{ nullptr };
+	HRESULT result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
+	if (result != S_OK) {
+		WARNING("Failed to create shell item from path: " << path);
+		return { 2, 2, pixel_format::rgba };
+	}
+	HBITMAP bitmap_handle{ nullptr };
+	result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT, &bitmap_handle);
+	if (result != S_OK) {
+		return { 2, 2, pixel_format::rgba };
+	}
+	surface thumbnail{ bitmap_as_surface(bitmap_handle) };
+	DeleteObject(bitmap_handle);
+	return thumbnail;
+}
+
+void open_file(std::filesystem::path path, bool minimized) {
+	path.make_preferred();
+	const auto show = minimized ? SW_HIDE : SW_SHOW;
+	const auto status = reinterpret_cast<int>(ShellExecute(nullptr, nullptr, path.string().c_str(), nullptr, nullptr, show));
+	if (status <= 32) {
+		WARNING("Failed to open " << path << ". Error: " << status);
+	}
+}
+
 std::vector<std::string> command_line_arguments() {
 	std::vector<std::string> args;
 	for (int i{ 0 }; i < __argc; i++) {
@@ -101,8 +162,6 @@ void relaunch() {
 	}
 	internal::destroy_main_loop();
 	std::exit(0);
-}
-
 }
 
 }
@@ -132,3 +191,22 @@ int main() {
 #endif
 
 #endif
+
+std::ostream& operator<<(std::ostream& out, no::platform::system_cursor cursor) {
+	switch (cursor) {
+	case no::platform::system_cursor::none: return out << "None";
+	case no::platform::system_cursor::arrow: return out << "Arrow";
+	case no::platform::system_cursor::beam: return out << "Beam";
+	case no::platform::system_cursor::resize_all: return out << "Resize (all)";
+	case no::platform::system_cursor::resize_horizontal: return out << "Resize (horizontal)";
+	case no::platform::system_cursor::resize_vertical: return out << "Resize (vertical)";
+	case no::platform::system_cursor::resize_diagonal_from_bottom_left: return out << "Resize (bottom left -> top right)";
+	case no::platform::system_cursor::resize_diagonal_from_top_left: return out << "Resize (top left -> bottom right)";
+	case no::platform::system_cursor::block: return out << "Block";
+	case no::platform::system_cursor::hand: return out << "Hand";
+	case no::platform::system_cursor::help: return out << "Help";
+	case no::platform::system_cursor::cross: return out << "Cross";
+	case no::platform::system_cursor::wait: return out << "Wait";
+	default: return out << "Invalid";
+	}
+}

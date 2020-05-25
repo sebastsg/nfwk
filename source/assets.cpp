@@ -118,7 +118,7 @@ void release_texture(const std::string& name) {
 
 void register_font(const std::string& name, int size) {
 	register_asset("fonts/" + name + " " + std::to_string(size), [name, size]() -> void* {
-		return new font{ asset_path("fonts/" + name + ".ttf"), size };
+		return new font{ name, size };
 	}, [](void* data) {
 		delete data;
 	});

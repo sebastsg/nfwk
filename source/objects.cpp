@@ -62,12 +62,12 @@ void create_object_class() {
 	text("Create object class");
 	input("Identifier", definition.id);
 	input("Name", definition.name);
-	if (const auto collision = combo("Collision", { "None", "Extents", "Radius", "Precise" }, definition.collision)) {
-		definition.collision = collision.value();
-	}
-	if (button("Save")) {
-
-	}
+	//if (const auto collision = combo("Collision", { "None", "Extents", "Radius", "Precise" }, definition.collision)) {
+	//	definition.collision = collision.value();
+	//}
+	//if (button("Save")) {
+	//
+	//}
 }
 
 }

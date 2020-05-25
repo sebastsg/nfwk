@@ -15,7 +15,6 @@ class mouse {
 public:
 
 	enum class button { none, left, middle, right };
-	enum class cursor { arrow, pointer };
 
 	event<vector2i, vector2i> move;
 	event<button> press;
@@ -32,7 +31,6 @@ public:
 	int y() const;
 	vector2i position() const;
 	bool is_button_down(button button) const;
-	void set_icon(cursor icon);
 
 private:
 
@@ -51,11 +49,16 @@ enum class key {
 	caps_lock = 20,
 	escape = 27,
 	space = 32,
+	page_up = 33,
+	page_down = 34,
+	end = 35,
+	home = 36,
 	left = 37,
 	up = 38,
 	right = 39,
 	down = 40,
 	print_screen = 44,
+	insert = 45,
 	del = 46,
 
 	num_0 = 48, // '0'

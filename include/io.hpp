@@ -3,6 +3,7 @@
 #include <cstring>
 #include <sstream>
 #include <vector>
+#include <filesystem>
 
 #define STRING(X)  ((std::ostringstream&)(std::ostringstream{} << X)).str()
 #define CSTRING(X) STRING(X).c_str()
@@ -11,8 +12,13 @@ namespace no {
 
 enum class entry_inclusion { everything, only_files, only_directories };
 
-std::vector<std::string> entries_in_directory(const std::string& path, entry_inclusion inclusion, bool recursive);
-std::string file_extension_in_path(const std::string& path);
+std::vector<std::filesystem::path> entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion, bool recursive);
+
+// todo: move these string functions
+// todo: split by string should also be possible
+std::vector<std::string> split_string(std::string string, char symbol);
+// todo: allow some options like 'all occurrences' or 'last occurrence'
+std::string erase_substring(const std::string& string, const std::string& substring);
 
 class io_stream {
 public:

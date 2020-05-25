@@ -136,7 +136,7 @@ void bind_vertex_array(int id) {
 	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));
 }
 
-void set_vertex_array_vertices(int id, uint8_t* data, size_t size) {
+void set_vertex_array_vertices(int id, const uint8_t* data, size_t size) {
 	ASSERT(data && size > 0);
 	auto& vertex_array = renderer.vertex_arrays[id];
 	CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, vertex_array.vertex_buffer.id));
@@ -149,7 +149,7 @@ void set_vertex_array_vertices(int id, uint8_t* data, size_t size) {
 	}
 }
 
-void set_vertex_array_indices(int id, uint8_t* data, size_t size, size_t element_size) {
+void set_vertex_array_indices(int id, const uint8_t* data, size_t size, size_t element_size) {
 	ASSERT(data && size > 0);
 	auto& vertex_array{ renderer.vertex_arrays[id] };
 	switch (element_size) {
@@ -505,6 +505,10 @@ bool shader_variable::exists() const {
 
 void set_polygon_render_mode(polygon_render_mode mode) {
 	CHECK_GL_ERROR(glPolygonMode(GL_FRONT_AND_BACK, mode == polygon_render_mode::fill ? GL_FILL : GL_LINE));
+}
+
+void set_scissor(const vector4i& scissor) {
+	CHECK_GL_ERROR(glScissor(scissor.x, scissor.y, scissor.z, scissor.w));
 }
 
 vector3i read_pixel_at(vector2i position) {

@@ -12,22 +12,22 @@
 #include "assets.hpp"
 #include "camera.hpp"
 #include "surface.hpp"
+#include "font.hpp"
 
 #include "GLM/gtc/matrix_transform.hpp"
 #include "GLM/gtc/type_ptr.hpp"
 
-#include "imgui.h"
-#include "imgui_platform.h"
+#include "imgui/imgui.h"
+#include "imgui/imgui_platform.hpp"
+#include "imgui/imgui_freetype.h"
 
-namespace no {
-
-namespace ui {
+namespace no::ui {
 
 static struct {
 	window* window{ nullptr };
-	INT64 time{ 0 };
-	INT64 ticks_per_second{ 0 };
-	ImGuiMouseCursor last_mouse_cursor{ ImGuiMouseCursor_COUNT };
+	long long time{ 0 };
+	long long ticks_per_second{ 0 };
+	platform::system_cursor old_cursor{ platform::system_cursor::none };
 	int shader_id{ -1 };
 	int font_texture_id{ -1 };
 	event_listener keyboard_repeated_press;
@@ -38,6 +38,7 @@ static struct {
 	event_listener mouse_press;
 	event_listener mouse_double_click;
 	event_listener mouse_release;
+	ImFontConfig font_config{};
 } data;
 
 struct imgui_vertex {
@@ -47,49 +48,127 @@ struct imgui_vertex {
 	uint32_t color{ 0 };
 };
 
+static bool is_initialized() {
+	return data.window != nullptr;
+}
+
+static void initialize_style() {
+	auto& style = ImGui::GetStyle();
+	style.Alpha = 1.0f;
+	style.FrameRounding = 0.0f;
+	style.ChildRounding = 0.0f;
+	style.GrabRounding = 0.0f;
+	style.PopupRounding = 0.0f;
+	style.ScrollbarRounding = 0.0f;
+	style.TabRounding = 0.0f;
+	style.WindowRounding = 0.0f;
+
+	vector4f text{ 0.8f, 0.85f, 0.9f, 1.0f };
+	vector4f button{ 0.2f, 0.25f, 0.3f, 1.0f };
+	vector4f button_hover{ 0.3f, 0.6f, 1.0f, 1.0f };
+	vector4f border{ 0.3f, 0.6f, 1.0f, 1.0f };
+	vector4f background{ 0.1f, 0.1f, 0.1f, 1.0f };
+	vector4f frame{ 0.2f, 0.2f, 0.2f, 1.0f };
+	vector4f frame_hover{ 0.3f, 0.3f, 0.3f, 1.0f };
+	vector4f unknown{ 1.0f, 0.0f, 0.0f, 1.0f };
+
+	const auto with_alpha = [](const vector4f& color, float alpha) {
+		return vector4f{ color.x, color.y, color.z, alpha };
+	};
+	
+	style.Colors[ImGuiCol_Text] = text;
+	style.Colors[ImGuiCol_TextDisabled] = with_alpha(text, 0.6f);
+	style.Colors[ImGuiCol_WindowBg] = background;
+	style.Colors[ImGuiCol_ChildBg] = frame;
+	style.Colors[ImGuiCol_PopupBg] = background;
+	style.Colors[ImGuiCol_Border] = border;
+	style.Colors[ImGuiCol_BorderShadow] = with_alpha(border, 0.2f);
+	style.Colors[ImGuiCol_FrameBg] = frame;
+	style.Colors[ImGuiCol_FrameBgHovered] = frame_hover;
+	style.Colors[ImGuiCol_FrameBgActive] = frame_hover;
+	style.Colors[ImGuiCol_TitleBg] = background;
+	style.Colors[ImGuiCol_TitleBgCollapsed] = background;
+	style.Colors[ImGuiCol_TitleBgActive] = frame;
+	style.Colors[ImGuiCol_MenuBarBg] = background;
+	style.Colors[ImGuiCol_ScrollbarBg] = frame;
+	style.Colors[ImGuiCol_ScrollbarGrab] = button;
+	style.Colors[ImGuiCol_ScrollbarGrabHovered] = button_hover;
+	style.Colors[ImGuiCol_ScrollbarGrabActive] = background;
+	style.Colors[ImGuiCol_CheckMark] = button;
+	style.Colors[ImGuiCol_SliderGrab] = button;
+	style.Colors[ImGuiCol_SliderGrabActive] = button;
+	style.Colors[ImGuiCol_Button] = button;
+	style.Colors[ImGuiCol_ButtonHovered] = button_hover;
+	style.Colors[ImGuiCol_ButtonActive] = button_hover;
+	style.Colors[ImGuiCol_Header] = button;
+	style.Colors[ImGuiCol_HeaderHovered] = button_hover;
+	style.Colors[ImGuiCol_HeaderActive] = unknown;
+	style.Colors[ImGuiCol_Separator] = border;
+	style.Colors[ImGuiCol_SeparatorHovered] = border;
+	style.Colors[ImGuiCol_SeparatorActive] = border;
+	style.Colors[ImGuiCol_ResizeGrip] = button;
+	style.Colors[ImGuiCol_ResizeGripHovered] = button_hover;
+	style.Colors[ImGuiCol_ResizeGripActive] = button_hover;
+	style.Colors[ImGuiCol_Tab] = button;
+	style.Colors[ImGuiCol_TabHovered] = button_hover;
+	style.Colors[ImGuiCol_TabActive] = button_hover;
+	style.Colors[ImGuiCol_TabUnfocused] = button_hover;
+	style.Colors[ImGuiCol_TabUnfocusedActive] = button_hover;
+	style.Colors[ImGuiCol_PlotLines] = unknown;
+	style.Colors[ImGuiCol_PlotLinesHovered] = unknown;
+	style.Colors[ImGuiCol_PlotHistogram] = unknown;
+	style.Colors[ImGuiCol_PlotHistogramHovered] = unknown;
+	style.Colors[ImGuiCol_TextSelectedBg] = button_hover;
+	style.Colors[ImGuiCol_DragDropTarget] = frame;
+	style.Colors[ImGuiCol_NavHighlight] = background;
+	style.Colors[ImGuiCol_NavWindowingHighlight] = background;
+	style.Colors[ImGuiCol_NavWindowingDimBg] = background;
+	style.Colors[ImGuiCol_ModalWindowDimBg] = background;
+}
+
+static platform::system_cursor imgui_to_system_cursor(ImGuiMouseCursor cursor) {
+	switch (cursor) {
+	case ImGuiMouseCursor_None: return platform::system_cursor::none;
+	case ImGuiMouseCursor_Arrow: return platform::system_cursor::arrow;
+	case ImGuiMouseCursor_TextInput: return platform::system_cursor::beam;
+	case ImGuiMouseCursor_ResizeAll: return platform::system_cursor::resize_all;
+	case ImGuiMouseCursor_ResizeEW: return platform::system_cursor::resize_horizontal;
+	case ImGuiMouseCursor_ResizeNS: return platform::system_cursor::resize_vertical;
+	case ImGuiMouseCursor_ResizeNESW: return platform::system_cursor::resize_diagonal_from_bottom_left;
+	case ImGuiMouseCursor_ResizeNWSE: return platform::system_cursor::resize_diagonal_from_top_left;
+	case ImGuiMouseCursor_Hand: return platform::system_cursor::hand;
+	default: return platform::system_cursor::arrow;
+	}
+}
+
 static void update_cursor_icon() {
-	const auto& io{ ImGui::GetIO() };
+	auto& io = ImGui::GetIO();
 	if (io.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) {
 		return;
 	}
-	const auto cursor{ ImGui::GetMouseCursor() };
-	if (cursor == ImGuiMouseCursor_None || io.MouseDrawCursor) {
-		SetCursor(nullptr);
-		return;
+	const auto new_cursor = imgui_to_system_cursor(io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor());
+	if (data.old_cursor != new_cursor) {
+		platform::set_system_cursor(new_cursor);
+		data.old_cursor = new_cursor;
 	}
-	SetCursor(LoadCursor(nullptr, [cursor] {
-		switch (cursor) {
-		case ImGuiMouseCursor_Arrow: return IDC_ARROW;
-		case ImGuiMouseCursor_TextInput: return IDC_IBEAM;
-		case ImGuiMouseCursor_ResizeAll: return IDC_SIZEALL;
-		case ImGuiMouseCursor_ResizeEW: return IDC_SIZEWE;
-		case ImGuiMouseCursor_ResizeNS: return IDC_SIZENS;
-		case ImGuiMouseCursor_ResizeNESW: return IDC_SIZENESW;
-		case ImGuiMouseCursor_ResizeNWSE: return IDC_SIZENWSE;
-		case ImGuiMouseCursor_Hand: return IDC_HAND;
-		default: return IDC_ARROW;
-		}
-	}()));
 }
 
 static void update_mouse_position() {
-	auto& io{ ImGui::GetIO() };
+	auto& io = ImGui::GetIO();
+	const auto window_handle = data.window->platform_window()->handle();
 	if (io.WantSetMousePos) {
 		POINT position{ static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y) };
-		ClientToScreen(data.window->platform_window()->handle(), &position);
+		ClientToScreen(window_handle, &position);
 		SetCursorPos(position.x, position.y);
 	}
 	io.MousePos = { -FLT_MAX, -FLT_MAX };
-	POINT position;
-	if (GetActiveWindow() == data.window->platform_window()->handle() && GetCursorPos(&position)) {
-		if (ScreenToClient(data.window->platform_window()->handle(), &position)) {
-			io.MousePos = { static_cast<float>(position.x), static_cast<float>(position.y) };
-		}
+	if (POINT position; GetActiveWindow() == window_handle && GetCursorPos(&position) && ScreenToClient(window_handle, &position)) {
+		io.MousePos = { static_cast<float>(position.x), static_cast<float>(position.y) };
 	}
 }
 
 static void set_mouse_down(mouse::button button, bool is_down) {
-	auto& io{ ImGui::GetIO() };
+	auto& io = ImGui::GetIO();
 	switch (button) {
 	case mouse::button::left:
 		io.MouseDown[0] = is_down;
@@ -105,37 +184,42 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 	}
 }
 
-void create(window& window) {
-	ASSERT(!data.window);
+void create(window& window, std::optional<std::string> font_name, int font_size) {
+	ASSERT(!is_initialized());
+	if (is_initialized()) {
+		return;
+	}
 	ImGui::CreateContext();
 	data.window = &window;
-	QueryPerformanceFrequency(reinterpret_cast<LARGE_INTEGER*>(&data.ticks_per_second));
-	QueryPerformanceCounter(reinterpret_cast<LARGE_INTEGER*>(&data.time));
-	auto& io{ ImGui::GetIO() };
+	data.ticks_per_second = platform::performance_frequency();
+	data.time = platform::performance_counter();
+	auto& io = ImGui::GetIO();
 	io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
-	io.BackendPlatformName = "win32";
+	io.BackendPlatformName = "nfwk-windows";
+	io.BackendRendererName = "nfwk-opengl";
 	io.ImeWindowHandle = window.platform_window()->handle();
-	io.KeyMap[ImGuiKey_Tab] = VK_TAB;
-	io.KeyMap[ImGuiKey_LeftArrow] = VK_LEFT;
-	io.KeyMap[ImGuiKey_RightArrow] = VK_RIGHT;
-	io.KeyMap[ImGuiKey_UpArrow] = VK_UP;
-	io.KeyMap[ImGuiKey_DownArrow] = VK_DOWN;
-	io.KeyMap[ImGuiKey_PageUp] = VK_PRIOR;
-	io.KeyMap[ImGuiKey_PageDown] = VK_NEXT;
-	io.KeyMap[ImGuiKey_Home] = VK_HOME;
-	io.KeyMap[ImGuiKey_End] = VK_END;
-	io.KeyMap[ImGuiKey_Insert] = VK_INSERT;
-	io.KeyMap[ImGuiKey_Delete] = VK_DELETE;
-	io.KeyMap[ImGuiKey_Backspace] = VK_BACK;
-	io.KeyMap[ImGuiKey_Space] = VK_SPACE;
-	io.KeyMap[ImGuiKey_Enter] = VK_RETURN;
-	io.KeyMap[ImGuiKey_Escape] = VK_ESCAPE;
-	io.KeyMap[ImGuiKey_A] = 'A';
-	io.KeyMap[ImGuiKey_C] = 'C';
-	io.KeyMap[ImGuiKey_V] = 'V';
-	io.KeyMap[ImGuiKey_X] = 'X';
-	io.KeyMap[ImGuiKey_Y] = 'Y';
-	io.KeyMap[ImGuiKey_Z] = 'Z';
+	io.ConfigWindowsMoveFromTitleBarOnly = true;
+	io.KeyMap[ImGuiKey_Backspace] = static_cast<int>(no::key::backspace);
+	io.KeyMap[ImGuiKey_Tab] = static_cast<int>(no::key::tab);
+	io.KeyMap[ImGuiKey_Enter] = static_cast<int>(no::key::enter);
+	io.KeyMap[ImGuiKey_Escape] = static_cast<int>(no::key::escape);
+	io.KeyMap[ImGuiKey_Space] = static_cast<int>(no::key::space);
+	io.KeyMap[ImGuiKey_PageUp] = static_cast<int>(no::key::page_up);
+	io.KeyMap[ImGuiKey_PageDown] = static_cast<int>(no::key::page_down);
+	io.KeyMap[ImGuiKey_LeftArrow] = static_cast<int>(no::key::left);
+	io.KeyMap[ImGuiKey_RightArrow] = static_cast<int>(no::key::right);
+	io.KeyMap[ImGuiKey_UpArrow] = static_cast<int>(no::key::up);
+	io.KeyMap[ImGuiKey_DownArrow] = static_cast<int>(no::key::down);
+	io.KeyMap[ImGuiKey_End] = static_cast<int>(no::key::end);
+	io.KeyMap[ImGuiKey_Home] = static_cast<int>(no::key::home);
+	io.KeyMap[ImGuiKey_Insert] = static_cast<int>(no::key::insert);
+	io.KeyMap[ImGuiKey_Delete] = static_cast<int>(no::key::del);
+	io.KeyMap[ImGuiKey_A] = static_cast<int>(no::key::a);
+	io.KeyMap[ImGuiKey_C] = static_cast<int>(no::key::c);
+	io.KeyMap[ImGuiKey_V] = static_cast<int>(no::key::v);
+	io.KeyMap[ImGuiKey_X] = static_cast<int>(no::key::x);
+	io.KeyMap[ImGuiKey_Y] = static_cast<int>(no::key::y);
+	io.KeyMap[ImGuiKey_Z] = static_cast<int>(no::key::z);
 	data.keyboard_repeated_press = window.keyboard.repeated_press.listen([&](key pressed_key) {
 		if (static_cast<int>(pressed_key) < 256) {
 			io.KeysDown[static_cast<int>(pressed_key)] = true;
@@ -152,7 +236,7 @@ void create(window& window) {
 		}
 	});
 	data.mouse_scroll = window.mouse.scroll.listen([&](int steps) {
-		io.MouseWheel += steps;
+		io.MouseWheel += static_cast<float>(steps);
 	});
 	data.mouse_cursor = window.mouse.icon.listen([] {
 		update_cursor_icon();
@@ -175,25 +259,37 @@ void create(window& window) {
 			ReleaseCapture();
 		}
 	});
-	io.BackendRendererName = "opengl-nfwk";
 
 	ImGui::StyleColorsDark();
 
 	data.shader_id = create_shader(asset_path("shaders/imgui"));
 
+	if (font_name.has_value()) {
+		if (const auto font_path = font::find_absolute_path(font_name.value())) {
+			static ImWchar glyph_ranges[]{
+				1, 256,
+				8592, 8592,
+				0
+			};
+			//data.font_config.MergeMode = true;
+			io.Fonts->AddFontFromFileTTF(font_path->c_str(), static_cast<float>(font_size), &data.font_config, glyph_ranges);
+			ImGuiFreeType::BuildFontAtlas(io.Fonts);
+		}
+	}
+
 	unsigned char* pixels{ nullptr };
 	int width{ 0 };
 	int height{ 0 };
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-	data.font_texture_id = create_texture();
-	bind_texture(data.font_texture_id);
-	load_texture(data.font_texture_id, { reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
-
+	data.font_texture_id = create_texture({ reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
 	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data.font_texture_id);
+	initialize_style();
 }
 
 void destroy() {
+	if (!is_initialized()) {
+		return;
+	}
 	data.keyboard_repeated_press.stop();
 	data.keyboard_release.stop();
 	data.keybord_input.stop();
@@ -211,12 +307,14 @@ void destroy() {
 }
 
 void start_frame() {
-	auto& io{ ImGui::GetIO() };
+	if (!is_initialized()) {
+		return;
+	}
+	auto& io = ImGui::GetIO();
 	RECT rect;
 	GetClientRect(data.window->platform_window()->handle(), &rect);
 	io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
-	INT64 current_time;
-	QueryPerformanceCounter((LARGE_INTEGER*)&current_time);
+	const long long current_time{ platform::performance_counter() };
 	io.DeltaTime = static_cast<float>(current_time - data.time) / static_cast<float>(data.ticks_per_second);
 	data.time = current_time;
 	io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
@@ -224,68 +322,64 @@ void start_frame() {
 	io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
 	io.KeySuper = false;
 	update_mouse_position();
-	const ImGuiMouseCursor mouse_cursor{ io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor() };
-	if (data.last_mouse_cursor != mouse_cursor) {
-		data.last_mouse_cursor = mouse_cursor;
-		update_cursor_icon();
-	}
 	ImGui::NewFrame();
 }
 
 void end_frame() {
-	ImGui::Render();
+	if (is_initialized()) {
+		update_cursor_icon();
+		ImGui::Render();
+	}
 }
 
 void draw() {
-	auto draw_data{ ImGui::GetDrawData() };
+	if (!is_initialized()) {
+		return;
+	}
+	auto draw_data = ImGui::GetDrawData();
 	if (!draw_data) {
 		return;
 	}
-	const auto& io{ ImGui::GetIO() };
-	const int fb_width{ static_cast<int>(draw_data->DisplaySize.x * io.DisplayFramebufferScale.x) };
-	const int fb_height{ static_cast<int>(draw_data->DisplaySize.y * io.DisplayFramebufferScale.y) };
-	if (fb_width <= 0 || fb_height <= 0) {
-		return;
-	}
-	draw_data->ScaleClipRects(io.DisplayFramebufferScale);
+	const auto& io = ImGui::GetIO();
+	const vector2f display_position{ draw_data->DisplayPos };
+	const vector2f display_size{ draw_data->DisplaySize };
 
-	const vector2f pos{ draw_data->DisplayPos.x, draw_data->DisplayPos.y };
-	bind_shader(data.shader_id);
+	// todo: framebuffer scaling. see draw_data->ScaleClipRects()
 
 	ortho_camera camera;
-	camera.transform.scale = { draw_data->DisplaySize.x, draw_data->DisplaySize.y };
+	camera.transform.scale = display_size;
+
+	bind_shader(data.shader_id);
 	set_shader_view_projection(camera);
 
 	vertex_array<imgui_vertex, unsigned short> vertex_array;
 	for (int list_index{ 0 }; list_index < draw_data->CmdListsCount; list_index++) {
-		const auto cmd_list{ draw_data->CmdLists[list_index] };
-		const auto vertex_data{ reinterpret_cast<uint8_t*>(cmd_list->VtxBuffer.Data) };
-		const auto index_data{ reinterpret_cast<uint8_t*>(cmd_list->IdxBuffer.Data) };
+		const auto cmd_list = draw_data->CmdLists[list_index];
+		const auto vertex_data = reinterpret_cast<const uint8_t*>(cmd_list->VtxBuffer.Data);
+		const auto index_data = reinterpret_cast<const uint8_t*>(cmd_list->IdxBuffer.Data);
 		vertex_array.set(vertex_data, cmd_list->VtxBuffer.Size, index_data, cmd_list->IdxBuffer.Size);
 		size_t offset{ 0 };
-		for (int buffer_index = 0; buffer_index < cmd_list->CmdBuffer.Size; buffer_index++) {
-			auto buffer = &cmd_list->CmdBuffer[buffer_index];
-			const size_t current_offset{ offset };
-			offset += buffer->ElemCount;
-			if (buffer->UserCallback) {
-				buffer->UserCallback(cmd_list, buffer);
+		for (int buffer_index{ 0 }; buffer_index < cmd_list->CmdBuffer.Size; buffer_index++) {
+			auto& buffer = cmd_list->CmdBuffer[buffer_index];
+			const auto current_offset = offset;
+			offset += buffer.ElemCount;
+			if (buffer.UserCallback) {
+				buffer.UserCallback(cmd_list, &buffer);
 				continue;
 			}
-			const vector4i clip_rect{
-				static_cast<int>(buffer->ClipRect.x - pos.x),
-				static_cast<int>(buffer->ClipRect.y - pos.y),
-				static_cast<int>(buffer->ClipRect.z - pos.x),
-				static_cast<int>(buffer->ClipRect.w - pos.y)
+			const vector4f clip{
+				buffer.ClipRect.x - display_position.x,
+				buffer.ClipRect.y - display_position.y,
+				buffer.ClipRect.z - display_position.x,
+				buffer.ClipRect.w - display_position.y
 			};
-			if (clip_rect.x >= fb_width || clip_rect.y >= fb_height || clip_rect.z < 0 || clip_rect.w < 0) {
-				continue;
+			if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
+				set_scissor(vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>());
+				bind_texture(reinterpret_cast<int>(buffer.TextureId));
+				vertex_array.draw(current_offset, buffer.ElemCount);
 			}
-			bind_texture(reinterpret_cast<int>(buffer->TextureId));
-			vertex_array.draw(current_offset, buffer->ElemCount);
 		}
 	}
-}
-
 }
 
 }

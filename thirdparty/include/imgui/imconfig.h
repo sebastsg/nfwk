@@ -14,9 +14,7 @@
 #pragma once
 
 //---- Define assertion handler. Defaults to calling assert().
-#ifndef ASSERT
 #include "debug.hpp"
-#endif
 #define IM_ASSERT(_EXPR) ASSERT(_EXPR)
 
 //---- Don't define obsolete functions/enums names. Consider enabling from time to time after updating to avoid using soon-to-be obsolete function/names.

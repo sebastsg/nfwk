@@ -21,10 +21,12 @@ void append(int index, message_type type, const char* file, const char* func, in
 }
 
 # define ASSERT(EXPRESSION) \
-		if (!(EXPRESSION)) { \
-			CRITICAL(#EXPRESSION); \
-			abort(); \
-		}
+		do { \
+			if (!(EXPRESSION)) { \
+				CRITICAL(#EXPRESSION); \
+				abort(); \
+			} \
+		} while (0)
 
 #if COMPILER_MSVC
 # define DEBUG(ID, TYPE, STR) \

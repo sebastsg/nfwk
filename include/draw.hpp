@@ -24,8 +24,8 @@ enum class polygon_render_mode { fill, wireframe };
 
 int create_vertex_array(const vertex_specification& specification);
 void bind_vertex_array(int id);
-void set_vertex_array_vertices(int id, uint8_t* buffer, size_t size);
-void set_vertex_array_indices(int id, uint8_t* buffer, size_t size, size_t element_size);
+void set_vertex_array_vertices(int id, const uint8_t* buffer, size_t size);
+void set_vertex_array_indices(int id, const uint8_t* buffer, size_t size, size_t element_size);
 void draw_vertex_array(int id);
 void draw_vertex_array(int id, size_t offset, int count);
 void delete_vertex_array(int id);
@@ -53,15 +53,15 @@ void set_shader_view_projection(const perspective_camera& camera);
 void delete_shader(int id);
 
 void set_polygon_render_mode(polygon_render_mode mode);
+void set_scissor(const vector4i& scissor);
+vector3i read_pixel_at(vector2i position);
 
 long long total_redundant_bind_calls();
-
-vector3i read_pixel_at(vector2i position);
 
 class shader_variable {
 public:
 
-	int location = -1;
+	int location{ -1 };
 
 	shader_variable() = default;
 	shader_variable(int program_id, const std::string& name);
@@ -119,7 +119,7 @@ public:
 		set_vertex_array_vertices(id, (uint8_t*)&vertices[0], vertices.size() * sizeof(V));
 	}
 
-	void set_vertices(uint8_t* vertices, size_t vertex_count) {
+	void set_vertices(const uint8_t* vertices, size_t vertex_count) {
 		set_vertex_array_vertices(id, vertices, vertex_count * sizeof(V));
 	}
 
@@ -127,7 +127,7 @@ public:
 		set_vertex_array_indices(id, (uint8_t*)&indices[0], indices.size() * sizeof(I), sizeof(I));
 	}
 
-	void set_indices(uint8_t* indices, size_t index_count) {
+	void set_indices(const uint8_t* indices, size_t index_count) {
 		set_vertex_array_indices(id, indices, index_count * sizeof(I), sizeof(I));
 	}
 
@@ -136,7 +136,7 @@ public:
 		set_indices(indices);
 	}
 
-	void set(uint8_t* vertices, size_t vertex_count, uint8_t* indices, size_t index_count) {
+	void set(const uint8_t* vertices, size_t vertex_count, const uint8_t* indices, size_t index_count) {
 		set_vertices(vertices, vertex_count);
 		set_indices(indices, index_count);
 	}
@@ -186,8 +186,8 @@ public:
 
 private:
 
-	int id = -1;
-	size_t index_size = 0;
+	int id{ -1 };
+	size_t index_size{ 0 };
 
 };
 
@@ -266,7 +266,7 @@ private:
 	std::vector<model_animation> animations;
 	vector3f min_vertex;
 	vector3f max_vertex;
-	bool drawable = false;
+	bool drawable{ false };
 	std::string texture;
 	std::string model_name;
 
@@ -377,7 +377,7 @@ public:
 	}
 
 	void append(const V& v1, const V& v2, const V& v3, const V& v4) {
-		const I i{ (I)vertices.size() };
+		const I i{ static_cast<I>(vertices.size()) };
 		vertices.insert(vertices.end(), { v1, v2, v3, v4 });
 		indices.insert(indices.end(), { (I)i, (I)(i + 1), (I)(i + 2), (I)i, (I)(i + 3), (I)(i + 2) });
 	}
@@ -409,8 +409,8 @@ private:
 
 };
 
-template<typename T, typename M>
-void draw_shape(const T& shape, const M& transform) {
+template<typename S, typename M>
+void draw_shape(const S& shape, const M& transform) {
 	set_shader_model(transform);
 	shape.bind();
 	shape.draw();

@@ -11,6 +11,8 @@ public:
 
 	enum class construct_by { copy, move };
 
+	static void flip_vertically(uint32_t* pixels, vector2i size);
+
 	surface(const std::string& path);
 	surface(uint32_t* pixels, int width, int height, pixel_format format, construct_by construction);
 	surface(int width, int height, pixel_format format);
@@ -21,7 +23,7 @@ public:
 	~surface();
 
 	surface& operator=(const surface&) = delete;
-	surface& operator=(surface&&) = delete;
+	surface& operator=(surface&&) noexcept;
 
 	void resize(int width, int height);
 

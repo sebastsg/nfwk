@@ -6,6 +6,17 @@
 
 namespace no {
 
+void surface::flip_vertically(uint32_t* pixels, vector2i size) {
+	const int half_height{ size.y / 2 };
+	uint32_t* temporary_rows{ new uint32_t[size.x * sizeof(uint32_t)] };
+	for (int y{ 0 }; y < half_height; y++) {
+		memcpy(temporary_rows, pixels + y * size.x, size.x * sizeof(uint32_t));
+		memcpy(pixels + y * size.x, pixels + (size.y - y - 1) * size.x, size.x * sizeof(uint32_t));
+		memcpy(pixels + (size.y - y - 1) * size.x, temporary_rows, size.x * sizeof(uint32_t));
+	}
+	delete[] temporary_rows;
+}
+
 surface::surface(surface&& that) noexcept {
 	std::swap(pixels, that.pixels);
 	std::swap(size, that.size);
@@ -13,7 +24,7 @@ surface::surface(surface&& that) noexcept {
 }
 
 surface::surface(const std::string& path) {
-	surface result = load_png(path);
+	surface result{ load_png(path) };
 	pixels = result.pixels;
 	size = result.size;
 	format_ = result.format_;
@@ -45,6 +56,13 @@ surface::surface(int width, int height, pixel_format format, uint32_t color) : s
 
 surface::~surface() {
 	delete[] pixels;
+}
+
+surface& surface::operator=(surface&& that) noexcept {
+	std::swap(pixels, that.pixels);
+	std::swap(size, that.size);
+	std::swap(format_, that.format_);
+	return *this;
 }
 
 void surface::resize(int width, int height) {
@@ -95,14 +113,7 @@ void surface::flip_horizontally() {
 }
 
 void surface::flip_vertically() {
-	const int half_height{ size.y / 2 };
-	uint32_t* temporary_rows{ new uint32_t[size.x * sizeof(uint32_t)] };
-	for (int y{ 0 }; y < half_height; y++) {
-		memcpy(temporary_rows, pixels + y * size.x, size.x * sizeof(uint32_t));
-		memcpy(pixels + y * size.x, pixels + (size.y - y - 1) * size.x, size.x * sizeof(uint32_t));
-		memcpy(pixels + (size.y - y - 1) * size.x, temporary_rows, size.x * sizeof(uint32_t));
-	}
-	delete[] temporary_rows;
+	flip_vertically(pixels, size);
 }
 
 uint32_t* surface::data() const {

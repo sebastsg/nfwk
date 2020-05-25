@@ -100,6 +100,7 @@ public:
 	}
 
 	void blit(uint32_t* destination, int left, int top, int right, int bottom, uint32_t color) {
+		ASSERT(left >= 0);
 		const int max_size{ right * bottom };
 		const auto bitmap{ face->glyph->bitmap };
 		const int width{ static_cast<int>(bitmap.width) };
@@ -118,16 +119,12 @@ public:
 
 font::font(const std::string& path, int size) {
 	ft::initialize();
-	std::string final_path{ path };
-	if (!std::filesystem::exists(path)) {
-		final_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
-		if (!std::filesystem::exists(final_path)) {
-			WARNING("Did not find font: " << path);
-			return;
-		}
+	if (const auto final_path = find_absolute_path(path)) {
+		face = new font_face{ final_path.value() };
+		face->set_size(size);
+	} else {
+		WARNING("Did not find font: " << path);
 	}
-	face = new font_face{ final_path };
-	face->set_size(size);
 }
 
 font::font(font&& that) noexcept {
@@ -145,12 +142,19 @@ font& font::operator=(font&& that) noexcept {
 	return *this;
 }
 
-bool font::exists(const std::string& path) {
-	if (std::filesystem::exists(path)) {
-		return true;
+void font::render(surface& surface, const std::string& text, uint32_t color) const {
+	if (auto result = render_text(text, color); result.first) {
+		surface.render(result.first, result.second.x, result.second.y);
+		delete[] result.first;
 	}
-	auto windows_font_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
-	return std::filesystem::exists(windows_font_path);
+}
+
+surface font::render(const std::string& text, uint32_t color) const {
+	if (auto result = render_text(text, color); result.first) {
+		return { result.first, result.second.x, result.second.y, pixel_format::rgba, surface::construct_by::move };
+	} else {
+		return { 2, 2, pixel_format::rgba };
+	}
 }
 
 font::text_size font::size(const std::string& text) const {
@@ -160,7 +164,8 @@ font::text_size font::size(const std::string& text) const {
 	}
 	int last_index{ -1 };
 	size_t string_index{ 0 };
-	int current_row_width{ 0 };
+	int current_row_width{ 2 }; // should be 0. see below for left margin.
+	text_size.size.x = 1;
 	while (text.size() > string_index) {
 		const uint32_t character{ utf8::next_character(text, &string_index) };
 		if (character == unicode::byte_order_mark || character == unicode::byte_order_mark_swapped) {
@@ -170,7 +175,7 @@ font::text_size font::size(const std::string& text) const {
 			if (current_row_width > text_size.size.x) {
 				text_size.size.x = current_row_width;
 			}
-			current_row_width = 0;
+			current_row_width = 2; // should be 0. see below for left margin.
 			text_size.rows++;
 			continue;
 		}
@@ -201,8 +206,28 @@ font::text_size font::size(const std::string& text) const {
 	if (text_size.max_y > text_size.size.y) {
 		text_size.size.y = text_size.max_y;
 	}
-	text_size.size.y *= static_cast<int>(static_cast<float>(text_size.rows) * line_space);
+	text_size.size.y *= static_cast<int>(static_cast<float>(text_size.rows)* line_space);
 	return text_size;
+}
+
+bool font::exists(const std::string& path) {
+	if (std::filesystem::exists(path)) {
+		return true;
+	}
+	auto windows_font_path = platform::environment_variable("WINDIR") + "\\Fonts\\" + path;
+	return std::filesystem::exists(windows_font_path);
+}
+
+std::optional<std::string> font::find_absolute_path(const std::string& relative_path) {
+	if (std::filesystem::exists(relative_path)) {
+		return relative_path;
+	}
+	auto path = "fonts/" + relative_path;
+	if (std::filesystem::exists(path)) {
+		return path;
+	}
+	path = platform::environment_variable("WINDIR") + "\\Fonts\\" + relative_path;
+	return std::filesystem::exists(path) ? path : std::optional<std::string>{};
 }
 
 std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32_t color) const {
@@ -213,7 +238,8 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 	text_size text_size{ size(text) };
 	auto destination = new uint32_t[text_size.size.x * text_size.size.y];
 	std::fill_n(destination, text_size.size.x * text_size.size.y, 0x00000000);
-	int left{ 0 };
+	int left{ 2 }; // this should be 0, but fonts with negative margin on first letter is not supported
+	// remember to also change to 0 below on newlines when this is fixed
 	int last_index{ -1 };
 	size_t string_index{ 0 };
 	int row{ text_size.rows - 1 };
@@ -223,7 +249,7 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 			continue;
 		}
 		if (character == '\n' || character == '\r') {
-			left = 0;
+			left = 2; // this should also be 0, see above.
 			row--;
 			continue;
 		}
@@ -243,21 +269,6 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 		last_index = index;
 	}
 	return { destination, text_size.size };
-}
-
-void font::render(surface& surface, const std::string& text, uint32_t color) const {
-	if (auto result = render_text(text, color); result.first) {
-		surface.render(result.first, result.second.x, result.second.y);
-		delete[] result.first;
-	}
-}
-
-surface font::render(const std::string& text, uint32_t color) const {
-	if (auto result = render_text(text, color); result.first) {
-		return { result.first, result.second.x, result.second.y, pixel_format::rgba, surface::construct_by::move };
-	} else {
-		return { 2, 2, pixel_format::rgba };
-	}
 }
 
 }

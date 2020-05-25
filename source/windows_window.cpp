@@ -324,10 +324,6 @@ void windows_window::set_icon_from_resource(int resource_id) {
 	}
 }
 
-void windows_window::set_cursor(mouse::cursor icon) {
-	SetCursor(LoadCursor(nullptr, icon == mouse::cursor::arrow ? IDC_ARROW : IDC_HAND));
-}
-
 void windows_window::set_viewport(int x, int y, int width, int height) {
 	render_context.set_viewport(x, y, width, height);
 }

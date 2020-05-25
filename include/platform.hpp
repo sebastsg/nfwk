@@ -1,9 +1,11 @@
 #pragma once
 
 #include "../config.hpp"
+#include "surface.hpp"
 
 #include <string>
 #include <vector>
+#include <filesystem>
 
 #ifdef _MSC_VER
 # define COMPILER_MSVC     1
@@ -39,7 +41,7 @@
 # define FORCE_INLINE 
 #endif
 
-namespace no {
+namespace no::platform {
 
 #if ENABLE_GL
 
@@ -61,8 +63,6 @@ namespace no {
 #endif
 
 #endif
-
-namespace platform {
 
 #if PLATFORM_WINDOWS
 
@@ -86,6 +86,24 @@ using platform_render_context = x11_gl_context;
 
 #endif
 
+enum class system_cursor {
+	none,
+	arrow,
+	beam,
+	resize_all,
+	resize_horizontal,
+	resize_vertical,
+	resize_diagonal_from_bottom_left,
+	resize_diagonal_from_top_left,
+	block,
+	hand,
+	help,
+	cross,
+	wait
+};
+
+void set_system_cursor(system_cursor cursor);
+
 long long performance_frequency();
 long long performance_counter();
 void sleep(int ms);
@@ -96,9 +114,12 @@ std::string environment_variable(const std::string& name);
 // todo: does this work similar on other platforms? might be a bad abstraction
 std::string open_file_browse_window();
 
+surface load_file_thumbnail(std::filesystem::path path, int scale);
+void open_file(std::filesystem::path path, bool minimized);
+
 std::vector<std::string> command_line_arguments();
 void relaunch();
 
 }
 
-}
+std::ostream& operator<<(std::ostream& out, no::platform::system_cursor cursor);

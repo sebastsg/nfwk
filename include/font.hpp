@@ -4,6 +4,7 @@
 #include "math.hpp"
 
 #include <string>
+#include <optional>
 
 namespace no {
 
@@ -31,6 +32,7 @@ public:
 	text_size size(const std::string& text) const;
 
 	static bool exists(const std::string& path);
+	static std::optional<std::string> find_absolute_path(const std::string& path);
 
 private:
 

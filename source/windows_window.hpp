@@ -46,7 +46,6 @@ public:
 	void set_size(const vector2i& size);
 	void set_title(std::string_view title);
 	void set_icon_from_resource(int resource_id);
-	void set_cursor(mouse::cursor icon);
 	void set_viewport(int x, int y, int width, int height);
 	void set_scissor(int x, int y, int width, int height);
 	void set_clear_color(const vector3f& color);

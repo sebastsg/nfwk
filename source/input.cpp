@@ -45,10 +45,6 @@ bool mouse::is_button_down(button button) const {
 	return false; // todo: implement
 }
 
-void mouse::set_icon(cursor icon) {
-	parent_window->set_cursor(icon);
-}
-
 keyboard::keyboard() {
 	std::fill(std::begin(keys), std::end(keys), false);
 	press_key = press.listen([this](key pressed_key) {

@@ -6,8 +6,8 @@
 namespace no {
 
 template<typename DirectoryIterator>
-static std::vector<std::string> iterate_entries_in_directory(const std::string& path, entry_inclusion inclusion) {
-	std::vector<std::string> files;
+static std::vector<std::filesystem::path> iterate_entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion) {
+	std::vector<std::filesystem::path> files;
 	for (const auto& entry : DirectoryIterator{ path }) {
 		if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
 			continue;
@@ -15,12 +15,12 @@ static std::vector<std::string> iterate_entries_in_directory(const std::string& 
 		if (!entry.is_directory() && inclusion == entry_inclusion::only_directories) {
 			continue;
 		}
-		files.push_back(entry.path().string());
+		files.push_back(entry.path());
 	}
 	return files;
 }
 
-std::vector<std::string> entries_in_directory(const std::string& path, entry_inclusion inclusion, bool recursive) {
+std::vector<std::filesystem::path> entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion, bool recursive) {
 	if (recursive) {
 		return iterate_entries_in_directory<std::filesystem::recursive_directory_iterator>(path, inclusion);
 	} else {
@@ -28,12 +28,28 @@ std::vector<std::string> entries_in_directory(const std::string& path, entry_inc
 	}
 }
 
-std::string file_extension_in_path(const std::string& path) {
-	if (const size_t last_dot_index{ path.rfind('.') }; last_dot_index != std::string::npos) {
-		return path.substr(last_dot_index);
-	} else {
-		return "";
+std::vector<std::string> split_string(std::string string, char symbol) {
+	if (string.empty()) {
+		return {};
 	}
+	std::vector<std::string> result;
+	size_t start{ 0 };
+	size_t next{ string.find(symbol) };
+	while (next != std::string::npos) {
+		result.push_back(string.substr(start, next - start));
+		start = next + 1;
+		next = string.find(symbol, start);
+	}
+	result.push_back(string.substr(start, next - start));
+	return result;
+}
+
+std::string erase_substring(const std::string& string, const std::string& substring) {
+	auto result = string;
+	if (size_t index{ result.find(substring) }; index != std::string::npos) {
+		result.erase(result.find(substring), substring.size());
+	}
+	return result;
 }
 
 io_stream::io_stream(size_t size) {

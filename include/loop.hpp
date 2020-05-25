@@ -88,6 +88,7 @@ public:
 #endif
 
 	const loop_frame_counter& frame_counter() const;
+	loop_frame_counter& frame_counter();
 	bool has_next_state() const;
 
 protected:
@@ -99,7 +100,6 @@ protected:
 		});
 	}
 
-	loop_frame_counter& frame_counter();
 	void set_synchronization(draw_synchronization synchronization);
 	long long redundant_bind_calls_this_frame();
 

@@ -12,14 +12,22 @@
 
 namespace no::ui {
 
-struct menu_item_result {
+struct popup_item {
 	std::string label;
 	std::string shortcut;
 	bool selected{ false };
 	bool enabled{ true };
-};
+	std::function<void()> on_click;
+	std::vector<popup_item> children;
 
-using get_popup_item = std::function<std::optional<menu_item_result>(int)>;
+	popup_item() = default;
+
+	popup_item(const std::string& label, const std::string& shortcut = "", bool selected = false, bool enabled = true, std::function<void()> click = {}, const std::vector<popup_item>& children = {})
+		: label{ label }, shortcut{ shortcut }, selected{ selected }, enabled{ enabled }, on_click{ click }, children{ children }
+	{
+	}
+
+};
 
 void separate();
 void inline_next();
@@ -49,28 +57,15 @@ bool input(std::string_view label, vector3d& value);
 bool input(std::string_view label, vector4d& value);
 void grid(vector2f offset, vector2f grid_size, vector4f color);
 
-template<typename T>
-std::optional<T> combo(std::string_view label, const std::vector<std::string>& values, T selected) {
-	if (selected >= static_cast<T>(values.size())) {
-		return {};
-	}
-	std::optional<T> clicked;
-	if (ImGui::BeginCombo(label.data(), values[static_cast<size_t>(selected)].c_str())) {
-		for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
-			if (ImGui::Selectable(values[i].c_str())) {
-				clicked = static_cast<T>(i);
-				break;
-			}
-		}
-		ImGui::EndCombo();
-	}
-	return clicked;
-}
-
-std::optional<int> popup(std::string_view id, const get_popup_item& get_item);
+std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected);
+void popup(std::string_view id, const std::vector<popup_item>& values);
+std::optional<int> list(std::string_view label, const std::vector<std::string>& values, int selected);
 
 void push_static_window(std::string_view label, vector2f position, vector2f size);
+void push_window(std::string_view label, vector2f position, vector2f size);
 void pop_window();
+
+bool is_hovered();
 
 }
 
