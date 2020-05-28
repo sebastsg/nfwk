@@ -212,6 +212,14 @@ struct vector2 {
 	constexpr T dot(const vector2<T>& v) const {
 		return x * v.x + y * v.y;
 	}
+	
+	constexpr vector2<T> with_x(T s) const {
+		return { s, y };
+	}
+
+	constexpr vector2<T> with_y(T s) const {
+		return { x, s };
+	}
 
 };
 
@@ -379,6 +387,18 @@ struct vector3 {
 
 	constexpr vector3<T> cross(const vector3<T>& v) const {
 		return { y * v.z - z * v.y, z * v.x - x * v.z, x * v.y - y * v.x };
+	}
+
+	constexpr vector3<T> with_x(T s) const {
+		return { s, y, z };
+	}
+
+	constexpr vector3<T> with_y(T s) const {
+		return { x, s, z };
+	}
+
+	constexpr vector3<T> with_z(T s) const {
+		return { x, y, s };
 	}
 
 };
@@ -562,6 +582,22 @@ struct vector4 {
 
 	constexpr T dot(const vector4<T>& v) const {
 		return x * v.x + y * v.y + z * v.z + w * v.w;
+	}
+
+	constexpr vector4<T> with_x(T s) const {
+		return { s, y, z, w };
+	}
+
+	constexpr vector4<T> with_y(T s) const {
+		return { x, s, z, w };
+	}
+
+	constexpr vector4<T> with_z(T s) const {
+		return { x, y, s, w };
+	}
+
+	constexpr vector4<T> with_w(T s) const {
+		return { x, y, z, s };
 	}
 
 };

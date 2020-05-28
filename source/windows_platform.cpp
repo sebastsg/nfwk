@@ -75,6 +75,10 @@ std::string environment_variable(const std::string& name) {
 	return buffer;
 }
 
+bool is_system_file(const std::filesystem::path& path) {
+	return GetFileAttributes(path.string().c_str()) & FILE_ATTRIBUTE_SYSTEM;
+}
+
 std::string open_file_browse_window() {
 	char file[MAX_PATH];
 	char file_title[MAX_PATH];

@@ -109,6 +109,7 @@ long long performance_counter();
 void sleep(int ms);
 
 std::string environment_variable(const std::string& name);
+bool is_system_file(const std::filesystem::path& path);
 
 // will block until a file is picked or window is closed
 // todo: does this work similar on other platforms? might be a bad abstraction

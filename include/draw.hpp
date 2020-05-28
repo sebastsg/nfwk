@@ -53,7 +53,6 @@ void set_shader_view_projection(const perspective_camera& camera);
 void delete_shader(int id);
 
 void set_polygon_render_mode(polygon_render_mode mode);
-void set_scissor(const vector4i& scissor);
 vector3i read_pixel_at(vector2i position);
 
 long long total_redundant_bind_calls();

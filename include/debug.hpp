@@ -20,7 +20,11 @@ void append(int index, message_type type, const char* file, const char* func, in
 
 }
 
-# define ASSERT(EXPRESSION) \
+#define BUG(MESSAGE) \
+		WARNING(#MESSAGE); \
+		abort();
+
+#define ASSERT(EXPRESSION) \
 		do { \
 			if (!(EXPRESSION)) { \
 				CRITICAL(#EXPRESSION); \

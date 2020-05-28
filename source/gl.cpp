@@ -507,10 +507,6 @@ void set_polygon_render_mode(polygon_render_mode mode) {
 	CHECK_GL_ERROR(glPolygonMode(GL_FRONT_AND_BACK, mode == polygon_render_mode::fill ? GL_FILL : GL_LINE));
 }
 
-void set_scissor(const vector4i& scissor) {
-	CHECK_GL_ERROR(glScissor(scissor.x, scissor.y, scissor.z, scissor.w));
-}
-
 vector3i read_pixel_at(vector2i position) {
 	int alignment{ 0 };
 	uint8_t pixel[3];

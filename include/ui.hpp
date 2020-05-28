@@ -6,6 +6,7 @@
 #if ENABLE_GRAPHICS
 
 #include <imgui/imgui.h>
+#include <imgui/imgui_internal.h>
 
 #include <optional>
 #include <functional>
@@ -56,6 +57,8 @@ bool input(std::string_view label, vector2d& value);
 bool input(std::string_view label, vector3d& value);
 bool input(std::string_view label, vector4d& value);
 void grid(vector2f offset, vector2f grid_size, vector4f color);
+void rectangle(vector2f position, vector2f size, const vector4f& color);
+void outline(vector2f position, vector2f size, const vector4f& color);
 
 std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected);
 void popup(std::string_view id, const std::vector<popup_item>& values);
@@ -66,6 +69,8 @@ void push_window(std::string_view label, vector2f position, vector2f size);
 void pop_window();
 
 bool is_hovered();
+void begin_disabled();
+void end_disabled();
 
 }
 

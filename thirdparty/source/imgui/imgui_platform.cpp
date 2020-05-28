@@ -185,8 +185,8 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 }
 
 void create(window& window, std::optional<std::string> font_name, int font_size) {
-	ASSERT(!is_initialized());
 	if (is_initialized()) {
+		BUG("UI is already initialized.");
 		return;
 	}
 	ImGui::CreateContext();
@@ -260,8 +260,6 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 		}
 	});
 
-	ImGui::StyleColorsDark();
-
 	data.shader_id = create_shader(asset_path("shaders/imgui"));
 
 	if (font_name.has_value()) {
@@ -284,45 +282,44 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	data.font_texture_id = create_texture({ reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
 	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data.font_texture_id);
 	initialize_style();
+	//ImGui::StyleColorsDark();
 }
 
 void destroy() {
-	if (!is_initialized()) {
-		return;
+	if (is_initialized()) {
+		data.keyboard_repeated_press.stop();
+		data.keyboard_release.stop();
+		data.keybord_input.stop();
+		data.mouse_scroll.stop();
+		data.mouse_cursor.stop();
+		data.mouse_press.stop();
+		data.mouse_double_click.stop();
+		data.mouse_release.stop();
+		delete_shader(data.shader_id);
+		delete_texture(data.font_texture_id);
+		data.shader_id = -1;
+		data.font_texture_id = -1;
+		ImGui::GetIO().Fonts->TexID = 0;
+		data.window = nullptr;
 	}
-	data.keyboard_repeated_press.stop();
-	data.keyboard_release.stop();
-	data.keybord_input.stop();
-	data.mouse_scroll.stop();
-	data.mouse_cursor.stop();
-	data.mouse_press.stop();
-	data.mouse_double_click.stop();
-	data.mouse_release.stop();
-	delete_shader(data.shader_id);
-	delete_texture(data.font_texture_id);
-	data.shader_id = -1;
-	data.font_texture_id = -1;
-	ImGui::GetIO().Fonts->TexID = 0;
-	data.window = nullptr;
 }
 
 void start_frame() {
-	if (!is_initialized()) {
-		return;
+	if (is_initialized()) {
+		auto& io = ImGui::GetIO();
+		RECT rect;
+		GetClientRect(data.window->platform_window()->handle(), &rect);
+		io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
+		const long long current_time{ platform::performance_counter() };
+		io.DeltaTime = static_cast<float>(current_time - data.time) / static_cast<float>(data.ticks_per_second);
+		data.time = current_time;
+		io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
+		io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
+		io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
+		io.KeySuper = false;
+		update_mouse_position();
+		ImGui::NewFrame();
 	}
-	auto& io = ImGui::GetIO();
-	RECT rect;
-	GetClientRect(data.window->platform_window()->handle(), &rect);
-	io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
-	const long long current_time{ platform::performance_counter() };
-	io.DeltaTime = static_cast<float>(current_time - data.time) / static_cast<float>(data.ticks_per_second);
-	data.time = current_time;
-	io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
-	io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
-	io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
-	io.KeySuper = false;
-	update_mouse_position();
-	ImGui::NewFrame();
 }
 
 void end_frame() {
@@ -338,13 +335,11 @@ void draw() {
 	}
 	auto draw_data = ImGui::GetDrawData();
 	if (!draw_data) {
-		return;
+		BUG("Invalid draw data.");
 	}
 	const auto& io = ImGui::GetIO();
 	const vector2f display_position{ draw_data->DisplayPos };
 	const vector2f display_size{ draw_data->DisplaySize };
-
-	// todo: framebuffer scaling. see draw_data->ScaleClipRects()
 
 	ortho_camera camera;
 	camera.transform.scale = display_size;
@@ -364,22 +359,28 @@ void draw() {
 			const auto current_offset = offset;
 			offset += buffer.ElemCount;
 			if (buffer.UserCallback) {
-				buffer.UserCallback(cmd_list, &buffer);
-				continue;
-			}
-			const vector4f clip{
-				buffer.ClipRect.x - display_position.x,
-				buffer.ClipRect.y - display_position.y,
-				buffer.ClipRect.z - display_position.x,
-				buffer.ClipRect.w - display_position.y
-			};
-			if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
-				set_scissor(vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>());
-				bind_texture(reinterpret_cast<int>(buffer.TextureId));
-				vertex_array.draw(current_offset, buffer.ElemCount);
+				if (buffer.UserCallback == ImDrawCallback_ResetRenderState) {
+					BUG("Not supported.");
+				} else {
+					buffer.UserCallback(cmd_list, &buffer);
+				}
+			} else {
+				const vector4f clip{
+					buffer.ClipRect.x - display_position.x,
+					buffer.ClipRect.y - display_position.y,
+					buffer.ClipRect.z - display_position.x,
+					buffer.ClipRect.w - display_position.y
+				};
+				if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
+					const auto [sx, sy, sw, sh] = vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>();
+					data.window->scissor(sx, sy, sw, sh);
+					bind_texture(reinterpret_cast<int>(buffer.TextureId));
+					vertex_array.draw(current_offset, buffer.ElemCount);
+				}
 			}
 		}
 	}
+	data.window->reset_scissor();
 }
 
 }

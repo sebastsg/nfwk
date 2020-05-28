@@ -146,7 +146,8 @@ void window::set_viewport(int x, int y, int width, int height) {
 }
 
 void window::scissor(int x, int y, int w, int h) {
-	platform->set_scissor(x, height() - y - h, w, h);
+	//platform->set_scissor(x, height() - y - h, w, h);
+	platform->set_scissor(x, y, w, h);
 }
 
 void window::reset_scissor() {

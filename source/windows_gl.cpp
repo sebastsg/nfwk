@@ -78,6 +78,10 @@ static void set_pixel_format_arb(HDC device_context, int samples) {
 		 << "\nSamples: " << samples);
 }
 
+HGLRC windows_gl_context::current_context_handle() {
+	return wglGetCurrentContext();
+}
+
 void windows_gl_context::create_default(HDC device_context) {
 	this->device_context = device_context;
 	set_pixel_format(device_context);
@@ -158,41 +162,20 @@ void windows_gl_context::make_current() {
 }
 
 void windows_gl_context::set_viewport(int x, int y, int width, int height) {
-	glViewport(x, y, width, height);
+	CHECK_GL_ERROR(glViewport(x, y, width, height));
 }
 
 void windows_gl_context::set_scissor(int x, int y, int width, int height) {
-	glScissor(x, y, width, height);
+	CHECK_GL_ERROR(glScissor(x, y, width, height));
 }
 
 void windows_gl_context::set_clear_color(const vector3f& color) {
-	glClearColor(color.x, color.y, color.z, 1.0f);
-}
-
-bool windows_gl_context::set_swap_interval(int interval) {
-	const auto status = wglSwapIntervalEXT(interval);
-	if (status) {
-		MESSAGE("Set swap interval to " << interval);
-	} else {
-		WARNING("Failed to set swap interval to " << interval << ". Error: " << GetLastError());
-	}
-	return status;
-}
-
-bool windows_gl_context::set_swap_interval(swap_interval interval) {
-	return [&] {
-		switch (interval) {
-		case swap_interval::late: return set_swap_interval(-1);
-		case swap_interval::immediate: return set_swap_interval(0);
-		case swap_interval::sync: return set_swap_interval(1);
-		default: return false;
-		}
-	}();
+	CHECK_GL_ERROR(glClearColor(color.x, color.y, color.z, 1.0f));
 }
 
 void windows_gl_context::clear() {
 	// todo: can check is_current() and change context, but does that cause more harm than good?
-	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+	CHECK_GL_ERROR(glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT));
 }
 
 void windows_gl_context::destroy() {
@@ -212,9 +195,27 @@ void windows_gl_context::log_renderer_info() const {
 		 << "\n[b]Shading Language Version:[/b] " << glGetString(GL_SHADING_LANGUAGE_VERSION));
 }
 
-HGLRC windows_gl_context::current_context_handle() {
-	return wglGetCurrentContext();
+bool windows_gl_context::set_swap_interval(swap_interval interval) {
+	return [&] {
+		switch (interval) {
+		case swap_interval::late: return set_swap_interval(-1);
+		case swap_interval::immediate: return set_swap_interval(0);
+		case swap_interval::sync: return set_swap_interval(1);
+		default: return false;
+		}
+	}();
 }
+
+bool windows_gl_context::set_swap_interval(int interval) {
+	const auto status = wglSwapIntervalEXT(interval);
+	if (status) {
+		MESSAGE("Set swap interval to " << interval);
+	} else {
+		WARNING("Failed to set swap interval to " << interval << ". Error: " << GetLastError());
+	}
+	return status;
+}
+
 
 }
 

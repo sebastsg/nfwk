@@ -1,6 +1,5 @@
 #include "ui.hpp"
 #include "color.hpp"
-
 #include "assets.hpp"
 
 #if ENABLE_GRAPHICS
@@ -155,9 +154,18 @@ void grid(vector2f offset, vector2f grid_size, vector4f color) {
 	draw_list->ChannelsSetCurrent(0);
 }
 
+void rectangle(vector2f position, vector2f size, const vector4f& color) {
+	ImGui::GetWindowDrawList()->AddRectFilled(position, position + size, ImColor{ color.x, color.y, color.z, color.w });
+}
+
+void outline(vector2f position, vector2f size, const vector4f& color) {
+	ImGui::GetWindowDrawList()->AddRect(position, position + size, ImColor{ color.x, color.y, color.z, color.w });
+}
+
 std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected) {
 	if (selected >= static_cast<int>(values.size())) {
-		return {};
+		BUG("Index is too high.");
+		return std::nullopt;
 	}
 	std::optional<int> clicked;
 	if (ImGui::BeginCombo(label.data(), values[static_cast<size_t>(selected)].c_str())) {
@@ -240,6 +248,16 @@ void pop_window() {
 
 bool is_hovered() {
 	return ImGui::IsWindowHovered(ImGuiHoveredFlags_AnyWindow);
+}
+
+void begin_disabled() {
+	ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+	ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+}
+
+void end_disabled() {
+	ImGui::PopStyleVar();
+	ImGui::PopItemFlag();
 }
 
 }
