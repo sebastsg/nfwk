@@ -3,8 +3,8 @@ Lightweight framework for C++ games and applications.
 Requires minimal code to get a simple application up and running.
 
 # Building
-The project can be generated with [Cmake](https://cmake.org/download).
-You can use ``project/vs16.bat`` on Windows to quickly create the folder ``project/vs/nfwk.sln``.
+The project can be generated with [CMake](https://cmake.org/download).
+You can use ``project/vs16.bat`` on Windows to quickly create the solution: ``project/vs/nfwk.sln``.
 
 You must copy ``default-config.hpp`` as ``config.hpp``, and enable the modules you want to compile. The default config should be fine in most cases.
 
