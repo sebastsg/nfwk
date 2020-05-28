@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <unordered_map> // remove when get_map_keys is moved
 
 #define STRING(X)  ((std::ostringstream&)(std::ostringstream{} << X)).str()
 #define CSTRING(X) STRING(X).c_str()
@@ -19,6 +20,16 @@ std::vector<std::filesystem::path> entries_in_directory(const std::filesystem::p
 std::vector<std::string> split_string(std::string string, char symbol);
 // todo: allow some options like 'all occurrences' or 'last occurrence'
 std::string erase_substring(const std::string& string, const std::string& substring);
+
+// todo: should be moved to a new file.
+template<typename T, typename U>
+std::vector<T> get_map_keys(const std::unordered_map<T, U>& map) {
+	std::vector<T> keys;
+	for (const auto& [key, element] : map) {
+		keys.push_back(key);
+	}
+	return keys;
+}
 
 class io_stream {
 public:
