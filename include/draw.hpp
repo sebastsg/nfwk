@@ -41,6 +41,7 @@ void load_texture_from_screen(int id, int bottom_y, int x, int y, int width, int
 vector2i texture_size(int id);
 void delete_texture(int id);
 
+int create_shader_from_source(std::string_view vertex, std::string_view fragment);
 int create_shader(const std::string& path);
 void bind_shader(int id);
 shader_variable get_shader_variable(const std::string& name);

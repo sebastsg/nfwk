@@ -19,7 +19,7 @@ struct registered_asset {
 	bool is_loaded{ false };
 };
 
-static std::string asset_directory_path{ "assets" };
+static std::string asset_directory_path{ "." };
 static std::unordered_map<std::string, registered_asset> assets;
 static std::unordered_set<std::string> to_be_released;
 

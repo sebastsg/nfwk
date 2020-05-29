@@ -23,6 +23,25 @@
 
 namespace no::ui {
 
+static constexpr std::string_view vertex_glsl{
+	"#version 330\n"
+	"uniform mat4 model_view_projection;"
+	"in vec2 in_Position; in vec2 in_TexCoords; in vec4 in_Color;"
+	"out vec4 v_Color; out vec2 v_TexCoords;"
+	"void main() {"
+	"	gl_Position = model_view_projection * vec4(in_Position.xy, 0.0f, 1.0f);"
+	"	v_Color = in_Color; v_TexCoords = in_TexCoords;"
+	"}"
+};
+
+static constexpr std::string_view fragment_glsl{
+	"#version 330\n"
+	"uniform sampler2D active_texture;"
+	"in vec4 v_Color; in vec2 v_TexCoords;"
+	"out vec4 out_Color;"
+	"void main() { out_Color = texture(active_texture, v_TexCoords).rgba * v_Color; }"
+};
+
 static struct {
 	window* window{ nullptr };
 	long long time{ 0 };
@@ -260,7 +279,7 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 		}
 	});
 
-	data.shader_id = create_shader(asset_path("shaders/imgui"));
+	data.shader_id = create_shader_from_source(vertex_glsl, fragment_glsl);
 
 	if (font_name.has_value()) {
 		if (const auto font_path = font::find_absolute_path(font_name.value())) {

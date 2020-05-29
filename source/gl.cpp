@@ -290,10 +290,9 @@ void delete_texture(int id) {
 	}
 }
 
-static int create_shader_script(const std::string& source, unsigned int type) {
-	const char* source_cstring{ source.c_str() };
+static int create_shader_script(const char* source, unsigned int type) {
 	CHECK_GL_ERROR(const unsigned int id{ glCreateShader(type) });
-	CHECK_GL_ERROR(glShaderSource(id, 1, &source_cstring, 0));
+	CHECK_GL_ERROR(glShaderSource(id, 1, &source, 0));
 	CHECK_GL_ERROR(glCompileShader(id));
 #if _DEBUG
 	int length{ 0 };
@@ -316,7 +315,7 @@ std::ostream& operator<<(std::ostream& out, const std::vector<std::string>& stri
 	return out;
 }
 
-std::vector<std::string> find_vertex_shader_attributes(const std::string& source) {
+std::vector<std::string> find_vertex_shader_attributes(const std::string_view source) {
 	std::vector<std::string> attributes;
 	size_t index{ source.find("in ") };
 	while (index != std::string::npos) {
@@ -334,13 +333,13 @@ std::vector<std::string> find_vertex_shader_attributes(const std::string& source
 		if (end_index == std::string::npos) {
 			break; // shader syntax error, so no need to log this
 		}
-		attributes.push_back(source.substr(index, end_index - index));
+		attributes.emplace_back(source.substr(index, end_index - index));
 		index = source.find("in ", end_index);
 	}
 	return attributes;
 }
 
-int create_shader(const std::string& path) {
+int create_shader_from_source(std::string_view vertex_source, std::string_view fragment_source) {
 	int id{ -1 };
 	for (size_t i{ 0 }; i < renderer.shaders.size(); i++) {
 		if (renderer.shaders[i].id == 0) {
@@ -355,16 +354,14 @@ int create_shader(const std::string& path) {
 	auto& shader{ renderer.shaders[id] };
 	CHECK_GL_ERROR(shader.id = glCreateProgram());
 
-	std::string source{ file::read(path + "/vertex.glsl") };
-	auto attributes = find_vertex_shader_attributes(source);
-	MESSAGE("Loading shader " << path << " (" << attributes << ")");
-	int vertex_shader_id = create_shader_script(source, GL_VERTEX_SHADER);
+	auto attributes = find_vertex_shader_attributes(vertex_source.data());
+	MESSAGE("Attributes: " << attributes);
+	int vertex_shader_id = create_shader_script(vertex_source.data(), GL_VERTEX_SHADER);
 	CHECK_GL_ERROR(glAttachShader(shader.id, vertex_shader_id));
 	for (int location{ 0 }; location < (int)attributes.size(); location++) {
 		CHECK_GL_ERROR(glBindAttribLocation(shader.id, location, attributes[location].c_str()));
 	}
-	source = file::read(path + "/fragment.glsl");
-	const int fragment_shader_id{ create_shader_script(source, GL_FRAGMENT_SHADER) };
+	const int fragment_shader_id{ create_shader_script(fragment_source.data(), GL_FRAGMENT_SHADER) };
 	CHECK_GL_ERROR(glAttachShader(shader.id, fragment_shader_id));
 	CHECK_GL_ERROR(glLinkProgram(shader.id));
 	CHECK_GL_ERROR(glDeleteShader(vertex_shader_id));
@@ -377,9 +374,7 @@ int create_shader(const std::string& path) {
 	if (length > 0) {
 		INFO("Shader program log " << shader.id << ": \n" << buffer);
 	}
-
 	CHECK_GL_ERROR(glValidateProgram(shader.id));
-
 	int status{ 0 };
 	CHECK_GL_ERROR(glGetProgramiv(shader.id, GL_VALIDATE_STATUS, &status));
 	if (status == GL_FALSE) {
@@ -394,6 +389,11 @@ int create_shader(const std::string& path) {
 	CHECK_GL_ERROR(shader.view_location = glGetUniformLocation(shader.id, "view"));
 	CHECK_GL_ERROR(shader.projection_location = glGetUniformLocation(shader.id, "projection"));
 	return id;
+}
+
+int create_shader(const std::string& path) {
+	MESSAGE("Loading shader " << path);
+	return create_shader_from_source(file::read(path + "/vertex.glsl"), file::read(path + "/fragment.glsl"));
 }
 
 void bind_shader(int id) {

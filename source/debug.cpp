@@ -29,6 +29,19 @@ static std::string current_time_ms_string() {
 	return std::to_string(milliseconds % 1000);
 }
 
+// this can be used for release builds to have fewer external files.
+static constexpr std::string_view default_template_html{
+	"<!doctype html><html><head><style>"
+	"body { margin: 0; background: #202021; }"
+	"table { width: 100%; border-collapse: collapse; }"
+	"td { border: 1px solid #333; background: #282828; color: #a0a0a0; font-family: monospace; }"
+	".warning td { border-left: 2px solid #ff0; border-right: 2px solid #ff0; }"
+	".critical td { border-left: 2px solid #f00; border-right: 2px solid #f00; }"
+	".info td { border-left: 2px solid #14c8c8e6; border-right: 2px solid #14c8c8e6; }"
+	"</head></style><body><table><tr class\"colhead\"><td>Time</td><td>Message</td>"
+	"<td>File</td><td style=\"width:25%;\">Function</td><td>Line</td></tr>"
+};
+
 class logger_state {
 public:
 
@@ -45,6 +58,9 @@ public:
 	void add(int index, message_type type, const char* file, const char* func, int line) {
 		if (template_buffer.empty()) {
 			template_buffer = file::read(asset_path("debug/template.html"));
+			if (template_buffer.empty()) {
+				template_buffer = default_template_html;
+			}
 			for (const auto& log : html_logs) {
 				file::write(log.path, template_buffer);
 			}
@@ -115,8 +131,10 @@ private:
 };
 
 void append(int index, message_type type, const char* file, const char* func, int line, const std::string& message) {
+#if ENABLE_HTML_LOG || ENABLE_STDOUT_LOG
 	static logger_state logger;
 	std::lock_guard lock{ logger.mutex };
+#endif
 #if ENABLE_HTML_LOG
 	if (auto log = logger.get_html_log(index)) {
 		log->temp_buffer = logger.get_html_compatible_string(message);
