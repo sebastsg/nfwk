@@ -111,6 +111,9 @@ void sleep(int ms);
 std::string environment_variable(const std::string& name);
 bool is_system_file(const std::filesystem::path& path);
 
+// on Windows, this will be C:/ etc.
+std::vector<std::filesystem::path> get_root_directories();
+
 // will block until a file is picked or window is closed
 // todo: does this work similar on other platforms? might be a bad abstraction
 std::string open_file_browse_window();

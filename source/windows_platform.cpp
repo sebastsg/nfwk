@@ -79,6 +79,18 @@ bool is_system_file(const std::filesystem::path& path) {
 	return GetFileAttributes(path.string().c_str()) & FILE_ATTRIBUTE_SYSTEM;
 }
 
+std::vector<std::filesystem::path> get_root_directories() {
+	std::vector<std::filesystem::path> paths;
+	const DWORD drives{ GetLogicalDrives() };
+	char drive_letter = 'A';
+	for (DWORD drive{ 1 }; drive_letter <= 'Z'; drive <<= 1, drive_letter++) {
+		if (drives & drive) {
+			paths.emplace_back(std::string{ drive_letter } + ":/");
+		}
+	}
+	return paths;
+}
+
 std::string open_file_browse_window() {
 	char file[MAX_PATH];
 	char file_title[MAX_PATH];

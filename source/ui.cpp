@@ -7,11 +7,17 @@
 namespace no::ui {
 
 void separate() {
+	ImGui::NewLine();
 	ImGui::Separator();
+	ImGui::NewLine();
 }
 
 void inline_next() {
 	ImGui::SameLine();
+}
+
+void new_line() {
+	ImGui::NewLine();
 }
 
 void text(std::string_view format, ...) {
@@ -41,6 +47,10 @@ void colored_text(vector4f color, std::string_view format, ...) {
 
 bool button(std::string_view label) {
 	return ImGui::Button(label.data());
+}
+
+bool button(std::string_view label, vector2f size) {
+	return ImGui::Button(label.data(), size);
 }
 
 bool checkbox(std::string_view label, bool& value) {

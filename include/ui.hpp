@@ -32,10 +32,12 @@ struct popup_item {
 
 void separate();
 void inline_next();
+void new_line();
 void text(std::string_view format, ...);
 void colored_text(vector3f color, std::string_view format, ...);
 void colored_text(vector4f color, std::string_view format, ...);
 bool button(std::string_view label);
+bool button(std::string_view label, vector2f size);
 bool checkbox(std::string_view label, bool& value);
 bool radio(std::string_view label, int& selected, int value);
 bool input(std::string_view label, std::string& value);
