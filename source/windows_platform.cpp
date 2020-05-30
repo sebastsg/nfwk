@@ -7,6 +7,7 @@
 
 #include <Windows.h>
 #include <ShObjIdl.h>
+#include <Shlobj_core.h>
 
 #include "windows_platform.hpp"
 
@@ -75,8 +76,10 @@ std::string environment_variable(const std::string& name) {
 	return buffer;
 }
 
-bool is_system_file(const std::filesystem::path& path) {
-	return GetFileAttributes(path.string().c_str()) & FILE_ATTRIBUTE_SYSTEM;
+bool is_system_file(std::filesystem::path path) {
+	path.make_preferred();
+	auto string = std::wstring{ L"\\\\?\\" } + path.wstring();
+	return GetFileAttributesW(string.c_str()) & FILE_ATTRIBUTE_SYSTEM;
 }
 
 std::vector<std::filesystem::path> get_root_directories() {
@@ -116,6 +119,17 @@ std::string open_file_browse_window() {
 	return file;
 }
 
+bool open_file_browser_and_select(std::filesystem::path path) {
+	path.make_preferred();
+	auto items = ILCreateFromPathW(path.wstring().c_str());
+	auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
+	ILFree(items);
+	if (result != S_OK) {
+		WARNING("Failed to open select file: " << path);
+	}
+	return result == S_OK;
+}
+
 surface bitmap_as_surface(HBITMAP bitmap_handle) {
 	DIBSECTION dib_section{};
 	GetObject(bitmap_handle, sizeof(DIBSECTION), &dib_section);
@@ -132,7 +146,7 @@ surface bitmap_as_surface(HBITMAP bitmap_handle) {
 surface load_file_thumbnail(std::filesystem::path path, int scale) {
 	path.make_preferred();
 	IShellItemImageFactory* factory{ nullptr };
-	HRESULT result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
+	auto result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
 	if (result != S_OK) {
 		WARNING("Failed to create shell item from path: " << path);
 		return { 2, 2, pixel_format::rgba };

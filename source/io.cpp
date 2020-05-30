@@ -8,7 +8,8 @@ namespace no {
 template<typename DirectoryIterator>
 static std::vector<std::filesystem::path> iterate_entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion) {
 	std::vector<std::filesystem::path> files;
-	for (const auto& entry : DirectoryIterator{ path }) {
+	std::error_code error_code{};
+	for (const auto& entry : DirectoryIterator{ path, std::filesystem::directory_options::skip_permission_denied, error_code }) {
 		if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
 			continue;
 		}

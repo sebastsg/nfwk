@@ -109,7 +109,7 @@ long long performance_counter();
 void sleep(int ms);
 
 std::string environment_variable(const std::string& name);
-bool is_system_file(const std::filesystem::path& path);
+bool is_system_file(std::filesystem::path path);
 
 // on Windows, this will be C:/ etc.
 std::vector<std::filesystem::path> get_root_directories();
@@ -117,6 +117,8 @@ std::vector<std::filesystem::path> get_root_directories();
 // will block until a file is picked or window is closed
 // todo: does this work similar on other platforms? might be a bad abstraction
 std::string open_file_browse_window();
+
+bool open_file_browser_and_select(std::filesystem::path path);
 
 surface load_file_thumbnail(std::filesystem::path path, int scale);
 void open_file(std::filesystem::path path, bool minimized);
