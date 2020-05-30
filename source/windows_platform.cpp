@@ -7,7 +7,7 @@
 
 #include <Windows.h>
 #include <ShObjIdl.h>
-#include <Shlobj_core.h>
+#include <Shlobj.h>
 
 #include "windows_platform.hpp"
 
@@ -148,12 +148,13 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 	IShellItemImageFactory* factory{ nullptr };
 	auto result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
 	if (result != S_OK) {
-		WARNING("Failed to create shell item from path: " << path);
+		WARNING("Failed to create shell item: " << path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	HBITMAP bitmap_handle{ nullptr };
 	result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT, &bitmap_handle);
 	if (result != S_OK) {
+		WARNING("Failed to load thumbnail: " << path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	surface thumbnail{ bitmap_as_surface(bitmap_handle) };
@@ -201,8 +202,8 @@ void relaunch() {
 int WINAPI WinMain(HINSTANCE current_instance, HINSTANCE previous_instance, LPSTR command_line, int show_command) {
 	no::platform::windows::current_instance_arg = current_instance;
 	no::platform::windows::show_command_arg = show_command;
-	if (const auto result = CoInitialize(nullptr); result != S_OK && result != S_FALSE) {
-		WARNING("Failed to run CoInitialize.");
+	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
+		WARNING("Failed to initialize COM library.");
 	}
 	const int result{ no::internal::run_main_loop() };
 	CoUninitialize();

@@ -5,6 +5,7 @@
 #include <vector>
 #include <filesystem>
 #include <unordered_map> // remove when get_map_keys is moved
+#include <future> // remove when is_future_ready is moved
 
 #define STRING(X)  ((std::ostringstream&)(std::ostringstream{} << X)).str()
 #define CSTRING(X) STRING(X).c_str()
@@ -29,6 +30,11 @@ std::vector<T> get_map_keys(const std::unordered_map<T, U>& map) {
 		keys.push_back(key);
 	}
 	return keys;
+}
+
+template<typename T>
+bool is_future_ready(const std::future<T>& future) {
+	return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
 }
 
 class io_stream {
