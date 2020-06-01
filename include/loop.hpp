@@ -101,7 +101,7 @@ protected:
 	}
 
 	void set_synchronization(draw_synchronization synchronization);
-	long long redundant_bind_calls_this_frame();
+	long long redundant_texture_binds_this_frame();
 
 	void stop();
 
@@ -136,8 +136,5 @@ template<typename T>
 void create_state(const std::string& title) {
 	internal::create_state(title, [] { return new T{}; });
 }
-
-std::string current_local_time_string();
-std::string curent_local_date_string();
 
 }

@@ -72,7 +72,7 @@ static struct {
 
 	std::vector<program_state*> states_to_stop;
 
-	long long redundant_bind_calls_this_frame{ 0 };
+	long long redundant_texture_binds_this_frame{ 0 };
 
 	event<> post_configure;
 	event<> pre_exit;
@@ -203,8 +203,8 @@ void program_state::set_synchronization(draw_synchronization synchronization) {
 	loop.synchronization = synchronization;
 }
 
-long long program_state::redundant_bind_calls_this_frame() {
-	return loop.redundant_bind_calls_this_frame;
+long long program_state::redundant_texture_binds_this_frame() {
+	return loop.redundant_texture_binds_this_frame;
 }
 
 void program_state::change_state(const internal::make_state_function& make_state) {
@@ -214,32 +214,6 @@ void program_state::change_state(const internal::make_state_function& make_state
 
 bool program_state::has_next_state() const {
 	return make_next_state.operator bool();
-}
-
-std::string current_local_time_string() {
-	const time_t now{ std::time(nullptr) };
-	tm local_time;
-#if PLATFORM_WINDOWS
-	localtime_s(&local_time, &now);
-#else
-	local_time = *localtime(&now);
-#endif
-	char buffer[64];
-	std::strftime(buffer, 64, "%X", &local_time);
-	return buffer;
-}
-
-std::string curent_local_date_string() {
-	const time_t now{ std::time(nullptr) };
-	tm local_time;
-#if PLATFORM_WINDOWS
-	localtime_s(&local_time, &now);
-#else
-	local_time = *localtime(&now);
-#endif
-	char buffer[64];
-	std::strftime(buffer, 64, "%Y.%m.%d", &local_time);
-	return buffer;
 }
 
 namespace internal {
@@ -300,9 +274,9 @@ int run_main_loop() {
 		}
 
 		if (updated || loop.synchronization == draw_synchronization::always) {
-			const auto current_redundant_bind_calls{ total_redundant_bind_calls() };
+			const auto redundant_texture_binds = debug::get_redundant_texture_bind_calls();
 			draw_windows();
-			loop.redundant_bind_calls_this_frame = total_redundant_bind_calls() - current_redundant_bind_calls;
+			loop.redundant_texture_binds_this_frame = debug::get_redundant_texture_bind_calls() - redundant_texture_binds;
 			loop.frame_counter.next_frame();
 		}
 

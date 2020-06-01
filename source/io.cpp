@@ -7,21 +7,24 @@ namespace no {
 
 template<typename DirectoryIterator>
 static std::vector<std::filesystem::path> iterate_entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion) {
-	std::vector<std::filesystem::path> files;
+	static thread_local std::vector<std::filesystem::path> entries;
+	entries.clear();
 	std::error_code error_code{};
 	for (const auto& entry : DirectoryIterator{ path, std::filesystem::directory_options::skip_permission_denied, error_code }) {
-		if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
-			continue;
+		if (inclusion != entry_inclusion::everything) {
+			if (entry.is_directory() && inclusion == entry_inclusion::only_files) {
+				continue;
+			}
+			if (!entry.is_directory() && inclusion == entry_inclusion::only_directories) {
+				continue;
+			}
 		}
-		if (!entry.is_directory() && inclusion == entry_inclusion::only_directories) {
-			continue;
-		}
-		files.push_back(entry.path());
+		entries.push_back(entry.path());
 	}
-	return files;
+	return entries;
 }
 
-std::vector<std::filesystem::path> entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion, bool recursive) {
+std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path path, entry_inclusion inclusion, bool recursive) {
 	if (recursive) {
 		return iterate_entries_in_directory<std::filesystem::recursive_directory_iterator>(path, inclusion);
 	} else {
@@ -47,7 +50,7 @@ std::vector<std::string> split_string(std::string string, char symbol) {
 
 std::string erase_substring(const std::string& string, const std::string& substring) {
 	auto result = string;
-	if (size_t index{ result.find(substring) }; index != std::string::npos) {
+	if (const auto index = result.find(substring); index != std::string::npos) {
 		result.erase(result.find(substring), substring.size());
 	}
 	return result;

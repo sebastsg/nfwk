@@ -32,6 +32,24 @@ int show_command() {
 
 namespace no::platform {
 
+std::string current_local_time_string() {
+	const time_t now{ std::time(nullptr) };
+	tm local_time;
+	localtime_s(&local_time, &now);
+	char buffer[64];
+	std::strftime(buffer, 64, "%X", &local_time);
+	return buffer;
+}
+
+std::string curent_local_date_string() {
+	const time_t now{ std::time(nullptr) };
+	tm local_time;
+	localtime_s(&local_time, &now);
+	char buffer[64];
+	std::strftime(buffer, 64, "%Y.%m.%d", &local_time);
+	return buffer;
+}
+
 static LPCSTR get_system_cursor_resource(system_cursor cursor) {
 	switch (cursor) {
 	case system_cursor::arrow: return IDC_ARROW;
@@ -125,7 +143,7 @@ bool open_file_browser_and_select(std::filesystem::path path) {
 	auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
 	ILFree(items);
 	if (result != S_OK) {
-		WARNING("Failed to open select file: " << path);
+		WARNING("Failed to open and select file: " << path);
 	}
 	return result == S_OK;
 }
@@ -152,7 +170,9 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 		return { 2, 2, pixel_format::rgba };
 	}
 	HBITMAP bitmap_handle{ nullptr };
-	result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT, &bitmap_handle);
+	do {
+		result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT | SIIGBF_BIGGERSIZEOK, &bitmap_handle);
+	} while (result == E_PENDING);
 	if (result != S_OK) {
 		WARNING("Failed to load thumbnail: " << path);
 		return { 2, 2, pixel_format::rgba };

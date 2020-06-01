@@ -49,6 +49,7 @@ void append(int index, message_type type, const char* file, const char* func, in
 		}
 
 #else
+# define BUG(MESSAGE) 
 # define ASSERT(EXPRESSION) 
 # define DEBUG(ID, TYPE, STR) 
 # define DEBUG_LIMIT(ID, TYPE, STR, LIMIT) 

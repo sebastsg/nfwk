@@ -69,7 +69,7 @@ public:
 			return;
 		}
 		html_logs[index].final_buffer += "\r\n<tr class=\"" + STRING(type) + "\">";
-		write_field(index, "<b>" + current_local_time_string() + "</b>." + current_time_ms_string());
+		write_field(index, "<b>" + platform::current_local_time_string() + "</b>." + current_time_ms_string());
 		write_field(index, html_logs[index].temp_buffer);
 		write_field(index, file);
 		write_field(index, get_html_compatible_string(func));

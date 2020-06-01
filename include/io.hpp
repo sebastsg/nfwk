@@ -14,7 +14,7 @@ namespace no {
 
 enum class entry_inclusion { everything, only_files, only_directories };
 
-std::vector<std::filesystem::path> entries_in_directory(const std::filesystem::path& path, entry_inclusion inclusion, bool recursive);
+std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path path, entry_inclusion inclusion, bool recursive);
 
 // todo: move these string functions
 // todo: split by string should also be possible

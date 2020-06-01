@@ -70,12 +70,16 @@ static struct {
 
 	int bound_shader{ -1 };
 
-	long long total_redundant_bind_calls{ 0 };
+	long long redundant_texture_bind_calls{ 0 };
 	
 } renderer;
 
-long long total_redundant_bind_calls() {
-	return renderer.total_redundant_bind_calls;
+namespace debug {
+
+long long get_redundant_texture_bind_calls() {
+	return renderer.redundant_texture_bind_calls;
+}
+
 }
 
 static size_t size_of_attribute_component(attribute_component type) {
@@ -227,18 +231,18 @@ int create_texture(const surface& surface) {
 	return id;
 }
 
-#if MEASURE_REDUNDANT_BIND_CALLS
+#if _DEBUG
 void measure_redundant_bind_call(int id) {
-	int active_texture_id = 0;
+	int active_texture_id{ 0 };
 	CHECK_GL_ERROR(glGetIntegerv(GL_TEXTURE_BINDING_2D, &active_texture_id));
 	if (active_texture_id == renderer.textures[id].id) {
-		renderer.total_redundant_bind_calls++;
+		renderer.redundant_texture_bind_calls++;
 	}
 }
 #endif
 
 void bind_texture(int id) {
-#if MEASURE_REDUNDANT_BIND_CALLS
+#if _DEBUG
 	measure_redundant_bind_call(id);
 #endif
 	CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D, renderer.textures[id].id));
@@ -246,7 +250,7 @@ void bind_texture(int id) {
 
 void bind_texture(int id, int slot) {
 	CHECK_GL_ERROR(glActiveTexture(GL_TEXTURE0 + slot));
-#if MEASURE_REDUNDANT_BIND_CALLS
+#if _DEBUG
 	measure_redundant_bind_call(id);
 #endif
 	CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D, renderer.textures[id].id));
@@ -400,8 +404,6 @@ void bind_shader(int id) {
 	if (renderer.bound_shader != id) {
 		renderer.bound_shader = id;
 		CHECK_GL_ERROR(glUseProgram(renderer.shaders[id].id));
-	} else {
-		// todo: add to counter
 	}
 }
 

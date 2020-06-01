@@ -9,9 +9,11 @@
 #include "timer.hpp"
 #include "vertex.hpp"
 
-namespace no {
+namespace no::debug {
+long long get_redundant_texture_bind_calls();
+}
 
-#define MEASURE_REDUNDANT_BIND_CALLS DEBUG_ENABLED
+namespace no {
 
 class surface;
 class ortho_camera;
@@ -55,8 +57,6 @@ void delete_shader(int id);
 
 void set_polygon_render_mode(polygon_render_mode mode);
 vector3i read_pixel_at(vector2i position);
-
-long long total_redundant_bind_calls();
 
 class shader_variable {
 public:

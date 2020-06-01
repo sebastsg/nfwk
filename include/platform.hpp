@@ -54,7 +54,7 @@ namespace no::platform {
 # define CHECK_GL_ERROR(GL_CALL) \
 	GL_CALL; \
 	LOG_VERBOSE_GL(GL_CALL) \
-	if (const auto gl_error{ glGetError() }; gl_error != GL_NO_ERROR) { \
+	if (const auto gl_error = glGetError(); gl_error != GL_NO_ERROR) { \
 		CRITICAL(#GL_CALL << "\n" << gluErrorString(gl_error)); \
 		ASSERT(gl_error == GL_NO_ERROR); \
 	}
@@ -85,6 +85,9 @@ using platform_render_context = x11_gl_context;
 #endif
 
 #endif
+
+std::string current_local_time_string();
+std::string curent_local_date_string();
 
 enum class system_cursor {
 	none,
