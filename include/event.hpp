@@ -52,13 +52,13 @@ public:
 
 	using handler_function = std::function<void(T...)>;
 
-	event() {
-		id = internal::add_event();
+	event() : id{ internal::add_event() } {
+		
 	}
 
 	event(const event&) = delete;
 
-	event(event&& that) noexcept : id{ std::move(that.id) }, handlers{ std::move(that.handlers) } {
+	event(event&& that) noexcept : id{ std::move(that.id) }, handlers{ std::move(that.handlers) }, forward_events{ std::move(that.forward_events) } {
 	
 	}
 
@@ -67,6 +67,7 @@ public:
 	event& operator=(event&& that) noexcept {
 		std::swap(id, that.id);
 		std::swap(handlers, that.handlers);
+		std::swap(forward_events, that.forward_events);
 		return *this;
 	}
 
@@ -91,18 +92,18 @@ public:
 
 	template<typename... Args>
 	void emit(Args... args) const {
-		for (auto& handler : handlers) {
+		for (const auto& handler : handlers) {
 			if (internal::is_event_listener(id, handler.first) && handler.second) {
 				handler.second(std::forward<T>(args)...);
 			}
 		}
-		for (auto& forward_event : forward_events) {
+		for (const auto& forward_event : forward_events) {
 			forward_event->emit(std::forward<T>(args)...);
 		}
 	}
 
 	int total_listeners() const {
-		return (int)handlers.size();
+		return static_cast<int>(handlers.size());
 	}
 
 	void start_forwarding_to(event& event) {
@@ -126,7 +127,6 @@ class event_queue {
 public:
 
 	event_queue() = default;
-
 	event_queue(const event_queue&) = delete;
 
 	event_queue(event_queue&& that) noexcept : messages{ std::move(that.messages) } {

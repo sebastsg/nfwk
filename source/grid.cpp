@@ -5,19 +5,14 @@
 
 namespace no {
 
-static std::unique_ptr<rectangle> grid;
-static int grid_texture{ 0 };
-static bool own_texture{ false };
+static thread_local std::unique_ptr<rectangle> grid;
+static thread_local int grid_texture{ 0 };
+static thread_local bool own_texture{ false };
 
 void create_grid(std::optional<int> texture) {
 	grid = std::make_unique<rectangle>();
-	if (texture.has_value()) {
-		grid_texture = texture.value();
-		own_texture = false;
-	} else {
-		grid_texture = create_texture(surface{ 2, 2, pixel_format::rgba, 0x22ffffff });
-		own_texture = true;
-	}
+	grid_texture = texture.value_or(create_texture({ 2, 2, pixel_format::rgba, 0x22ffffff }));
+	own_texture = !texture.has_value();
 }
 
 void destroy_grid() {

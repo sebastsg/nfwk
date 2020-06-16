@@ -270,6 +270,16 @@ void end_disabled() {
 	ImGui::PopItemFlag();
 }
 
+scoped_logic menu(std::string_view label) {
+	if (ImGui::BeginMenu(label.data())) {
+		return scoped_logic{ [] {
+			ImGui::EndMenu();
+		} };
+	} else {
+		return {};
+	}
+}
+
 }
 
 #endif

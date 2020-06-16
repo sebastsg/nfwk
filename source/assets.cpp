@@ -108,12 +108,10 @@ void register_all_textures() {
 	}
 }
 
-int require_texture(const std::string& name) {
-	return require_asset<int>("textures/" + name);
-}
-
-void release_texture(const std::string& name) {
-	release_asset("textures/" + name);
+scoped_context<int> require_texture(const std::string& name) {
+	return { [name] {
+		release_asset("textures/" + name);
+	}, require_asset<int>("textures/" + name) };
 }
 
 void register_font(const std::string& name, int size) {
@@ -124,12 +122,11 @@ void register_font(const std::string& name, int size) {
 	});
 }
 
-font* require_font(const std::string& name, int size) {
-	return require_asset<font*>("fonts/" + name + " " + std::to_string(size));
-}
-
-void release_font(const std::string& name, int size) {
-	release_asset("fonts/" + name + " " + std::to_string(size));
+scoped_context<font*> require_font(const std::string& name, int size) {
+	const std::string full_name{ "fonts/" + name + " " + std::to_string(size) };
+	return { [full_name] {
+		release_asset(full_name);
+	}, require_asset<font*>(full_name) };
 }
 
 void register_shader(const std::string& name) {
@@ -140,12 +137,10 @@ void register_shader(const std::string& name) {
 	});
 }
 
-int require_shader(const std::string& name) {
-	return require_asset<int>("shaders/" + name);
-}
-
-void release_shader(const std::string& name) {
-	release_asset("shaders/" + name);
+scoped_context<int> require_shader(const std::string& name) {
+	return { [name] {
+		release_asset("shaders/" + name);
+	}, require_asset<int>("shaders/" + name) };
 }
 
 void register_sound(const std::string& name) {
@@ -156,12 +151,10 @@ void register_sound(const std::string& name) {
 	});
 }
 
-audio_source* require_sound(const std::string& name) {
-	return require_asset<audio_source*>("sounds/" + name);
-}
-
-void release_sound(const std::string& name) {
-	release_asset("sounds/" + name);
+scoped_context<audio_source*> require_sound(const std::string& name) {
+	return { [name] {
+		release_asset("sounds/" + name);
+	}, require_asset<audio_source*>("sounds/" + name) };
 }
 
 }

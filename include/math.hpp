@@ -32,6 +32,10 @@ constexpr int divide_leftwards(int a, int b) {
 	return a / b - (a < 0 && a % b != 0);
 }
 
+constexpr float floor(float x) {
+	return static_cast<float>(static_cast<int>(x) - (x < 0.0f));
+}
+
 template<typename T>
 inline T clamp(T value, T min, T max) {
 	if (value > max) {
@@ -223,6 +227,7 @@ struct vector2 {
 
 };
 
+using vector2i8 = vector2<int8_t>;
 using vector2i = vector2<int32_t>;
 using vector2l = vector2<int64_t>;
 using vector2f = vector2<float>;
@@ -403,6 +408,7 @@ struct vector3 {
 
 };
 
+using vector3i8 = vector3<int8_t>;
 using vector3i = vector3<int32_t>;
 using vector3l = vector3<int64_t>;
 using vector3f = vector3<float>;
@@ -602,6 +608,7 @@ struct vector4 {
 
 };
 
+using vector4i8 = vector4<int8_t>;
 using vector4i = vector4<int32_t>;
 using vector4l = vector4<int64_t>;
 using vector4f = vector4<float>;

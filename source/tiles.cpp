@@ -167,6 +167,7 @@ void layer::render() {
 
 void layer::draw() {
 	no::set_shader_model(transform2{ 0.0f, 1.0f });
+	no::bind_texture(level.tileset_texture);
 	for (auto& chunk : chunks) {
 		if (chunk.rendered) {
 			chunk.rendered->quads.bind();

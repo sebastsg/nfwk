@@ -26,23 +26,37 @@ namespace no::ui {
 static constexpr std::string_view vertex_glsl{
 	"#version 330\n"
 	"uniform mat4 model_view_projection;"
-	"in vec2 in_Position; in vec2 in_TexCoords; in vec4 in_Color;"
-	"out vec4 v_Color; out vec2 v_TexCoords;"
+	"in vec2 in_Position;"
+	"in vec2 in_TexCoords;"
+	"in vec4 in_Color;"
+	"out vec4 v_Color;"
+	"out vec2 v_TexCoords;"
 	"void main() {"
 	"	gl_Position = model_view_projection * vec4(in_Position.xy, 0.0f, 1.0f);"
-	"	v_Color = in_Color; v_TexCoords = in_TexCoords;"
+	"	v_Color = in_Color;"
+	"	v_TexCoords = in_TexCoords;"
 	"}"
 };
 
 static constexpr std::string_view fragment_glsl{
 	"#version 330\n"
 	"uniform sampler2D active_texture;"
-	"in vec4 v_Color; in vec2 v_TexCoords;"
+	"in vec4 v_Color;"
+	"in vec2 v_TexCoords;"
 	"out vec4 out_Color;"
-	"void main() { out_Color = texture(active_texture, v_TexCoords).rgba * v_Color; }"
+	"void main() {"
+	"	out_Color = texture(active_texture, v_TexCoords).rgba * v_Color;"
+	"}"
 };
 
-static struct {
+struct imgui_vertex {
+	static constexpr vertex_attribute_specification attributes[]{ 2, 2, { attribute_component::is_byte, 4, true } };
+	vector2f position;
+	vector2f tex_coords;
+	uint32_t color{ 0 };
+};
+
+struct imgui_data {
 	window* window{ nullptr };
 	long long time{ 0 };
 	long long ticks_per_second{ 0 };
@@ -58,17 +72,13 @@ static struct {
 	event_listener mouse_double_click;
 	event_listener mouse_release;
 	ImFontConfig font_config{};
-} data;
-
-struct imgui_vertex {
-	static constexpr vertex_attribute_specification attributes[]{ 2, 2, { attribute_component::is_byte, 4, true } };
-	vector2f position;
-	vector2f tex_coords;
-	uint32_t color{ 0 };
+	vertex_array<imgui_vertex, unsigned short> vertex_array;
 };
 
+static std::unique_ptr<imgui_data> data;
+
 static bool is_initialized() {
-	return data.window != nullptr;
+	return data != nullptr;
 }
 
 static void initialize_style() {
@@ -166,15 +176,15 @@ static void update_cursor_icon() {
 		return;
 	}
 	const auto new_cursor = imgui_to_system_cursor(io.MouseDrawCursor ? ImGuiMouseCursor_None : ImGui::GetMouseCursor());
-	if (data.old_cursor != new_cursor) {
+	if (data->old_cursor != new_cursor) {
 		platform::set_system_cursor(new_cursor);
-		data.old_cursor = new_cursor;
+		data->old_cursor = new_cursor;
 	}
 }
 
 static void update_mouse_position() {
 	auto& io = ImGui::GetIO();
-	const auto window_handle = data.window->platform_window()->handle();
+	const auto window_handle = data->window->platform_window()->handle();
 	if (io.WantSetMousePos) {
 		POINT position{ static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y) };
 		ClientToScreen(window_handle, &position);
@@ -198,8 +208,6 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 	case mouse::button::middle:
 		io.MouseDown[2] = is_down;
 		break;
-	default:
-		break;
 	}
 }
 
@@ -209,9 +217,10 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 		return;
 	}
 	ImGui::CreateContext();
-	data.window = &window;
-	data.ticks_per_second = platform::performance_frequency();
-	data.time = platform::performance_counter();
+	data = std::make_unique<imgui_data>();
+	data->window = &window;
+	data->ticks_per_second = platform::performance_frequency();
+	data->time = platform::performance_counter();
 	auto& io = ImGui::GetIO();
 	io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 	io.BackendPlatformName = "nfwk-windows";
@@ -239,57 +248,57 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	io.KeyMap[ImGuiKey_X] = static_cast<int>(no::key::x);
 	io.KeyMap[ImGuiKey_Y] = static_cast<int>(no::key::y);
 	io.KeyMap[ImGuiKey_Z] = static_cast<int>(no::key::z);
-	data.keyboard_repeated_press = window.keyboard.repeated_press.listen([&](key pressed_key) {
+	data->keyboard_repeated_press = window.keyboard.repeated_press.listen([&](key pressed_key) {
 		if (static_cast<int>(pressed_key) < 256) {
 			io.KeysDown[static_cast<int>(pressed_key)] = true;
 		}
 	});
-	data.keyboard_release = window.keyboard.release.listen([&](key released_key) {
+	data->keyboard_release = window.keyboard.release.listen([&](key released_key) {
 		if (static_cast<int>(released_key) < 256) {
 			io.KeysDown[static_cast<int>(released_key)] = false;
 		}
 	});
-	data.keybord_input = window.keyboard.input.listen([&](unsigned int character) {
+	data->keybord_input = window.keyboard.input.listen([&](unsigned int character) {
 		if (character > 0 && character < 0x10000) {
 			io.AddInputCharacter(character);
 		}
 	});
-	data.mouse_scroll = window.mouse.scroll.listen([&](int steps) {
+	data->mouse_scroll = window.mouse.scroll.listen([&](int steps) {
 		io.MouseWheel += static_cast<float>(steps);
 	});
-	data.mouse_cursor = window.mouse.icon.listen([] {
+	data->mouse_cursor = window.mouse.icon.listen([] {
 		update_cursor_icon();
 	});
-	data.mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
+	data->mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			SetCapture(data.window->platform_window()->handle());
+			SetCapture(data->window->platform_window()->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data.mouse_double_click = window.mouse.double_click.listen([&](mouse::button pressed_button) {
+	data->mouse_double_click = window.mouse.double_click.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			SetCapture(data.window->platform_window()->handle());
+			SetCapture(data->window->platform_window()->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data.mouse_release = window.mouse.release.listen([&](mouse::button released_button) {
+	data->mouse_release = window.mouse.release.listen([&](mouse::button released_button) {
 		set_mouse_down(released_button, false);
-		if (!ImGui::IsAnyMouseDown() && GetCapture() == data.window->platform_window()->handle()) {
+		if (!ImGui::IsAnyMouseDown() && GetCapture() == data->window->platform_window()->handle()) {
 			ReleaseCapture();
 		}
 	});
 
-	data.shader_id = create_shader_from_source(vertex_glsl, fragment_glsl);
+	data->shader_id = create_shader_from_source(vertex_glsl, fragment_glsl);
 
 	if (font_name.has_value()) {
 		if (const auto font_path = font::find_absolute_path(font_name.value())) {
-			static ImWchar glyph_ranges[]{
+			static constexpr ImWchar glyph_ranges[]{
 				1, 256,
 				8592, 8592,
 				0
 			};
 			//data.font_config.MergeMode = true;
-			io.Fonts->AddFontFromFileTTF(font_path->c_str(), static_cast<float>(font_size), &data.font_config, glyph_ranges);
+			io.Fonts->AddFontFromFileTTF(font_path->c_str(), static_cast<float>(font_size), &data->font_config, glyph_ranges);
 			ImGuiFreeType::BuildFontAtlas(io.Fonts);
 		}
 	}
@@ -298,28 +307,17 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	int width{ 0 };
 	int height{ 0 };
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	data.font_texture_id = create_texture({ reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
-	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data.font_texture_id);
+	data->font_texture_id = create_texture({ reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data->font_texture_id);
 	initialize_style();
-	//ImGui::StyleColorsDark();
 }
 
 void destroy() {
 	if (is_initialized()) {
-		data.keyboard_repeated_press.stop();
-		data.keyboard_release.stop();
-		data.keybord_input.stop();
-		data.mouse_scroll.stop();
-		data.mouse_cursor.stop();
-		data.mouse_press.stop();
-		data.mouse_double_click.stop();
-		data.mouse_release.stop();
-		delete_shader(data.shader_id);
-		delete_texture(data.font_texture_id);
-		data.shader_id = -1;
-		data.font_texture_id = -1;
+		delete_shader(data->shader_id);
+		delete_texture(data->font_texture_id);
+		data.release();
 		ImGui::GetIO().Fonts->TexID = 0;
-		data.window = nullptr;
 	}
 }
 
@@ -327,11 +325,11 @@ void start_frame() {
 	if (is_initialized()) {
 		auto& io = ImGui::GetIO();
 		RECT rect;
-		GetClientRect(data.window->platform_window()->handle(), &rect);
+		GetClientRect(data->window->platform_window()->handle(), &rect);
 		io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
 		const long long current_time{ platform::performance_counter() };
-		io.DeltaTime = static_cast<float>(current_time - data.time) / static_cast<float>(data.ticks_per_second);
-		data.time = current_time;
+		io.DeltaTime = static_cast<float>(current_time - data->time) / static_cast<float>(data->ticks_per_second);
+		data->time = current_time;
 		io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
 		io.KeyShift = (GetKeyState(VK_SHIFT) & 0x8000) != 0;
 		io.KeyAlt = (GetKeyState(VK_MENU) & 0x8000) != 0;
@@ -363,25 +361,25 @@ void draw() {
 	ortho_camera camera;
 	camera.transform.scale = display_size;
 
-	bind_shader(data.shader_id);
+	bind_shader(data->shader_id);
 	set_shader_view_projection(camera);
 
 	vertex_array<imgui_vertex, unsigned short> vertex_array;
 	for (int list_index{ 0 }; list_index < draw_data->CmdListsCount; list_index++) {
-		const auto cmd_list = draw_data->CmdLists[list_index];
-		const auto vertex_data = reinterpret_cast<const uint8_t*>(cmd_list->VtxBuffer.Data);
-		const auto index_data = reinterpret_cast<const uint8_t*>(cmd_list->IdxBuffer.Data);
-		vertex_array.set(vertex_data, cmd_list->VtxBuffer.Size, index_data, cmd_list->IdxBuffer.Size);
+		const auto draw_list = draw_data->CmdLists[list_index];
+		const auto vertex_data = reinterpret_cast<const uint8_t*>(draw_list->VtxBuffer.Data);
+		const auto index_data = reinterpret_cast<const uint8_t*>(draw_list->IdxBuffer.Data);
+		vertex_array.set(vertex_data, draw_list->VtxBuffer.Size, index_data, draw_list->IdxBuffer.Size);
 		size_t offset{ 0 };
-		for (int buffer_index{ 0 }; buffer_index < cmd_list->CmdBuffer.Size; buffer_index++) {
-			auto& buffer = cmd_list->CmdBuffer[buffer_index];
+		for (int buffer_index{ 0 }; buffer_index < draw_list->CmdBuffer.Size; buffer_index++) {
+			auto& buffer = draw_list->CmdBuffer[buffer_index];
 			const auto current_offset = offset;
 			offset += buffer.ElemCount;
 			if (buffer.UserCallback) {
 				if (buffer.UserCallback == ImDrawCallback_ResetRenderState) {
 					BUG("Not supported.");
 				} else {
-					buffer.UserCallback(cmd_list, &buffer);
+					buffer.UserCallback(draw_list, &buffer);
 				}
 			} else {
 				const vector4f clip{
@@ -392,14 +390,14 @@ void draw() {
 				};
 				if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
 					const auto [sx, sy, sw, sh] = vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>();
-					data.window->scissor(sx, sy, sw, sh);
+					data->window->scissor(sx, sy, sw, sh);
 					bind_texture(reinterpret_cast<int>(buffer.TextureId));
 					vertex_array.draw(current_offset, buffer.ElemCount);
 				}
 			}
 		}
 	}
-	data.window->reset_scissor();
+	data->window->reset_scissor();
 }
 
 }

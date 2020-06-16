@@ -253,7 +253,7 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 			row--;
 			continue;
 		}
-		int index = face->char_index(character);
+		const uint32_t index{ face->char_index(character) };
 		if (face->has_kerning && last_index > 0 && index > 0) {
 			FT_Vector delta;
 			FT_Get_Kerning(face->face, last_index, index, FT_KERNING_DEFAULT, &delta);
@@ -261,7 +261,7 @@ std::pair<uint32_t*, vector2i> font::render_text(const std::string& text, uint32
 		}
 		face->load_glyph(index);
 		face->render_glyph();
-		const auto glyph{ face->face->glyph };
+		const auto* glyph = face->face->glyph;
 		const int row_y{ (text_size.size.y / text_size.rows) * row };
 		const int top{ text_size.size.y - row_y - glyph->bitmap_top + text_size.min_y };
 		face->blit(destination, left + glyph->bitmap_left, top, text_size.size.x, text_size.size.y, color);

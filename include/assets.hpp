@@ -1,7 +1,8 @@
 #pragma once
 
+#include "scoped_context.hpp"
+
 #include <string>
-#include <functional>
 
 namespace no {
 
@@ -33,20 +34,16 @@ void free_released_assets();
 
 void register_texture(const std::string& name);
 void register_all_textures();
-int require_texture(const std::string& name);
-void release_texture(const std::string& name);
+scoped_context<int> require_texture(const std::string& name);
 
 void register_font(const std::string& name, int size);
-font* require_font(const std::string& name, int size);
-void release_font(const std::string& name, int size);
+scoped_context<font*> require_font(const std::string& name, int size);
 
 void register_shader(const std::string& name);
-int require_shader(const std::string& name);
-void release_shader(const std::string& name);
+scoped_context<int> require_shader(const std::string& name);
 
 void register_sound(const std::string& name);
-audio_source* require_sound(const std::string& name);
-void release_sound(const std::string& name);
+scoped_context<audio_source*> require_sound(const std::string& name);
 
 
 }

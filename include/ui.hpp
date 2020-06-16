@@ -2,18 +2,17 @@
 
 #include "platform.hpp"
 #include "math.hpp"
+#include "scoped_context.hpp"
 
 #if ENABLE_GRAPHICS
 
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-#include <optional>
-#include <functional>
-
 namespace no::ui {
 
 struct popup_item {
+
 	std::string label;
 	std::string shortcut;
 	bool selected{ false };
@@ -73,6 +72,8 @@ void pop_window();
 bool is_hovered();
 void begin_disabled();
 void end_disabled();
+
+scoped_logic menu(std::string_view label);
 
 }
 
