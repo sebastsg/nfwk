@@ -104,7 +104,7 @@ void skeletal_animator::erase(int id) {
 	}
 }
 
-void skeletal_animator::set_transform(int id, const no::transform3& transform) {
+void skeletal_animator::set_transform(int id, const transform3& transform) {
 	model_transforms[id] = transform;
 }
 
@@ -167,7 +167,7 @@ void skeletal_animator::draw() const {
 	skeleton.bind();
 	for (auto& animation : synced_animations) {
 		if (animation.active) {
-			no::set_shader_model(model_transforms[animation.id]);
+			set_shader_model(model_transforms[animation.id]);
 			shader.bones.set(animation.bones, animation.bone_count);
 			skeleton.draw();
 		}

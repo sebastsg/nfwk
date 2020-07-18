@@ -152,7 +152,7 @@ bool input(std::string_view label, vector4d& value) {
 void grid(vector2f offset, vector2f grid_size, vector4f color) {
 	auto draw_list = ImGui::GetWindowDrawList();
 	draw_list->ChannelsSplit(2);
-	const ImColor line_color{ color * 255.0f };
+	const ImColor line_color{ color };
 	const vector2f win_pos{ ImGui::GetCursorScreenPos() };
 	const vector2f canvas_size{ ImGui::GetWindowSize() };
 	for (float x{ std::fmodf(offset.x, grid_size.x) }; x < canvas_size.x; x += grid_size.x) {
@@ -165,11 +165,11 @@ void grid(vector2f offset, vector2f grid_size, vector4f color) {
 }
 
 void rectangle(vector2f position, vector2f size, const vector4f& color) {
-	ImGui::GetWindowDrawList()->AddRectFilled(position, position + size, ImColor{ color.x, color.y, color.z, color.w });
+	ImGui::GetWindowDrawList()->AddRectFilled(position, position + size, ImColor{ color });
 }
 
 void outline(vector2f position, vector2f size, const vector4f& color) {
-	ImGui::GetWindowDrawList()->AddRect(position, position + size, ImColor{ color.x, color.y, color.z, color.w });
+	ImGui::GetWindowDrawList()->AddRect(position, position + size, ImColor{ color });
 }
 
 std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected) {
@@ -190,27 +190,24 @@ std::optional<int> combo(std::string_view label, const std::vector<std::string>&
 	return clicked;
 }
 
-static void popup_next_menu(const popup_item& item) {
+static void popup_next_menu(popup_item& item) {
 	if (item.children.empty()) {
-		if (ImGui::MenuItem(item.label.c_str(), item.shortcut.c_str(), item.selected, item.enabled)) {
+		if (menu_item(item.label, item.shortcut, item.selected, item.enabled)) {
 			if (item.on_click) {
 				item.on_click();
 			}
 		}
-	} else {
-		if (ImGui::BeginMenu(item.label.c_str(), item.enabled)) {
-			for (const auto& child : item.children) {
-				popup_next_menu(child);
-			}
-			ImGui::EndMenu();
+	} else if (auto end = menu(item.label, item.enabled)) {
+		for (auto& child : item.children) {
+			popup_next_menu(child);
 		}
 	}
 }
 
-void popup(std::string_view id, const std::vector<popup_item>& items) {
+void popup(std::string_view id, std::vector<popup_item>& items) {
 	if (!items.empty()) {
 		if (ImGui::BeginPopup(id.data())) {
-			for (const auto& item : items) {
+			for (auto& item : items) {
 				popup_next_menu(item);
 			}
 			ImGui::EndPopup();
@@ -220,36 +217,35 @@ void popup(std::string_view id, const std::vector<popup_item>& items) {
 
 std::optional<int> list(std::string_view label, const std::vector<std::string>& values, int selected) {
 	std::optional<int> clicked;
-	ImGui::ListBoxHeader(label.data(), values.size());
-	for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
-		if (ImGui::Selectable(values[i].c_str(), i == selected)) {
-			clicked = i;
+	if (ImGui::ListBoxHeader(label.data(), values.size())) {
+		for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
+			if (ImGui::Selectable(values[i].c_str(), i == selected)) {
+				clicked = i;
+			}
 		}
+		ImGui::ListBoxFooter();
 	}
-	ImGui::ListBoxFooter();
 	return clicked;
 }
 
-void push_static_window(std::string_view label, vector2f position, vector2f size) {
-	const ImGuiWindowFlags flags{
-		  ImGuiWindowFlags_NoMove
-		| ImGuiWindowFlags_NoResize
-		| ImGuiWindowFlags_NoCollapse
-		| ImGuiWindowFlags_NoTitleBar
+scoped_logic push_static_window(std::string_view label, vector2f position, vector2f size) {
+	constexpr auto flags{
+		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar
 	};
-	ImGui::SetNextWindowPos(position, ImGuiCond_Once);
-	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-	ImGui::Begin(label.data(), nullptr, flags);
+	return push_window(label, position, size, flags);
 }
 
-void push_window(std::string_view label, vector2f position, vector2f size) {
-	const ImGuiWindowFlags flags{
-		  ImGuiWindowFlags_NoResize
-		| ImGuiWindowFlags_NoCollapse
-	};
-	ImGui::SetNextWindowPos(position, ImGuiCond_Once);
-	ImGui::SetNextWindowSize(size, ImGuiCond_Always);
-	ImGui::Begin(label.data(), nullptr, flags);
+scoped_logic push_window(std::string_view label, vector2f position, vector2f size, ImGuiWindowFlags flags, bool* open) {
+	ImGui::SetNextWindowPos(position);
+	ImGui::SetNextWindowSize(size);
+	if (ImGui::Begin(label.data(), open, flags)) {
+		return [] {
+			pop_window();
+		};
+	} else {
+		pop_window();
+		return {};
+	}
 }
 
 void pop_window() {
@@ -270,14 +266,30 @@ void end_disabled() {
 	ImGui::PopItemFlag();
 }
 
-scoped_logic menu(std::string_view label) {
-	if (ImGui::BeginMenu(label.data())) {
+scoped_logic menu(std::string_view label, bool enabled) {
+	if (ImGui::BeginMenu(label.data(), enabled)) {
 		return scoped_logic{ [] {
 			ImGui::EndMenu();
 		} };
 	} else {
 		return {};
 	}
+}
+
+bool menu_item(std::string_view label) {
+	return ImGui::MenuItem(label.data());
+}
+
+bool menu_item(std::string_view label, std::string_view shortcut) {
+	return ImGui::MenuItem(label.data(), shortcut.data());
+}
+
+bool menu_item(std::string_view label, bool& checked, bool enabled) {
+	return ImGui::MenuItem(label.data(), nullptr, &checked, enabled);
+}
+
+bool menu_item(std::string_view label, std::string_view shortcut, bool& checked, bool enabled) {
+	return ImGui::MenuItem(label.data(), shortcut.data(), &checked, enabled);
 }
 
 }

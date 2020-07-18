@@ -62,18 +62,22 @@ void rectangle(vector2f position, vector2f size, const vector4f& color);
 void outline(vector2f position, vector2f size, const vector4f& color);
 
 std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected);
-void popup(std::string_view id, const std::vector<popup_item>& values);
+void popup(std::string_view id, std::vector<popup_item>& values);
 std::optional<int> list(std::string_view label, const std::vector<std::string>& values, int selected);
 
-void push_static_window(std::string_view label, vector2f position, vector2f size);
-void push_window(std::string_view label, vector2f position, vector2f size);
+scoped_logic push_static_window(std::string_view label, vector2f position, vector2f size);
+scoped_logic push_window(std::string_view label, vector2f position, vector2f size, ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse, bool* open = nullptr);
 void pop_window();
 
 bool is_hovered();
 void begin_disabled();
 void end_disabled();
 
-scoped_logic menu(std::string_view label);
+scoped_logic menu(std::string_view label, bool enabled = true);
+bool menu_item(std::string_view label);
+bool menu_item(std::string_view label, std::string_view shortcut);
+bool menu_item(std::string_view label, bool& checked, bool enabled = true);
+bool menu_item(std::string_view label, std::string_view shortcut, bool& checked, bool enabled = true);
 
 }
 

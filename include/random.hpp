@@ -49,6 +49,23 @@ public:
 		return chance >= next<float>(0.0f, 1.0f);
 	}
 
+	std::string string(int size) {
+		std::string string;
+		string.resize(size);
+		std::generate_n(std::begin(string), size, [this] {
+			constexpr char characters[65]{
+				"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_abcdefghijklmnopqrstuvwxyz"
+			};
+			return characters[next<int>(64)];
+		});
+		return string;
+	}
+
+	static random_number_generator& global() {
+		static thread_local random_number_generator rng;
+		return rng;
+	}
+
 private:
 
 	std::mt19937_64 mersenne_twister_engine;

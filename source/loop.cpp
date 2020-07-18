@@ -1,5 +1,7 @@
 #include "loop.hpp"
 #include "script.hpp"
+#include "objects.hpp"
+#include "editor.hpp"
 #include "imgui/imgui_platform.hpp"
 
 #if ENABLE_WINDOW
@@ -69,8 +71,12 @@ static struct {
 
 	std::vector<program_state*> states;
 	std::vector<window*> windows;
+	std::optional<int> imgui_window_index;
 
 	std::vector<program_state*> states_to_stop;
+
+	// Updated when program_state::update() is about to be called.
+	program_state* current_state{ nullptr };
 
 	long long redundant_texture_binds_this_frame{ 0 };
 
@@ -98,24 +104,32 @@ static int state_index(const program_state* state) {
 
 static void update_windows() {
 	for (auto state : loop.states) {
+		loop.current_state = state;
+		const auto index = state_index(state);
 #if ENABLE_WINDOW
-		auto window = loop.windows[state_index(state)];
+		auto window = loop.windows[index];
 		window->poll();
 #endif
 		ui::start_frame();
 		state->update();
+		if (loop.imgui_window_index.has_value() && loop.imgui_window_index.value() == index) {
+			debug::menu::update();
+		}
 		ui::end_frame();
+		loop.current_state = nullptr;
 	}
 }
 
 static void draw_windows() {
 #if ENABLE_WINDOW
 	for (auto state : loop.states) {
+		loop.current_state = state;
 		auto window = loop.windows[state_index(state)];
 		window->clear();
 		state->draw();
 		ui::draw();
 		window->swap();
+		loop.current_state = nullptr;
 	}
 #endif
 }
@@ -133,6 +147,10 @@ static void destroy_stopped_states() {
 			loop.states.erase(loop.states.begin() + index);
 			if (closing) {
 #if ENABLE_WINDOW
+				if (loop.imgui_window_index.has_value() && loop.imgui_window_index.value() == index) {
+					ui::destroy();
+					loop.imgui_window_index = std::nullopt;
+				}
 				delete loop.windows[index];
 				loop.windows.erase(loop.windows.begin() + index);
 #endif
@@ -145,18 +163,40 @@ static void destroy_stopped_states() {
 	loop.states_to_stop.clear();
 }
 
+static void create_state_generic(const internal::make_state_function& make_state) {
+	if (!make_state) {
+		return;
+	}
+	const auto specification = make_state();
+	loop.states.emplace_back(specification.state);
+	if (specification.imgui) {
+		ui::create(specification.state->window(), "calibril.ttf", 18);
+		loop.imgui_window_index = static_cast<int>(loop.states.size()) - 1;
+	}
+}
+
+draw_synchronization get_draw_synchronization() {
+	return loop.synchronization;
+}
+
+void set_draw_synchronization(draw_synchronization synchronization) {
+	loop.synchronization = synchronization;
+}
+
+const loop_frame_counter& frame_counter() {
+	return loop.frame_counter;
+}
+
 program_state::program_state() {
 #if ENABLE_WINDOW
 	window_close = window().close.listen([this] {
-		loop.states_to_stop.push_back(this);
+		stop();
 	});
 #endif
 }
 
 program_state::~program_state() {
-	if (make_next_state) {
-		loop.states.emplace_back(make_next_state());
-	}
+	create_state_generic(make_next_state);
 }
 
 void program_state::stop() {
@@ -191,16 +231,8 @@ audio_endpoint& program_state::audio() const {
 
 #endif
 
-const loop_frame_counter& program_state::frame_counter() const {
-	return loop.frame_counter;
-}
-
 loop_frame_counter& program_state::frame_counter() {
 	return loop.frame_counter;
-}
-
-void program_state::set_synchronization(draw_synchronization synchronization) {
-	loop.synchronization = synchronization;
 }
 
 long long program_state::redundant_texture_binds_this_frame() {
@@ -216,37 +248,43 @@ bool program_state::has_next_state() const {
 	return make_next_state.operator bool();
 }
 
+program_state* program_state::current() {
+	if (!loop.current_state) {
+		WARNING_LIMIT("No state is being updated or drawn.", 10);
+	}
+	ASSERT(loop.current_state);
+	return loop.current_state;
+}
+
 namespace internal {
 
 void create_state(const std::string& title, int width, int height, int samples, const make_state_function& make_state) {
 	loop.windows.emplace_back(new window{ title, width, height, samples });
-	loop.states.emplace_back(make_state());
+	create_state_generic(make_state);
 }
 
 void create_state(const std::string& title, int width, int height, const make_state_function& make_state) {
 	loop.windows.emplace_back(new window{ title, width, height });
-	loop.states.emplace_back(make_state());
+	create_state_generic(make_state);
 }
 
 void create_state(const std::string& title, int samples, const make_state_function& make_state) {
 	loop.windows.emplace_back(new window{ title, samples });
-	loop.states.emplace_back(make_state());
+	create_state_generic(make_state);
 }
 
 void create_state(const std::string& title, const make_state_function& make_state) {
-#if ENABLE_WINDOW
 	loop.windows.emplace_back(new window{ title });
-#else
-	loop.windows.emplace_back(nullptr);
-#endif
-	loop.states.emplace_back(make_state());
+	create_state_generic(make_state);
 }
 
 int run_main_loop() {
 	configure();
 	loop.post_configure.emit();
 
-	initialize_scripts();
+	internal::initialize_editor();
+	internal::initialize_scripts();
+	internal::initialize_objects();
 
 #if ENABLE_WASAPI
 	loop.audio = new wasapi::audio_device{};

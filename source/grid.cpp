@@ -30,14 +30,14 @@ void draw_grid(const ortho_camera& camera, vector2f size) {
 	grid->bind();
 	for (float y{ 0.0f }; y < camera.height(); y += size.y) {
 		transform.position.y = camera.y() - std::fmodf(camera.y(), size.y) + static_cast<float>(y);
-		no::set_shader_model(transform);
+		set_shader_model(transform);
 		grid->draw();
 	}
 	transform.scale = { 1.0f, camera.height() };
 	transform.position.y = camera.y() - std::fmodf(camera.y(), size.y);
 	for (float x{ 0.0f }; x < camera.width(); x += size.x) {
 		transform.position.x = camera.x() - std::fmodf(camera.x(), size.x) + static_cast<float>(x);
-		no::set_shader_model(transform);
+		set_shader_model(transform);
 		grid->draw();
 	}
 }

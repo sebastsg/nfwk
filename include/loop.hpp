@@ -16,7 +16,12 @@ class mouse;
 
 namespace internal {
 
-using make_state_function = std::function<program_state*()>;
+struct make_state_specification {
+	program_state* state{ nullptr };
+	bool imgui{ false };
+};
+
+using make_state_function = std::function<make_state_specification()>;
 
 void create_state(const std::string& title, int width, int height, int samples, const make_state_function& make_state);
 void create_state(const std::string& title, int width, int height, const make_state_function& make_state);
@@ -57,6 +62,11 @@ private:
 // 'always' should only used to test performance, and requires swap_interval::immediate.
 enum class draw_synchronization { always, if_updated };
 
+draw_synchronization get_draw_synchronization();
+void set_draw_synchronization(draw_synchronization synchronization);
+
+const loop_frame_counter& frame_counter();
+
 class program_state {
 public:
 
@@ -87,20 +97,20 @@ public:
 
 #endif
 
-	const loop_frame_counter& frame_counter() const;
 	loop_frame_counter& frame_counter();
 	bool has_next_state() const;
 
-protected:
-
-	template<typename T>
+	template<typename T, bool CreateImGui = false>
 	void change_state() {
 		change_state([] {
-			return new T{};
+			return internal::make_state_specification{ new T{}, CreateImGui };
 		});
 	}
 
-	void set_synchronization(draw_synchronization synchronization);
+	static program_state* current();
+
+protected:
+
 	long long redundant_texture_binds_this_frame();
 
 	void stop();
@@ -117,24 +127,32 @@ private:
 event<>& post_configure_event();
 event<>& pre_exit_event();
 
-template<typename T>
+template<typename T, bool CreateImGui = false>
 void create_state(const std::string& title, int width, int height, int samples) {
-	internal::create_state(title, width, height, samples, [] { return new T{}; });
+	internal::create_state(title, width, height, samples, [] {
+		return internal::make_state_specification{ new T{}, CreateImGui };
+	});
 }
 
-template<typename T>
+template<typename T, bool CreateImGui = false>
 void create_state(const std::string& title, int width, int height) {
-	internal::create_state(title, width, height, [] { return new T{}; });
+	internal::create_state(title, width, height, [] {
+		return internal::make_state_specification{ new T{}, CreateImGui };
+	});
 }
 
-template<typename T>
+template<typename T, bool CreateImGui = false>
 void create_state(const std::string& title, int samples) {
-	internal::create_state(title, samples, [] { return new T{}; });
+	internal::create_state(title, samples, [] {
+		return internal::make_state_specification{ new T{}, CreateImGui };
+	});
 }
 
-template<typename T>
+template<typename T, bool CreateImGui = false>
 void create_state(const std::string& title) {
-	internal::create_state(title, [] { return new T{}; });
+	internal::create_state(title, [] {
+		return internal::make_state_specification{ new T{}, CreateImGui };
+	});
 }
 
 }

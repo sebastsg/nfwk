@@ -73,7 +73,7 @@ struct synced_skeletal_animation {
 	glm::mat4 root_transform{ 1.0f };
 	int bone_count = 0;
 	int transform_count = 0;
-	no::timer played_for;
+	timer played_for;
 
 	synced_skeletal_animation(const skeletal_animation& animation);
 
@@ -97,7 +97,7 @@ public:
 
 	int add();
 	void erase(int id);
-	void set_transform(int id, const no::transform3& transform);
+	void set_transform(int id, const transform3& transform);
 	void set_is_attachment(int id, bool attachment);
 	void set_root_transform(int id, const glm::mat4& transform);
 	int count() const;

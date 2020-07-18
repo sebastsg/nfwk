@@ -197,7 +197,7 @@ glm::mat4 transform3::to_matrix4() const {
 
 glm::mat4 transform3::to_matrix4_origin() const {
 	glm::mat4 matrix{ 1.0f };
-	const no::vector3f origin{ position + scale / 2.0f };
+	const vector3f origin{ position + scale / 2.0f };
 	matrix = glm::translate(matrix, { origin.x, origin.y, origin.z });
 	if (rotation.x != 0.0f) {
 		matrix = glm::rotate(matrix, deg_to_rad(rotation.x), { 1.0f, 0.0f, 0.0f });

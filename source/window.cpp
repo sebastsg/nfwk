@@ -12,21 +12,25 @@ namespace no {
 window::window(std::string_view title, int width, int height, int samples) : mouse{ this } {
 	platform = new platform::platform_window{ *this, title, width, height, samples };
 	set_clear_color(0.1f);
+	set_swap_interval(swap_interval::sync);
 }
 
 window::window(std::string_view title, int width, int height) : mouse{ this } {
 	platform = new platform::platform_window{ *this, title, width, height };
 	set_clear_color(0.1f);
+	set_swap_interval(swap_interval::sync);
 }
 
 window::window(std::string_view title, int samples) : mouse{ this } {
 	platform = new platform::platform_window{ *this, title, samples };
 	set_clear_color(0.1f);
+	set_swap_interval(swap_interval::sync);
 }
 
 window::window(std::string_view title) : mouse{ this } {
 	platform = new platform::platform_window{ *this, title };
 	set_clear_color(0.1f);
+	set_swap_interval(swap_interval::sync);
 }
 
 window::window(window&& that) noexcept {

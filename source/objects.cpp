@@ -1,6 +1,9 @@
 #include "objects.hpp"
 #include "transform.hpp"
 #include "ui.hpp"
+#include "debug.hpp"
+#include "window.hpp"
+#include "editor.hpp"
 
 namespace no {
 
@@ -18,6 +21,28 @@ struct object_instance {
 struct object_class_instance {
 	std::shared_ptr<object_class_definition> definition;
 	std::vector<object_instance> instances;
+};
+
+class create_object_class_editor : public abstract_editor {
+public:
+
+	static constexpr std::string_view title{ "Create object class" };
+
+	void update() override;
+
+	std::string_view get_title() const override {
+		return title;
+	}
+
+	bool is_dirty() const override {
+		return false;
+	}
+
+private:
+
+	object_class_definition definition;
+	std::optional<int> selected_script;
+
 };
 
 static std::vector<std::shared_ptr<object_class_definition>> definitions;
@@ -55,21 +80,31 @@ void create_object(const std::string& class_id, const variable_map& variables) {
 
 }
 
-namespace ui {
+void create_object_class_editor::update() {
+	ImGui::PushID("nfwk-create-object-class");
+	ImGui::PushItemWidth(256.0f);
 
-void create_object_class() {
-	static thread_local object_class_definition definition;
-	text("Create object class");
-	input("Identifier", definition.id);
-	input("Name", definition.name);
-	//if (const auto collision = combo("Collision", { "None", "Extents", "Radius", "Precise" }, definition.collision)) {
-	//	definition.collision = collision.value();
-	//}
-	//if (button("Save")) {
-	//
-	//}
+	ui::input("Identifier", definition.id);
+	ui::input("Name", definition.name);
+
+	if (const auto collision = ui::combo("Collision", { "None", "Extents", "Radius", "Precise" }, static_cast<int>(definition.collision))) {
+		definition.collision = static_cast<object_collision>(collision.value());
+	}
+
+	ui::separate();
+	if (ui::button("Save class")) {
+		
+	}
+	ImGui::PopItemWidth();
+	ImGui::PopID();
 }
 
+}
+
+namespace no::internal {
+
+void initialize_objects() {
+	register_editor<create_object_class_editor>();
 }
 
 }

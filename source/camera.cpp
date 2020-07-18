@@ -23,7 +23,7 @@ void ortho_camera::update() {
 			transform.position.y += delta.y;
 		}
 	}
-	transform.rotation = fmodf(transform.rotation, 360.0f);
+	transform.rotation = std::fmodf(transform.rotation, 360.0f);
 	if (transform.rotation < 0.0f) {
 		transform.rotation += 360.0f;
 	}

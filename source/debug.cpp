@@ -5,6 +5,7 @@
 #include "io.hpp"
 #include "assets.hpp"
 #include "loop.hpp"
+#include "ui.hpp"
 
 #include <chrono>
 #include <mutex>
@@ -54,6 +55,14 @@ public:
 		std::string temp_buffer;
 		std::string final_buffer;
 	};
+
+	std::filesystem::path get_log_path(int index) const {
+		return html_logs[index].path;
+	}
+
+	int count() const {
+		return static_cast<int>(html_logs.size());
+	}
 
 	void add(int index, message_type type, const char* file, const char* func, int line) {
 		if (template_buffer.empty()) {
@@ -130,9 +139,12 @@ private:
 
 };
 
+#if ENABLE_HTML_LOG || ENABLE_STDOUT_LOG
+static logger_state logger;
+#endif
+
 void append(int index, message_type type, const char* file, const char* func, int line, const std::string& message) {
 #if ENABLE_HTML_LOG || ENABLE_STDOUT_LOG
-	static logger_state logger;
 	std::lock_guard lock{ logger.mutex };
 #endif
 #if ENABLE_HTML_LOG
@@ -145,6 +157,90 @@ void append(int index, message_type type, const char* file, const char* func, in
 	std::cout << std::left << std::setw(13) << (current_local_time_string() + "." + current_time_ms_string()) << std::setw(1);
 	std::cout << std::internal << type << ": " << message << "\n";
 #endif
+}
+
+}
+
+namespace no::debug::menu {
+
+struct menu_info {
+	std::string id;
+	std::function<void()> update;
+};
+
+static struct {
+	bool enabled{ false };
+	bool initialized{ false };
+	std::unordered_map<std::string, std::vector<menu_info>> menus;
+} menu_state;
+
+void enable() {
+	menu_state.enabled = true;
+	if (!menu_state.initialized) {
+		add("nfwk-debug", "Options", [] {
+			bool limit_fps{ get_draw_synchronization() == draw_synchronization::if_updated };
+			if (ui::menu_item("Limit FPS", limit_fps)) {
+				set_draw_synchronization(limit_fps ? no::draw_synchronization::if_updated : no::draw_synchronization::always);
+			}
+			if (auto end = ui::menu("View debug log")) {
+				for (int log_index{ 0 }; log_index < logger.count(); log_index++) {
+					if (ui::menu_item("Log #" + std::to_string(log_index))) {
+						platform::open_file(logger.get_log_path(log_index), false);
+					}
+				}
+			}
+		});
+		menu_state.initialized = true;
+	}
+}
+
+void disable() {
+	menu_state.enabled = false;
+}
+
+void update() {
+	if (!menu_state.enabled) {
+		return;
+	}
+	ImGui::BeginMainMenuBar();
+	for (const auto& [name, menus] : menu_state.menus) {
+		if (menus.empty()) {
+			continue;
+		}
+		if (name.empty()) {
+			for (auto& menu : menus) {
+				menu.update();
+			}
+		} else {
+			if (auto end = ui::menu(name)) {
+				for (auto& menu : menus) {
+					menu.update();
+				}
+			}
+		}
+	}
+	ImGui::EndMainMenuBar();
+}
+
+void add(std::string_view id, std::string_view name, const std::function<void()>& update) {
+	auto& menu = menu_state.menus[name.data()].emplace_back();
+	menu.id = id;
+	menu.update = update;
+}
+
+void add(std::string_view id, const std::function<void()>& update) {
+	add(id, "", update);
+}
+
+void remove(std::string_view id) {
+	for (auto& [name, menus] : menu_state.menus) {
+		for (int i{ 0 }; i < static_cast<int>(menus.size()); i++) {
+			if (menus[i].id == id) {
+				menus.erase(menus.begin() + i);
+				i--;
+			}
+		}
+	}
 }
 
 }

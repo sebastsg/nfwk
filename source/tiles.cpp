@@ -166,8 +166,8 @@ void layer::render() {
 }
 
 void layer::draw() {
-	no::set_shader_model(transform2{ 0.0f, 1.0f });
-	no::bind_texture(level.tileset_texture);
+	set_shader_model(transform2{ 0.0f, 1.0f });
+	bind_texture(level.tileset_texture);
 	for (auto& chunk : chunks) {
 		if (chunk.rendered) {
 			chunk.rendered->quads.bind();
@@ -516,8 +516,8 @@ std::optional<vector2i> autotile_renderer::find_uv(const tile& tile) const {
 }
 
 void autotile_renderer::load_main_tiles(int count) {
-	for (unsigned char i{ 0 }; i < count; i++) {
-		uv[tile{ static_cast<unsigned char>(i + 1) }.value] = { i, 0 };
+	for (unsigned char i{ 1 }; i <= count; i++) {
+		load_tile(i, i, i, i, i - 1, 0);
 	}
 }
 

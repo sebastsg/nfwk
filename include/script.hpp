@@ -5,15 +5,22 @@
 #include "transform.hpp"
 #include "variables.hpp"
 
-#define NFWK_SCRIPT_NODE_EXPLICIT(BASE, TYPE) \
+#define NFWK_SCRIPT_NODE_EXPLICIT(BASE, TYPE, NAME, CATEGORY) \
 	int type() const override { return (BASE) + (TYPE); }\
+	std::string_view get_name() const override { return NAME; }\
 	static constexpr int full_type{ (BASE) + (TYPE) };\
-	static constexpr int relative_type { TYPE }
+	static constexpr int relative_type{ TYPE };\
+	static constexpr std::string_view name{ NAME };\
+	static constexpr std::string_view category{ CATEGORY }
 
-#define NFWK_SCRIPT_CORE_NODE(TYPE) NFWK_SCRIPT_NODE_EXPLICIT(0x0000, TYPE)
-#define NFWK_SCRIPT_USER_NODE(TYPE) NFWK_SCRIPT_NODE_EXPLICIT(0xffff, TYPE)
+#define NFWK_SCRIPT_CORE_NODE(TYPE, NAME, CATEGORY) NFWK_SCRIPT_NODE_EXPLICIT(0x0000, TYPE, NAME, CATEGORY)
+#define NFWK_SCRIPT_USER_NODE(TYPE, NAME, CATEGORY) NFWK_SCRIPT_NODE_EXPLICIT(0xffff, TYPE, NAME, CATEGORY)
 
 namespace no {
+
+namespace internal {
+void initialize_scripts();
+}
 
 class script_tree;
 
@@ -21,9 +28,14 @@ enum class node_output_type { unknown, variable, single, boolean };
 enum class node_other_variable_type { value, local, global };
 
 struct node_output {
+
 	int node_id{ -1 };
 	int out_id{ 0 };
-	node_output(int node_id, int out_id) : node_id{ node_id }, out_id{ out_id } {}
+
+	node_output(int node_id, int out_id) 
+		: node_id{ node_id }, out_id{ out_id } {
+	}
+
 };
 
 class script_node {
@@ -35,10 +47,11 @@ public:
 	int scope_id{ -1 };
 
 	std::vector<node_output> out;
-	transform2 transform; // transform is only used in editor
+	transform2 transform; // used in editor
 
 	virtual int type() const = 0;
 	virtual node_output_type output_type() const = 0;
+	virtual std::string_view get_name() const = 0;
 
 	virtual int process() {
 		return -1;
@@ -46,12 +59,13 @@ public:
 
 	virtual void write(io_stream& stream) const;
 	virtual void read(io_stream& stream);
+	virtual bool update_editor() = 0;
 
 	void remove_output_node(int node_id);
 	void remove_output_type(int out_id);
 	int get_output(int out_id);
 	int get_first_output();
-	void set_output_node(int out_id, int node_id);
+	void set_output_node(std::optional<int> out_id, std::optional<int> node_id);
 
 protected:
 
@@ -59,12 +73,19 @@ protected:
 
 };
 
-void register_script_node(int id, const std::function<script_node*()>& constructor);
-void initialize_scripts();
+struct script_node_constructor {
+	std::function<script_node*()> constructor;
+	std::string_view name;
+	std::string_view category;
+	int type{ -1 };
+};
+
+void register_script_node(int id, std::string_view name, std::string_view category, const std::function<script_node*()>& constructor);
+const std::vector<script_node_constructor>& get_registered_script_nodes();
 
 template<typename T>
 void register_script_node() {
-	register_script_node(T::full_type, [] {
+	register_script_node(T::full_type, T::name, T::category, [] {
 		return new T{};
 	});
 }
@@ -81,7 +102,9 @@ public:
 		event<std::vector<node_choice_info>> choice;
 	} events;
 
-	int id{ -1 };
+	std::string id;
+	std::string name;
+
 	int id_counter{ 0 };
 	int start_node_id{ 0 }; // todo: when deleting node, make sure start node is valid
 	std::unordered_map<int, script_node*> nodes;
@@ -92,7 +115,7 @@ public:
 	void read(io_stream& stream);
 
 	void save() const;
-	void load(int id);
+	void load(const std::string& id);
 
 	std::optional<int> current_node() const;
 
@@ -132,7 +155,7 @@ public:
 class message_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(0);
+	NFWK_SCRIPT_CORE_NODE(0, "Message", "");
 
 	std::string text{ "Example text" };
 
@@ -142,13 +165,14 @@ public:
 
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class choice_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(1);
+	NFWK_SCRIPT_CORE_NODE(1, "Choice", "");
 
 	std::string text{ "Example text" };
 
@@ -158,13 +182,14 @@ public:
 
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
-class variable_condition_node : public condition_node {
+class compare_variable_node : public condition_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(2);
+	NFWK_SCRIPT_CORE_NODE(2, "Compare variable", "Variables");
 
 	bool is_global{ false };
 	node_other_variable_type other_type{ node_other_variable_type::value };
@@ -175,13 +200,14 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class modify_variable_node : public effect_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(3);
+	NFWK_SCRIPT_CORE_NODE(3, "Modify variable", "Variables");
 
 	bool is_global{ false };
 	node_other_variable_type other_type{ node_other_variable_type::value };
@@ -192,13 +218,14 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class create_variable_node : public effect_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(4);
+	NFWK_SCRIPT_CORE_NODE(4, "Create variable", "Variables");
 
 	variable new_variable;
 	bool is_global{ false };
@@ -207,13 +234,14 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class variable_exists_node : public condition_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(5);
+	NFWK_SCRIPT_CORE_NODE(5, "If variable exists", "Variables");
 
 	bool is_global{ false };
 	std::string variable_name;
@@ -221,13 +249,14 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class delete_variable_node : public effect_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(6);
+	NFWK_SCRIPT_CORE_NODE(6, "Delete variable", "Variables");
 
 	bool is_global{ false };
 	std::string variable_name;
@@ -235,13 +264,14 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
-class random_node : public script_node {
+class random_output_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(7);
+	NFWK_SCRIPT_CORE_NODE(7, "Random output", "Random");
 
 	node_output_type output_type() const override {
 		return node_output_type::variable;
@@ -250,32 +280,35 @@ public:
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class random_condition_node : public condition_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(8);
+	NFWK_SCRIPT_CORE_NODE(8, "Random condition", "Random");
 
 	int percent{ 50 };
 
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
 class execute_node : public effect_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(9);
+	NFWK_SCRIPT_CORE_NODE(9, "Execute script", "");
 
 	std::string script;
 
 	int process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
+	bool update_editor() override;
 
 };
 
@@ -283,7 +316,7 @@ template<typename Code>
 class code_node : public effect_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(10);
+	NFWK_SCRIPT_CORE_NODE(10, "Code", "");
 
 	Code code;
 
@@ -298,6 +331,10 @@ public:
 
 	void read(io_stream& stream) override {
 		script_node::read(stream);
+	}
+
+	bool update_editor() override {
+		return false;
 	}
 
 };

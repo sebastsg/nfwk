@@ -5,7 +5,7 @@
 
 namespace no {
 
-class scoped_logic {
+class [[nodiscard]] scoped_logic {
 public:
 
 	scoped_logic(std::function<void()> clean = {}) : clean{ std::move(clean) } {
@@ -42,7 +42,7 @@ private:
 };
 
 template<typename T>
-class scoped_context {
+class [[nodiscard]] scoped_context {
 public:
 
 	scoped_context(std::function<void()> clean = {}, std::optional<T> resource = std::nullopt)

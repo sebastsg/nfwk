@@ -12,8 +12,8 @@
 namespace no {
 
 struct registered_asset {
-	load_asset_func load;
-	free_asset_func free;
+	load_asset_function load;
+	free_asset_function free;
 	int holders{ 0 };
 	void* any{ nullptr };
 	bool is_loaded{ false };
@@ -69,7 +69,7 @@ void free_released_assets() {
 	to_be_released.clear();
 }
 
-void register_asset(const std::string& name, const load_asset_func& load, const free_asset_func& free) {
+void register_asset(const std::string& name, const load_asset_function& load, const free_asset_function& free) {
 	if (assets.find(name) != assets.end()) {
 		WARNING("Asset " << name << " already registered.");
 	}

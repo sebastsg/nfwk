@@ -260,11 +260,7 @@ size_t io_stream::read_line(char* destination, size_t max_size, bool remove_newl
 std::string io_stream::read_line(bool remove_newline) {
 	std::string result;
 	char buffer[256];
-	while (true) {
-		const size_t count{ read_line(buffer, 256, remove_newline) };
-		if (count == 0) {
-			break;
-		}
+	while (read_line(buffer, 256, remove_newline) != 0) {
 		result += buffer;
 	}
 	return result;
@@ -306,7 +302,7 @@ void write(const std::string& path, const std::string& source) {
 }
 
 void write(const std::string& path, const char* source, size_t size) {
-	std::filesystem::create_directories(std::filesystem::path(path).parent_path());
+	std::filesystem::create_directories(std::filesystem::path{ path }.parent_path());
 	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file.write(source, size);
 	}
@@ -336,7 +332,8 @@ void read(const std::string& path, io_stream& stream) {
 	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();
-		stream.write(result.str().c_str(), result.str().size());
+		const auto& string = result.str();
+		stream.write(string.c_str(), string.size());
 	}
 }
 

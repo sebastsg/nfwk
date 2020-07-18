@@ -9,8 +9,8 @@ namespace no {
 class font;
 class audio_source;
 
-using load_asset_func = std::function<void*()>;
-using free_asset_func = std::function<void(void*)>;
+using load_asset_function = std::function<void*()>;
+using free_asset_function = std::function<void(void*)>;
 
 namespace internal {
 
@@ -22,7 +22,7 @@ void set_asset_directory(const std::string& path);
 std::string asset_directory();
 std::string asset_path(const std::string& path);
 
-void register_asset(const std::string& name, const load_asset_func& load, const free_asset_func& free);
+void register_asset(const std::string& name, const load_asset_function& load, const free_asset_function& free);
 
 template<typename T>
 T require_asset(const std::string& name) {

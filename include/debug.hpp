@@ -20,6 +20,17 @@ void append(int index, message_type type, const char* file, const char* func, in
 
 }
 
+namespace no::debug::menu {
+
+void enable();
+void disable();
+void update();
+void add(std::string_view id, std::string_view name, const std::function<void()>& update);
+void add(std::string_view id, const std::function<void()>& update);
+void remove(std::string_view id);
+
+}
+
 #define BUG(MESSAGE) \
 		WARNING(#MESSAGE); \
 		abort();
