@@ -2,10 +2,10 @@
 
 #if ENABLE_WINSOCK
 
-#define WS_PRINT_ERROR(ERR)      print_winsock_error(ERR, __FUNCSIG__, __LINE__, 0)
-#define WS_PRINT_ERROR_X(ERR, X) print_winsock_error(ERR, __FUNCSIG__, __LINE__, X)
-#define WS_PRINT_LAST_ERROR()    print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, 0)
-#define WS_PRINT_LAST_ERROR_X(X) print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, X)
+#define WS_PRINT_ERROR(ERR)        print_winsock_error(ERR, __FUNCSIG__, __LINE__, "network")
+#define WS_PRINT_ERROR_X(ERR, LOG) print_winsock_error(ERR, __FUNCSIG__, __LINE__, LOG)
+#define WS_PRINT_LAST_ERROR()      print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, "network")
+#define WS_PRINT_LAST_ERROR_X(LOG) print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, LOG)
 
 namespace no {
 
@@ -13,7 +13,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num);
 
 static winsock_state winsock;
 
-static void print_winsock_error(int error, const std::string& funcsig, int line, int log) {
+static void print_winsock_error(int error, const std::string& funcsig, int line, const std::string& log) {
 	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
 	char message[256]{};
 	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error, language, message, 256, nullptr);
@@ -146,7 +146,7 @@ static bool connect_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		WARNING("Failed to get address info for " << address << ":" << port <<"\nStatus: " << status);
+		WARNING_X("network", "Failed to get address info for " << address << ":" << port <<"\nStatus: " << status);
 		return false;
 	}
 	while (result) {
@@ -237,7 +237,7 @@ static bool accept_ex(int id) {
 }
 
 DWORD io_port_thread(HANDLE io_port, int thread_num) {
-	const int log{ thread_num + 1 };
+	const std::string log_name{ "WinSock IOCP #" + std::to_string(thread_num) };
 	while (true) {
 		DWORD transferred{ 0 }; // bytes transferred during this operation
 		ULONG_PTR completion_key{ 0 }; // pointer to winsock_socket the operation was completed on
@@ -246,7 +246,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 		// associate this thread with the completion port as we get the queued completion status
 		const BOOL status{ GetQueuedCompletionStatus(io_port, &transferred, &completion_key, &overlapped, INFINITE) };
 		if (!status) {
-			WS_PRINT_LAST_ERROR_X(log);
+			WS_PRINT_LAST_ERROR_X(log_name);
 			if (!overlapped) {
 				continue;
 			}
@@ -257,7 +257,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 		// reference for the macro: https://msdn.microsoft.com/en-us/library/aa447688.aspx
 		auto data = CONTAINING_RECORD(overlapped, iocp_data<iocp_operation::invalid>, overlapped);
 		if (data->operation == iocp_operation::close) {
-			INFO_X(log, "Leaving thread");
+			INFO_X(log_name, "Leaving thread");
 			return 0;
 		}
 		const int socket_id{ static_cast<int>(completion_key) };
@@ -301,8 +301,8 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 			get_accept_sockaddrs(*accept_data);
 			auto& accepted = winsock.sockets[accept_data->accepted_id];
 			if (const int status{ update_accept_context(accepted.handle, socket.handle) }; status != NO_ERROR) {
-				WARNING_X(log, "Failed to update context for accepted socket " << accept_data->accepted_id);
-				WS_PRINT_LAST_ERROR_X(log);
+				WARNING_X(log_name, "Failed to update context for accepted socket " << accept_data->accepted_id);
+				WS_PRINT_LAST_ERROR_X(log_name);
 				// todo: should the socket be closed here?
 			}
 			accepted.connected = true;
@@ -316,7 +316,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 }
 
 void start_network() {
-	MESSAGE("Initializing WinSock");
+	MESSAGE_X("network", "Initializing WinSock");
 	const WORD version{ MAKEWORD(2, 2) };
 	if (const int status{ WSAStartup(version, &winsock.wsa_data) }; status != 0) {
 		CRITICAL("WinSock failed to start. Error: " << status);
@@ -331,10 +331,10 @@ void stop_network() {
 		destroy_socket(i);
 	}
 	if (const int status{ WSACleanup() }; status != 0) {
-		WARNING("Failed to stop WinSock. Some operations may still be ongoing.");
+		WARNING_X("network", "Failed to stop WinSock. Some operations may still be ongoing.");
 		print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, 0);
 	} else {
-		MESSAGE("WinSock has been stopped.");
+		MESSAGE_X("network", "WinSock has been stopped.");
 	}
 }
 
@@ -406,7 +406,7 @@ bool bind_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		WARNING("Failed to get address info for " << address << ":" << port << "\nStatus: " << status);
+		WARNING_X("network", "Failed to get address info for " << address << ":" << port << "\nStatus: " << status);
 		return false;
 	}
 	while (result) {

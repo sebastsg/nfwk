@@ -131,7 +131,7 @@ namespace no {
 namespace platform {
 
 static bool create_window_class(WNDPROC procedure, std::string_view name) {
-	MESSAGE("Registering window class: " << name);
+	MESSAGE_X("graphics", "Registering window class: " << name);
 	WNDCLASS window{};
 	window.style = CS_OWNDC | CS_DBLCLKS;
 	window.lpfnWndProc = procedure;
@@ -146,7 +146,7 @@ static bool create_window_class(WNDPROC procedure, std::string_view name) {
 	if (RegisterClass(&window)) {
 		return true;
 	} else {
-		CRITICAL("Failed to register window class");
+		CRITICAL_X("graphics", "Failed to register window class");
 		return false;
 	}
 }
@@ -164,7 +164,7 @@ static vector4i calculate_maximized_window_rectangle() {
 }
 
 static HWND create_window(std::string_view name, std::string_view type, int width, int height, bool maximized) {
-	MESSAGE("Creating window: " << name << ". Class: " << type);
+	MESSAGE_X("graphics", "Creating window: " << name << ". Class: " << type);
 	const HINSTANCE instance{ windows::current_instance() };
 	const DWORD style{ WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN };
 	if (maximized) {
@@ -180,7 +180,7 @@ static HWND create_window(std::string_view name, std::string_view type, int widt
 
 static void destroy_window(HWND window_handle, HDC device_context, windows_gl_context& context) {
 	if (window_handle) {
-		MESSAGE("Destroying window");
+		MESSAGE_X("graphics", "Destroying window");
 		ReleaseDC(window_handle, device_context);
 		context.destroy();
 		DestroyWindow(window_handle);
@@ -207,7 +207,7 @@ void windows_window::create_default_window(window& window, std::string_view titl
 	create_window_class(process_window_messages, "Main");
 	window_handle = create_window(title, "Main", width, height, maximized);
 	if (!window_handle) {
-		CRITICAL("Failed to create window");
+		CRITICAL_X("graphics", "Failed to create window");
 		return;
 	}
 	device_context = GetDC(window_handle);
@@ -224,7 +224,7 @@ void windows_window::create_arb_window(window& window, std::string_view title, i
 		create_window_class(DefWindowProc, "Default");
 		const HWND default_window_handle{ create_window("Default", "Default", 4, 4, false) };
 		if (!default_window_handle) {
-			CRITICAL("Failed to create default window");
+			CRITICAL_X("graphics", "Failed to create default window");
 			return;
 		}
 		const HDC default_device_context{ GetDC(default_window_handle) };
@@ -235,7 +235,7 @@ void windows_window::create_arb_window(window& window, std::string_view title, i
 	create_window_class(process_window_messages, "Main");
 	window_handle = create_window(title, "Main", width, height, maximized);
 	if (!window_handle) {
-		CRITICAL("Failed to create window");
+		CRITICAL_X("graphics", "Failed to create window");
 		return;
 	}
 	device_context = GetDC(window_handle);
@@ -256,7 +256,7 @@ void windows_window::show(bool maximized) {
 		show_command = SW_MAXIMIZE;
 	}
 	if (!base_window) {
-		WARNING("Base window is not assigned. The message will not be processed.");
+		WARNING_X("graphics", "Base window is not assigned. The message will not be processed.");
 	}
 	ShowWindow(window_handle, show_command);
 }
@@ -320,7 +320,7 @@ void windows_window::set_icon_from_resource(int resource_id) {
 		SendMessage(window_handle, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
 		// no need to destroy icon, since it's shared
 	} else {
-		WARNING("Failed to load icon resource " << resource_id);
+		WARNING_X("graphics", "Failed to load icon resource " << resource_id);
 	}
 }
 
@@ -346,7 +346,7 @@ void windows_window::clear() {
 
 void windows_window::swap() {
 	if (!SwapBuffers(device_context)) {
-		WARNING_LIMIT("HDC: " << device_context << "\nHWND: " << window_handle << "\nError: " << GetLastError(), 10);
+		WARNING_LIMIT_X("graphics", "HDC: " << device_context << "\nHWND: " << window_handle << "\nError: " << GetLastError(), 10);
 	}
 }
 

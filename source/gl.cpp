@@ -303,7 +303,7 @@ static int create_shader_script(const char* source, unsigned int type) {
 	char buffer[1024];
 	CHECK_GL_ERROR(glGetShaderInfoLog(id, 1024, &length, buffer));
 	if (length > 0) {
-		INFO("Shader info log: <br>" << buffer);
+		INFO_X("graphics", "Shader info log: <br>" << buffer);
 	}
 #endif
 	return static_cast<int>(id);
@@ -359,7 +359,7 @@ int create_shader_from_source(std::string_view vertex_source, std::string_view f
 	CHECK_GL_ERROR(shader.id = glCreateProgram());
 
 	auto attributes = find_vertex_shader_attributes(vertex_source.data());
-	MESSAGE("Attributes: " << attributes);
+	MESSAGE_X("graphics", "Attributes: " << attributes);
 	int vertex_shader_id = create_shader_script(vertex_source.data(), GL_VERTEX_SHADER);
 	CHECK_GL_ERROR(glAttachShader(shader.id, vertex_shader_id));
 	for (int location{ 0 }; location < (int)attributes.size(); location++) {
@@ -376,13 +376,13 @@ int create_shader_from_source(std::string_view vertex_source, std::string_view f
 	int length{ 0 };
 	CHECK_GL_ERROR(glGetProgramInfoLog(shader.id, 1024, &length, buffer));
 	if (length > 0) {
-		INFO("Shader program log " << shader.id << ": \n" << buffer);
+		INFO_X("graphics", "Shader program log " << shader.id << ": \n" << buffer);
 	}
 	CHECK_GL_ERROR(glValidateProgram(shader.id));
 	int status{ 0 };
 	CHECK_GL_ERROR(glGetProgramiv(shader.id, GL_VALIDATE_STATUS, &status));
 	if (status == GL_FALSE) {
-		CRITICAL("Failed to validate shader program with id " << shader.id);
+		CRITICAL_X("graphics", "Failed to validate shader program with id " << shader.id);
 	}
 	ASSERT(status != GL_FALSE);
 #endif
@@ -396,7 +396,7 @@ int create_shader_from_source(std::string_view vertex_source, std::string_view f
 }
 
 int create_shader(const std::string& path) {
-	MESSAGE("Loading shader " << path);
+	MESSAGE_X("graphics", "Loading shader " << path);
 	return create_shader_from_source(file::read(path + "/vertex.glsl"), file::read(path + "/fragment.glsl"));
 }
 

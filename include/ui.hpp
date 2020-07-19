@@ -65,8 +65,19 @@ std::optional<int> combo(std::string_view label, const std::vector<std::string>&
 void popup(std::string_view id, std::vector<popup_item>& values);
 std::optional<int> list(std::string_view label, const std::vector<std::string>& values, int selected);
 
-scoped_logic push_static_window(std::string_view label, vector2f position, vector2f size);
-scoped_logic push_window(std::string_view label, vector2f position, vector2f size, ImGuiWindowFlags flags = ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse, bool* open = nullptr);
+constexpr int default_window_flags{
+	ImGuiWindowFlags_NoResize |
+	ImGuiWindowFlags_NoCollapse
+};
+
+constexpr int background_window_flags{
+	default_window_flags |
+	ImGuiWindowFlags_NoMove | 
+	ImGuiWindowFlags_NoTitleBar |
+	ImGuiWindowFlags_NoBringToFrontOnFocus
+};
+
+scoped_logic push_window(std::string_view label, std::optional<vector2f> position = std::nullopt, std::optional<vector2f> size = std::nullopt, ImGuiWindowFlags flags = default_window_flags, bool* open = nullptr);
 void pop_window();
 
 bool is_hovered();

@@ -282,6 +282,7 @@ int run_main_loop() {
 	configure();
 	loop.post_configure.emit();
 
+	debug::internal::initialize_debug();
 	internal::initialize_editor();
 	internal::initialize_scripts();
 	internal::initialize_objects();

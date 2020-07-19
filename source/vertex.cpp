@@ -103,11 +103,11 @@ assimp_importer::assimp_importer(const std::string& input, model_import_options 
 	Assimp::Importer importer;
 	scene = static_cast<const aiScene*>(importer.ReadFile(input, flags));
 	if (!scene || !scene->mRootNode) {
-		WARNING("No scene. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
+		WARNING_X("graphics", "No scene. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
 		return;
 	}
 	if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
-		WARNING("Scene flags incomplete. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
+		WARNING_X("graphics", "Scene flags incomplete. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
 	}
 	model.name = std::filesystem::path(input).filename().stem().string();
 	aiMatrix4x4 root_transform{ scene->mRootNode->mTransformation };
@@ -166,7 +166,7 @@ void assimp_importer::load_animations() {
 				}
 			}
 			if (!found_node) {
-				WARNING("[b]Channel #" << c << "[/b] " << animation_node_name << " has no matching node. Ignoring");
+				WARNING_X("graphics", "[b]Channel #" << c << "[/b] " << animation_node_name << " has no matching node. Ignoring");
 			}
 		}
 	}
@@ -239,7 +239,7 @@ void assimp_importer::load_mesh(aiMesh* mesh) {
 		for (unsigned int w{ 0 }; w < mesh->mBones[b]->mNumWeights; w++) {
 			const auto& weight{ mesh->mBones[b]->mWeights[w] };
 			if (weight.mVertexId >= model.shape.vertices.size()) {
-				WARNING("Vertex " << weight.mVertexId << " does not exist. Cannot add weight " << weight.mWeight);
+				WARNING_X("graphics", "Vertex " << weight.mVertexId << " does not exist. Cannot add weight " << weight.mWeight);
 				continue;
 			}
 			auto& vertex{ model.shape.vertices[weight.mVertexId] };
@@ -263,31 +263,31 @@ void assimp_importer::load_mesh(aiMesh* mesh) {
 				vertex.weights_extra.y = weight.mWeight;
 				vertex.bones_extra.y = b;
 			} else if (weight.mWeight > vertex.weights.x) {
-				//WARNING("Discarding weight #0 = " << vertex.weights.x << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #0 = " << vertex.weights.x << " for vertex " << weight.mVertexId);
 				vertex.weights.x = weight.mWeight;
 				vertex.bones.x = b;
 			} else if (weight.mWeight > vertex.weights.y) {
-				//WARNING("Discarding weight #1 = " << vertex.weights.y << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #1 = " << vertex.weights.y << " for vertex " << weight.mVertexId);
 				vertex.weights.y = weight.mWeight;
 				vertex.bones.y = b;
 			} else if (weight.mWeight > vertex.weights.z) {
-				//WARNING("Discarding weight #2 = " << vertex.weights.z << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #2 = " << vertex.weights.z << " for vertex " << weight.mVertexId);
 				vertex.weights.z = weight.mWeight;
 				vertex.bones.z = b;
 			} else if (weight.mWeight > vertex.weights.w) {
-				//WARNING("Discarding weight #3 = " << vertex.weights.w << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #3 = " << vertex.weights.w << " for vertex " << weight.mVertexId);
 				vertex.weights.w = weight.mWeight;
 				vertex.bones.w = b;
 			} else if (weight.mWeight > vertex.weights_extra.x) {
-				//WARNING("Discarding weight #4 = " << vertex.weights_extra.x<< " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #4 = " << vertex.weights_extra.x<< " for vertex " << weight.mVertexId);
 				vertex.weights_extra.x = weight.mWeight;
 				vertex.bones_extra.x = b;
 			} else if (weight.mWeight > vertex.weights_extra.y) {
-				//WARNING("Discarding weight #5 = " << vertex.weights_extra.y << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #5 = " << vertex.weights_extra.y << " for vertex " << weight.mVertexId);
 				vertex.weights_extra.y = weight.mWeight;
 				vertex.bones_extra.y = b;
 			} else {
-				//WARNING("Discarding weight #6 = " << weight.mWeight << " for vertex " << weight.mVertexId);
+				//WARNING_X("graphics", "Discarding weight #6 = " << weight.mWeight << " for vertex " << weight.mVertexId);
 			}
 		}
 	}
@@ -321,7 +321,7 @@ transform3 load_model_bounding_box(const std::string& path) {
 	io_stream stream;
 	file::read(path, stream);
 	if (stream.write_index() == 0) {
-		WARNING("Failed to open file: " << path);
+		WARNING_X("graphics", "Failed to open file: " << path);
 		return {};
 	}
 	stream.move_read_index(sizeof(glm::mat4));

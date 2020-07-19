@@ -16,9 +16,9 @@ static FT_Library library{ nullptr };
 
 static void initialize() {
 	if (!library) {
-		MESSAGE("Initializing FreeType");
+		MESSAGE_X("graphics", "Initializing FreeType");
 		if (const auto error{ FT_Init_FreeType(&library) }; error != FT_Err_Ok) {
-			WARNING("[Error " << error << "] Failed to initialize FreeType");
+			WARNING_X("graphics", "[Error " << error << "] Failed to initialize FreeType");
 		}
 	}
 }
@@ -57,10 +57,10 @@ public:
 	long glyph_overhang{ 0 };
 
 	font_face(const std::string& path) {
-		MESSAGE("Loading font " << path);
+		MESSAGE_X("graphics", "Loading font " << path);
 		// note: to check how many faces a font has, face_index should be -1, then check face->num_faces
 		if (const auto error = FT_New_Face(ft::library, path.c_str(), 0, &face); error != FT_Err_Ok) {
-			WARNING("[Error " << error << "] Failed to load font: " << path);
+			WARNING_X("graphics", "[Error " << error << "] Failed to load font: " << path);
 			return;
 		}
 		has_kerning = FT_HAS_KERNING(face);
@@ -80,7 +80,7 @@ public:
 
 	void set_size(int size) {
 		if (FT_Set_Char_Size(face, 0, size * 64, 0, 0) != FT_Err_Ok) {
-			WARNING("Failed to set char size");
+			WARNING_X("graphics", "Failed to set char size");
 		}
 	}
 
@@ -95,7 +95,7 @@ public:
 	void render_glyph() {
 		FT_Error error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
 		if (error != FT_Err_Ok) {
-			WARNING("Failed to render glyph");
+			WARNING_X("graphics", "Failed to render glyph");
 		}
 	}
 
@@ -123,7 +123,7 @@ font::font(const std::string& path, int size) {
 		face = new font_face{ final_path.value() };
 		face->set_size(size);
 	} else {
-		WARNING("Did not find font: " << path);
+		WARNING_X("graphics", "Did not find font: " << path);
 	}
 }
 

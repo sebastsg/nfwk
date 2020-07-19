@@ -127,6 +127,11 @@ public:
 		return result;
 	}
 
+	template<>
+	bool read() {
+		return read<uint8_t>() != 0;
+	}
+
 	void read(char* destination, size_t size) {
 		if (read_position + size > end) {
 			return;
@@ -152,6 +157,11 @@ public:
 		resize_if_needed(size);
 		memcpy(write_position, value.c_str(), size);
 		write_position += size;
+	}
+
+	template<>
+	void write(bool value) {
+		write<uint8_t>(value ? 1 : 0);
 	}
 
 	void write(const char* source, size_t size) {

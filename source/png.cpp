@@ -14,16 +14,16 @@ surface load_png(const std::string& path) {
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
 	if (!png) {
-		WARNING("Failed to create read structure");
+		WARNING_X("graphics", "Failed to create read structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_infop info{ png_create_info_struct(png) };
 	if (!info) {
-		WARNING("Failed to create info structure");
+		WARNING_X("graphics", "Failed to create info structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	if (setjmp(png_jmpbuf(png))) {
-		WARNING("Failed to load image: " << path);
+		WARNING_X("graphics", "Failed to load image: " << path);
 		return { 2, 2, pixel_format::rgba };
 	}
 #if PLATFORM_WINDOWS
@@ -34,7 +34,7 @@ surface load_png(const std::string& path) {
 	const int error{ errno };
 #endif
 	if (error == ENOENT) {
-		WARNING("Image file was not found: " << path);
+		WARNING_X("graphics", "Image file was not found: " << path);
 		return { 2, 2, pixel_format::rgba };
 	}
 
@@ -85,7 +85,7 @@ surface load_png(const std::string& path) {
 		delete[] rows[y];
 	}
 	delete[] rows;
-	MESSAGE("Loaded PNG file " << path << ". Size: " << width << ", " << height);
+	MESSAGE_X("graphics", "Loaded PNG file " << path << ". Size: " << width << ", " << height);
 	return { pixels, static_cast<int>(width), static_cast<int>(height), pixel_format::rgba, surface::construct_by::move };
 }
 

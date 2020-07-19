@@ -1,22 +1,68 @@
 #pragma once
 
 #include "platform.hpp"
+#include "io.hpp"
+
+#include <mutex>
+
+namespace no::debug::internal {
+void initialize_debug();
+}
 
 namespace no::debug {
 
 enum class message_type { message, warning, critical, info };
 
-}
+struct debug_log_entry {
 
-std::ostream& operator<<(std::ostream& out, no::debug::message_type message);
+	const message_type type;
+	const std::string message;
+	std::string file;
+	const std::string function;
+	const int line;
+	const std::string time;
 
-#if ENABLE_DEBUG
+	debug_log_entry(message_type type, std::string_view message, std::string_view file, std::string_view function, int line);
 
-#include "io.hpp"
+};
 
-namespace no::debug {
+class debug_log {
+public:
 
-void append(int index, message_type type, const char* file, const char* func, int line, const std::string& message);
+	debug_log(const std::string& name);
+
+	std::string_view name() const;
+	
+	template<typename... Args>
+	const debug_log_entry& add(Args&&... args) {
+		std::lock_guard lock{ mutex };
+		return log_entries.emplace_back(std::forward<Args>(args)...);
+	}
+	
+	int count() const;
+
+	const std::vector<debug_log_entry>& entries() const;
+
+private:
+
+	const std::string log_name;
+	std::vector<debug_log_entry> log_entries;
+	std::mutex mutex;
+
+};
+
+class html_debug_log_writer {
+public:
+
+	static std::string entry_html(const debug_log_entry& entry);
+
+private:
+
+	static std::string field_html(const std::string& message, int col_span = 1);
+
+};
+
+void append(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message);
 
 }
 
@@ -31,6 +77,7 @@ void remove(std::string_view id);
 
 }
 
+#if ENABLE_DEBUG
 #define BUG(MESSAGE) \
 		WARNING(#MESSAGE); \
 		abort();
@@ -66,17 +113,25 @@ void remove(std::string_view id);
 # define DEBUG_LIMIT(ID, TYPE, STR, LIMIT) 
 #endif
 
-#define MESSAGE(STR)  DEBUG(0, no::debug::message_type::message, STR)
-#define WARNING(STR)  DEBUG(0, no::debug::message_type::warning, STR)
-#define CRITICAL(STR) DEBUG(0, no::debug::message_type::critical, STR)
-#define INFO(STR)     DEBUG(0, no::debug::message_type::info, STR)
+#define MESSAGE(STR)  DEBUG("main", no::debug::message_type::message, STR)
+#define WARNING(STR)  DEBUG("main", no::debug::message_type::warning, STR)
+#define CRITICAL(STR) DEBUG("main", no::debug::message_type::critical, STR)
+#define INFO(STR)     DEBUG("main", no::debug::message_type::info, STR)
 
-#define MESSAGE_LIMIT(STR, LIMIT)  DEBUG_LIMIT(0, no::debug::message_type::message, STR, LIMIT)
-#define WARNING_LIMIT(STR, LIMIT)  DEBUG_LIMIT(0, no::debug::message_type::warning, STR, LIMIT)
-#define CRITICAL_LIMIT(STR, LIMIT) DEBUG_LIMIT(0, no::debug::message_type::critical, STR, LIMIT)
-#define INFO_LIMIT(STR, LIMIT)     DEBUG_LIMIT(0, no::debug::message_type::info, STR, LIMIT)
+#define MESSAGE_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::message_type::message, STR, LIMIT)
+#define WARNING_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::message_type::warning, STR, LIMIT)
+#define CRITICAL_LIMIT(STR, LIMIT) DEBUG_LIMIT("main", no::debug::message_type::critical, STR, LIMIT)
+#define INFO_LIMIT(STR, LIMIT)     DEBUG_LIMIT("main", no::debug::message_type::info, STR, LIMIT)
 
 #define MESSAGE_X(ID, STR)  DEBUG(ID, no::debug::message_type::message, STR)
 #define WARNING_X(ID, STR)  DEBUG(ID, no::debug::message_type::warning, STR)
 #define CRITICAL_X(ID, STR) DEBUG(ID, no::debug::message_type::critical, STR)
 #define INFO_X(ID, STR)     DEBUG(ID, no::debug::message_type::info, STR)
+
+#define MESSAGE_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::message_type::message, STR, LIMIT)
+#define WARNING_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::message_type::warning, STR, LIMIT)
+#define CRITICAL_LIMIT_x(ID, STR, LIMIT) DEBUG_LIMIT(ID, no::debug::message_type::critical, STR, LIMIT)
+#define INFO_LIMIT_X(ID, STR, LIMIT)     DEBUG_LIMIT(ID, no::debug::message_type::info, STR, LIMIT)
+
+
+std::ostream& operator<<(std::ostream& out, no::debug::message_type message);

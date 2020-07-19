@@ -93,13 +93,14 @@ static void initialize_style() {
 	style.WindowRounding = 0.0f;
 
 	vector4f text{ 0.8f, 0.85f, 0.9f, 1.0f };
-	vector4f button{ 0.2f, 0.25f, 0.3f, 1.0f };
+	vector4f button{ 0.25f, 0.3f, 0.4f, 1.0f };
 	vector4f button_hover{ 0.3f, 0.6f, 1.0f, 1.0f };
 	vector4f button_active{ 0.2f, 0.5f, 0.95f, 1.0f };
-	vector4f border{ 0.3f, 0.6f, 1.0f, 1.0f };
-	vector4f background{ 0.1f, 0.1f, 0.1f, 1.0f };
-	vector4f frame{ 0.2f, 0.2f, 0.2f, 1.0f };
-	vector4f frame_hover{ 0.3f, 0.3f, 0.3f, 1.0f };
+	vector4f border{ 0.3f, 0.6f, 0.9f, 1.0f };
+	vector4f background{ 0.12f, 0.16f, 0.24f, 1.0f };
+	vector4f frame{ 0.1f, 0.1f, 0.1f, 1.0f };
+	vector4f frame_hover{ 0.2f, 0.35f, 0.55f, 1.0f };
+	vector4f checkmark{ 0.2f, 0.5f, 0.95f, 1.0f };
 	vector4f unknown{ 1.0f, 0.0f, 0.0f, 1.0f };
 
 	const auto with_alpha = [](const vector4f& color, float alpha) {
@@ -124,7 +125,7 @@ static void initialize_style() {
 	style.Colors[ImGuiCol_ScrollbarGrab] = button;
 	style.Colors[ImGuiCol_ScrollbarGrabHovered] = button_hover;
 	style.Colors[ImGuiCol_ScrollbarGrabActive] = background;
-	style.Colors[ImGuiCol_CheckMark] = button;
+	style.Colors[ImGuiCol_CheckMark] = checkmark;
 	style.Colors[ImGuiCol_SliderGrab] = button;
 	style.Colors[ImGuiCol_SliderGrabActive] = button;
 	style.Colors[ImGuiCol_Button] = button;

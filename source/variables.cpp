@@ -26,7 +26,7 @@ static void modify_variable_add(variable& var, const std::string& value) {
 
 static void modify_variable_multiply(variable& var, const std::string& value) {
 	switch (var.type) {
-	case variable_type::string: WARNING("Multiplying a string does not make any sense."); return;
+	case variable_type::string: WARNING_X("scripts", "Multiplying a string does not make any sense."); return;
 	case variable_type::integer: var.value = std::to_string(std::stoi(var.value) * std::stoi(value)); return;
 	case variable_type::floating: var.value = std::to_string(std::stof(var.value) * std::stof(value)); return;
 	case variable_type::boolean: var.value = std::to_string(std::stoi(var.value) * std::stoi(value)); return;
@@ -38,12 +38,12 @@ static void modify_variable_divide(variable& var, const std::string& value) {
 	const int value_int{ std::stoi(value) };
 	const float value_float{ std::stof(value) };
 	if (value_int == 0 || value_float == 0.0f) {
-		WARNING("Cannot divide " << var.name << " by " << value << " (division by zero)\nSetting to 0.");
+		WARNING_X("scripts", "Cannot divide " << var.name << " by " << value << " (division by zero)\nSetting to 0.");
 		var.value = "0"; // most likely the desired output
 		return;
 	}
 	switch (var.type) {
-	case variable_type::string: WARNING("Dividing a string does not make any sense."); return;
+	case variable_type::string: WARNING_X("scripts", "Dividing a string does not make any sense."); return;
 	case variable_type::integer: var.value = std::to_string(std::stoi(var.value) / value_int); return;
 	case variable_type::floating: var.value = std::to_string(std::stof(var.value) / value_float); return;
 	case variable_type::boolean: var.value = std::to_string(std::stoi(var.value) / value_int); return;
@@ -57,7 +57,7 @@ static void modify_variable_negate(variable& var) {
 	} else if (var.type == variable_type::floating) {
 		var.value = std::to_string(!std::stof(var.value));
 	} else {
-		WARNING("Cannot negate " << var.name << ". Not a number type: " << static_cast<int>(var.type));
+		WARNING_X("scripts", "Cannot negate " << var.name << ". Not a number type: " << static_cast<int>(var.type));
 	}
 }
 
@@ -121,7 +121,7 @@ void variable_scope::add(variable variable) {
 	if (!find(variable.name)) {
 		variables.push_back(variable);
 	} else {
-		WARNING("Variable " << variable.name << " already exists.");
+		WARNING_X("scripts", "Variable " << variable.name << " already exists.");
 	}
 }
 

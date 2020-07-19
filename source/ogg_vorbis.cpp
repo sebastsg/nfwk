@@ -30,16 +30,16 @@ ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
 		}
 	};
 
-	MESSAGE("Loading ogg file: " << path);
+	MESSAGE_X("audio", "Loading ogg file: " << path);
 	if (const int result{ ov_open_callbacks(&file_stream, &file, nullptr, 0, callbacks) }; result != 0) {
-		WARNING("The stream is invalid. Error: " << result);
+		WARNING_X("audio", "The stream is invalid. Error: " << result);
 		return;
 	}
 
 	const auto* info = ov_info(&file, -1);
 	channels = info->channels;
 	frequency = info->rate;
-	INFO("Ogg file info:" << "\nChannels: " << info->channels << "\nFrequency: " << info->rate);
+	INFO_X("audio", "Ogg file info:" << "\nChannels: " << info->channels << "\nFrequency: " << info->rate);
 
 	char buffer[8192];
 	int bit_stream{ 0 };

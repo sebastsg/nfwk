@@ -24,6 +24,14 @@ public:
 	virtual std::string_view get_title() const = 0;
 	virtual bool is_dirty() const = 0;
 
+	bool is_open() const {
+		return open;
+	}
+
+protected:
+
+	bool open{ true };
+
 };
 
 class editor_state : public program_state {

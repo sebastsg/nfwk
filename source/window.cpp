@@ -95,7 +95,7 @@ void window::set_display_mode(display_mode mode) {
 	case display_mode::fullscreen_desktop:
 		break;
 	default:
-		WARNING("Window mode not found: " << mode);
+		WARNING_X("graphics", "Window mode not found: " << mode);
 		return;
 	}
 	last_set_display_mode = mode;

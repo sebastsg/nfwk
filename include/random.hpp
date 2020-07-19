@@ -53,10 +53,10 @@ public:
 		std::string string;
 		string.resize(size);
 		std::generate_n(std::begin(string), size, [this] {
-			constexpr char characters[65]{
+			constexpr std::string_view characters{
 				"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_abcdefghijklmnopqrstuvwxyz"
 			};
-			return characters[next<int>(64)];
+			return characters[next(characters.size() - 1)];
 		});
 		return string;
 	}

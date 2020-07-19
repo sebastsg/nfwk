@@ -286,7 +286,7 @@ void import_model(const std::string& path, model_data<V, I>& model) {
 	io_stream stream;
 	file::read(path, stream);
 	if (stream.write_index() == 0) {
-		WARNING("Failed to open file: " << path);
+		WARNING_X("graphics", "Failed to open file: " << path);
 		return;
 	}
 	model.transform = stream.read<glm::mat4>();
@@ -296,7 +296,7 @@ void import_model(const std::string& path, model_data<V, I>& model) {
 	model.name = stream.read<std::string>();
 	const int32_t vertex_size{ stream.read<int32_t>() };
 	if (vertex_size != sizeof(V)) {
-		WARNING(vertex_size << " != " << sizeof(V) << ". File: " << path);
+		WARNING_X("graphics", vertex_size << " != " << sizeof(V) << ". File: " << path);
 		return;
 	}
 	model.shape.vertices = stream.read_array<V>();
@@ -357,10 +357,10 @@ model_data<V, I> merge_model_animations(const std::vector<model_data<V, I>>& mod
 	for (size_t m{ 1 }; m < models.size(); m++) {
 		auto& model = models[m];
 		if (model.transform != output.transform) {
-			WARNING("Root transform not identical. Not skipped.");
+			WARNING_X("graphics", "Root transform not identical. Not skipped.");
 		}
 		if (output.nodes.size() != model.nodes.size()) {
-			WARNING("Different number of node transforms. Skipping.");
+			WARNING_X("graphics", "Different number of node transforms. Skipping.");
 			continue;
 		}
 		bool equal{ true };
@@ -372,7 +372,7 @@ model_data<V, I> merge_model_animations(const std::vector<model_data<V, I>>& mod
 				break;
 			}*/
 			if (output.nodes[n].children != model.nodes[n].children) {
-				WARNING("Different node children " << n << ". Skipping.");
+				WARNING_X("graphics", "Different node children " << n << ". Skipping.");
 				equal = false;
 				break;
 			}
@@ -381,24 +381,24 @@ model_data<V, I> merge_model_animations(const std::vector<model_data<V, I>>& mod
 			continue;
 		}
 		if (model.bones.size() != output.bones.size()) {
-			WARNING("Mesh not identical. Skipping.");
+			WARNING_X("graphics", "Mesh not identical. Skipping.");
 			//continue;
 		}
 		for (size_t i = 0; i < model.bones.size(); i++) {
 			if (model.bones[i] != output.bones[i]) {
-				WARNING("Mesh not identical. Skipping.");
+				WARNING_X("graphics", "Mesh not identical. Skipping.");
 				//continue;
 			}
 		}
 		if (model.shape != output.shape) {
-			WARNING("Mesh not identical. Skipping.");
+			WARNING_X("graphics", "Mesh not identical. Skipping.");
 			//continue;
 		}
 		for (auto& animation : model.animations) {
 			bool skip = false;
 			for (auto& existing_animation : output.animations) {
 				if (animation.name == existing_animation.name) {
-					WARNING(animation.name << " already exists. Skipping animation.");
+					WARNING_X("graphics", animation.name << " already exists. Skipping animation.");
 					skip = true;
 					continue;
 				}

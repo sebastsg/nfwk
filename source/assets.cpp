@@ -71,7 +71,7 @@ void free_released_assets() {
 
 void register_asset(const std::string& name, const load_asset_function& load, const free_asset_function& free) {
 	if (assets.find(name) != assets.end()) {
-		WARNING("Asset " << name << " already registered.");
+		WARNING_X("assets", "Asset " << name << " already registered.");
 	}
 	assets[name] = { load, free, 0, nullptr };
 }
@@ -81,7 +81,7 @@ void unregister_asset(const std::string& name) {
 		asset->second.free(asset->second.any);
 		assets.erase(asset);
 	} else {
-		WARNING("Asset " << name << " not registered.");
+		WARNING_X("assets", "Asset " << name << " not registered.");
 	}
 }
 

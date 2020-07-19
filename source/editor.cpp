@@ -44,14 +44,10 @@ void editor_state::update() {
 	for (int i{ 0 }; i < static_cast<int>(editors.size()); i++) {
 		auto& editor = *editors[i];
 		ImGui::PushID(&editor);
-		bool open{ true };
-		constexpr int flags{ ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize };
-		if (auto end = ui::push_window(CSTRING(editor.get_title() << "##" << &editor), center, {}, flags, &open)) {
-			editor.update();
-			if (!open) {
-				close(editor);
-				i--;
-			}
+		editor.update();
+		if (!editor.is_open()) {
+			close(editor);
+			i--;
 		}
 		ImGui::PopID();
 	}

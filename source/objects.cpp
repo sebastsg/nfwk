@@ -81,22 +81,17 @@ void create_object(const std::string& class_id, const variable_map& variables) {
 }
 
 void create_object_class_editor::update() {
-	ImGui::PushID("nfwk-create-object-class");
-	ImGui::PushItemWidth(256.0f);
+	if (auto end = ui::push_window("Create object classs", std::nullopt, std::nullopt, ui::default_window_flags, &open)) {
+		ui::input("Identifier", definition.id);
+		ui::input("Name", definition.name);
+		if (const auto collision = ui::combo("Collision", { "None", "Extents", "Radius", "Precise" }, static_cast<int>(definition.collision))) {
+			definition.collision = static_cast<object_collision>(collision.value());
+		}
+		ui::separate();
+		if (ui::button("Save class")) {
 
-	ui::input("Identifier", definition.id);
-	ui::input("Name", definition.name);
-
-	if (const auto collision = ui::combo("Collision", { "None", "Extents", "Radius", "Precise" }, static_cast<int>(definition.collision))) {
-		definition.collision = static_cast<object_collision>(collision.value());
+		}
 	}
-
-	ui::separate();
-	if (ui::button("Save class")) {
-		
-	}
-	ImGui::PopItemWidth();
-	ImGui::PopID();
 }
 
 }

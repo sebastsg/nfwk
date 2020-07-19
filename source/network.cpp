@@ -45,7 +45,7 @@ io_stream packetizer::next() {
 		return {};
 	}
 	if (stream.peek<magic_type>() != magic) {
-		WARNING("Skipping magic... " << stream.peek<magic_type>() << " != " << magic);
+		WARNING_X("network", "Skipping magic... " << stream.peek<magic_type>() << " != " << magic);
 		stream.move_read_index(1); // no point in reading the same magic again
 		return {};
 	}

@@ -44,7 +44,7 @@ public:
 	friend class script_tree;
 
 	int id{ -1 };
-	int scope_id{ -1 };
+	std::optional<int> scope_id;
 
 	std::vector<node_output> out;
 	transform2 transform; // used in editor
@@ -53,8 +53,8 @@ public:
 	virtual node_output_type output_type() const = 0;
 	virtual std::string_view get_name() const = 0;
 
-	virtual int process() {
-		return -1;
+	virtual std::optional<int> process() {
+		return std::nullopt;
 	}
 
 	virtual void write(io_stream& stream) const;
@@ -63,9 +63,9 @@ public:
 
 	void remove_output_node(int node_id);
 	void remove_output_type(int out_id);
-	int get_output(int out_id);
-	int get_first_output();
-	void set_output_node(std::optional<int> out_id, std::optional<int> node_id);
+	std::optional<int> get_output(int out_id);
+	std::optional<int> get_first_output();
+	void set_output_node(std::optional<int> out_id, int node_id);
 
 protected:
 
@@ -91,8 +91,14 @@ void register_script_node() {
 }
 
 struct node_choice_info {
+	
 	std::string text;
-	int node_id{ -1 };
+	std::optional<int> node_id;
+
+	node_choice_info(std::string_view text, std::optional<int> node_id)
+		: text{ text }, node_id{ node_id } {
+	}
+
 };
 
 class script_tree {
@@ -197,7 +203,7 @@ public:
 	std::string comparison_value;
 	variable_comparison comparison_operator{ variable_comparison::equal };
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -215,7 +221,7 @@ public:
 	std::string modify_value;
 	variable_modification modify_operator{ variable_modification::set };
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -231,7 +237,7 @@ public:
 	bool is_global{ false };
 	bool overwrite{ false };
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -246,7 +252,7 @@ public:
 	bool is_global{ false };
 	std::string variable_name;
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -261,7 +267,7 @@ public:
 	bool is_global{ false };
 	std::string variable_name;
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -277,7 +283,7 @@ public:
 		return node_output_type::variable;
 	}
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -291,7 +297,7 @@ public:
 
 	int percent{ 50 };
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -305,7 +311,7 @@ public:
 
 	std::string script;
 
-	int process() override;
+	std::optional<int> process() override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 	bool update_editor() override;
@@ -320,7 +326,7 @@ public:
 
 	Code code;
 
-	int process() override {
+	std::optional<int> process() override {
 		code();
 		return 0;
 	}

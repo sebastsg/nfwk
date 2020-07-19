@@ -228,16 +228,13 @@ std::optional<int> list(std::string_view label, const std::vector<std::string>& 
 	return clicked;
 }
 
-scoped_logic push_static_window(std::string_view label, vector2f position, vector2f size) {
-	constexpr auto flags{
-		ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar
-	};
-	return push_window(label, position, size, flags);
-}
-
-scoped_logic push_window(std::string_view label, vector2f position, vector2f size, ImGuiWindowFlags flags, bool* open) {
-	ImGui::SetNextWindowPos(position);
-	ImGui::SetNextWindowSize(size);
+scoped_logic push_window(std::string_view label, std::optional<vector2f> position, std::optional<vector2f> size, ImGuiWindowFlags flags, bool* open) {
+	if (position.has_value()) {
+		ImGui::SetNextWindowPos(position.value());
+	}
+	if (size.has_value()) {
+		ImGui::SetNextWindowSize(size.value());
+	}
 	if (ImGui::Begin(label.data(), open, flags)) {
 		return [] {
 			pop_window();

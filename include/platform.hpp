@@ -55,7 +55,7 @@ namespace no::platform {
 	GL_CALL; \
 	LOG_VERBOSE_GL(GL_CALL) \
 	if (const auto gl_error = glGetError(); gl_error != GL_NO_ERROR) { \
-		CRITICAL(#GL_CALL << "\n" << gluErrorString(gl_error)); \
+		CRITICAL_X("graphics", #GL_CALL << "\n" << gluErrorString(gl_error)); \
 		ASSERT(gl_error == GL_NO_ERROR); \
 	}
 #else

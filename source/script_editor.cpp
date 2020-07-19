@@ -45,7 +45,7 @@ bool script_editor::is_dirty() const {
 }
 
 void script_editor::update_properties_window(vector2f position, vector2f size) {
-	if (auto end = ui::push_static_window("##script-properties-window", position, size)) {
+	if (auto end = ui::push_window("##script-properties-window", position, size, ui::background_window_flags)) {
 		ui::text("Properties");
 		ui::input("Identifier", script.tree.id);
 		ui::input("Name", script.tree.name);
@@ -57,7 +57,7 @@ void script_editor::update_properties_window(vector2f position, vector2f size) {
 }
 
 void script_editor::update_nodes_window(vector2f position, vector2f size) {
-	if (auto end = ui::push_static_window("##script-nodes-window", position, size)) {
+	if (auto end = ui::push_window("##nodes-window", position, size, ui::background_window_flags)) {
 		ImGui::BeginGroup();
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, { 0.235f, 0.235f, 0.275f, 0.78125f });
 		ImGui::BeginChild("##node-grid", { 0, 0 }, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
@@ -66,26 +66,16 @@ void script_editor::update_nodes_window(vector2f position, vector2f size) {
 		ui::grid(offset, 32.0f, { 0.78125f, 0.78125f, 0.78125f, 0.15625f });
 		update_node_links(offset);
 
-		can_show_context_menu = true;
-		open_context_menu = false;
-
-		ImGui::PushItemWidth(128.0f);
+		ImGui::PushItemWidth(256.0f);
 		update_nodes(offset);
 		ImGui::PopItemWidth();
 		ImGui::GetWindowDrawList()->ChannelsMerge();
 
-		if (can_show_context_menu) {
-			if (!ImGui::IsAnyItemHovered() && ImGui::IsMouseClicked(1)) {
-				script.node_selected = std::nullopt;
-				script.node_index_hovered = std::nullopt;
-				open_context_menu = true;
+		if (ImGui::IsMouseClicked(1)) {
+			if (!script.hovered_node.has_value()) {
+				script.selected_node = std::nullopt;
 			}
-			if (open_context_menu) {
-				ImGui::OpenPopup("grid-context-menu");
-				if (script.node_index_hovered.has_value()) {
-					script.node_selected = script.node_index_hovered;
-				}
-			}
+			ImGui::OpenPopup("grid-context-menu");
 		}
 
 		update_context_menu(offset);
@@ -114,61 +104,62 @@ void script_editor::save_script() {
 }
 
 void script_editor::update_nodes(vector2f offset) {
-	auto draw_list = ImGui::GetWindowDrawList();
-	script.node_index_hovered = std::nullopt;
+	script.hovered_node = std::nullopt;
+	if (ImGui::IsMouseClicked(0) && !is_context_menu_open) {
+		script.selected_node = std::nullopt;
+	}
 	for (auto& [node_id, node] : script.tree.nodes) {
 		ImGui::PushID(node_id);
-		const auto node_rect_min = offset + node->transform.position;
-		const auto cursor = node_rect_min + 8.0f;
-		draw_list->ChannelsSetCurrent(1);
+		const auto real_position = offset + node->transform.position;
 
-		bool old_any_active = ImGui::IsAnyItemActive();
-		ImGui::SetCursorScreenPos(cursor);
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
+		ImGui::SetCursorScreenPos(real_position + 8.0f);
 		ImGui::BeginGroup();
 		ui::text(node->get_name());
 		script.dirty |= node->update_editor();
 		ImGui::EndGroup();
-		const bool node_widgets_active{ !old_any_active && ImGui::IsAnyItemActive() };
-
 		node->transform.scale = vector2f{ ImGui::GetItemRectSize() } + 16.0f;
-		const auto node_rect_max = node_rect_min + node->transform.scale;
+		ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
 
-		draw_list->ChannelsSetCurrent(0);
-		ImGui::SetCursorScreenPos(node_rect_min);
-		ImGui::InvisibleButton("script-node-button", node->transform.scale);
-		if (ImGui::IsItemHovered()) {
-			script.node_index_hovered = node_id;
-			open_context_menu |= ImGui::IsMouseClicked(1);
+		if (ImGui::IsMouseHoveringRect(real_position, real_position + node->transform.scale)) {
+			script.hovered_node = node_id;
+			if (ImGui::IsMouseClicked(0) || ImGui::IsMouseClicked(1)) {
+				script.selected_node = node_id;
+			}
 		}
-		const bool node_moving_active{ ImGui::IsItemActive() };
-		if (node_widgets_active || node_moving_active) {
-			script.node_selected = node_id;
-		}
-		if (node_moving_active && ImGui::IsMouseDragging(0)) {
+
+		if (script.selected_node == node_id && ImGui::IsMouseDragging(0)) {
 			node->transform.position += ImGui::GetIO().MouseDelta;
 		}
-		ImU32 node_background_color = ImColor(60, 60, 60);
-		if (script.node_selected == node_id) {
-			node_background_color = ImColor(75, 75, 75);
+
+		vector4f node_background_color{ 0.12f, 0.16f, 0.24f, 1.0f };
+		vector4f outline_color{ 1.0f, 1.0f, 1.0f, 0.4f };
+		if (script.selected_node == node_id) {
+			node_background_color.xyz = { 0.16f, 0.2f, 0.28f };
+			outline_color = { 1.0f, 1.0f, 1.0f, 0.8f };
 		}
-		if (node->id == script.tree.start_node_id) {
-			node_background_color = ImColor(75, 90, 75);
+		if (script.tree.start_node_id == node->id) {
+			if (script.selected_node == node_id) {
+				node_background_color.xyz = { 0.25f, 0.45f, 0.3f };
+			} else {
+				node_background_color.xyz = { 0.25f, 0.45f, 0.3f };
+			}
 		}
-		draw_list->AddRectFilled(node_rect_min, node_rect_max, node_background_color, 4.0f);
-		draw_list->AddRect(node_rect_min, node_rect_max, ImColor(100, 100, 100), 4.0f);
+		ui::rectangle(real_position, node->transform.scale, node_background_color);
+		ui::outline(real_position, node->transform.scale, outline_color);
 		ImGui::PopID();
 	}
 }
 
 void script_editor::update_context_menu(vector2f offset) {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, { 8.0f, 8.0f });
-	bool opened = ImGui::BeginPopup("grid-context-menu");
-	if (!opened) {
+	is_context_menu_open = ImGui::BeginPopup("grid-context-menu");
+	if (!is_context_menu_open) {
 		ImGui::PopStyleVar();
 		return;
 	}
 	const auto scene_position = vector2f{ ImGui::GetMousePosOnOpeningCurrentPopup() } - offset;
-	auto node = script.node_selected.has_value() ? script.tree.nodes[script.node_selected.value()] : nullptr;
+	auto node = script.selected_node.has_value() ? script.tree.nodes[script.selected_node.value()] : nullptr;
 	if (node) {
 		update_node_context_menu(*node);
 	} else {
@@ -231,7 +222,7 @@ void script_editor::update_node_context_menu(script_node& node) {
 	} else {
 		if (node.output_type() == node_output_type::variable) {
 			if (ui::menu_item("Start link")) {
-				script.node_index_link_from = script.node_selected;
+				script.node_index_link_from = script.selected_node;
 			}
 		} else {
 			if (auto end = ui::menu("Start link")) {
@@ -239,17 +230,17 @@ void script_editor::update_node_context_menu(script_node& node) {
 				case node_output_type::boolean:
 					if (ui::menu_item("True")) {
 						script.node_link_from_out = 1;
-						script.node_index_link_from = script.node_selected;
+						script.node_index_link_from = script.selected_node;
 					}
 					if (ui::menu_item("False")) {
 						script.node_link_from_out = 0;
-						script.node_index_link_from = script.node_selected;
+						script.node_index_link_from = script.selected_node;
 					}
 					break;
 				case node_output_type::single:
 					if (ui::menu_item("Forward")) {
 						script.node_link_from_out = 0;
-						script.node_index_link_from = script.node_selected;
+						script.node_index_link_from = script.selected_node;
 					}
 					break;
 				}
@@ -264,9 +255,9 @@ void script_editor::update_node_context_menu(script_node& node) {
 		for (auto& other_node : script.tree.nodes) {
 			other_node.second->remove_output_node(node.id);
 		}
-		delete script.tree.nodes[script.node_selected.value()];
-		script.tree.nodes.erase(script.node_selected.value());
-		script.node_selected = std::nullopt;
+		delete script.tree.nodes[script.selected_node.value()];
+		script.tree.nodes.erase(script.selected_node.value());
+		script.selected_node = std::nullopt;
 		script.node_index_link_from = std::nullopt;
 		script.node_link_from_out = std::nullopt;
 		script.dirty = true;

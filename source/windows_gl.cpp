@@ -10,7 +10,7 @@
 namespace no::platform {
 
 static void set_pixel_format(HDC device_context) {
-	MESSAGE("Setting pixel format");
+	MESSAGE_X("graphics", "Setting pixel format");
 	PIXELFORMATDESCRIPTOR descriptor{};
 	descriptor.nSize = sizeof(descriptor);
 	descriptor.nVersion = 1;
@@ -20,14 +20,14 @@ static void set_pixel_format(HDC device_context) {
 	descriptor.cColorBits = 32;
 	const int format{ ChoosePixelFormat(device_context, &descriptor) };
 	if (format == 0) {
-		CRITICAL("Did not find suitable pixel format");
+		CRITICAL_X("graphics", "Did not find suitable pixel format");
 		return;
 	}
 	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
 	if (!SetPixelFormat(device_context, format, &descriptor)) {
-		CRITICAL("Failed to set pixel format");
+		CRITICAL_X("graphics", "Failed to set pixel format");
 	}
-	INFO("Pixel Format: " << format << "\nDouble buffer: " << ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"));
+	INFO_X("graphics", "Pixel Format: " << format << "\nDouble buffer: " << ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"));
 }
 
 static void set_pixel_format_arb(HDC device_context, int samples) {
@@ -43,7 +43,7 @@ static void set_pixel_format_arb(HDC device_context, int samples) {
 		samples = 1;
 		break;
 	}
-	MESSAGE("Setting pixel format using the ARB extension");
+	MESSAGE_X("graphics", "Setting pixel format using the ARB extension");
 	const int int_attributes[]{
 		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
@@ -65,15 +65,15 @@ static void set_pixel_format_arb(HDC device_context, int samples) {
 	unsigned int count{ 0 };
 	const BOOL success{ wglChoosePixelFormatARB(device_context, int_attributes, float_attributes, 1, &format, &count) };
 	if (!success || count == 0) {
-		WARNING("Failed to find pixel format");
+		WARNING_X("graphics", "Failed to find pixel format");
 		return;
 	}
 	PIXELFORMATDESCRIPTOR descriptor{};
 	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
 	if (!SetPixelFormat(device_context, format, &descriptor)) {
-		CRITICAL("Failed to set pixel format");
+		CRITICAL_X("graphics", "Failed to set pixel format");
 	}
-	INFO("Pixel Format: " << format
+	INFO_X("graphics", "Pixel Format: " << format
 		 << "\nDouble buffer: " << ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No")
 		 << "\nSamples: " << samples);
 }
@@ -85,10 +85,10 @@ HGLRC windows_gl_context::current_context_handle() {
 void windows_gl_context::create_default(HDC device_context) {
 	this->device_context = device_context;
 	set_pixel_format(device_context);
-	MESSAGE("Creating default context");
+	MESSAGE_X("graphics", "Creating default context");
 	gl_context = wglCreateContext(device_context);
 	if (!gl_context) {
-		CRITICAL("Failed to create default context");
+		CRITICAL_X("graphics", "Failed to create default context");
 	}
 }
 
@@ -100,15 +100,15 @@ void windows_gl_context::create_with_attributes(HDC device_context, int samples)
 		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
 		0
 	};
-	MESSAGE("Creating context with attributes");
+	MESSAGE_X("graphics", "Creating context with attributes");
 	gl_context = wglCreateContextAttribsARB(device_context, nullptr, attributes);
 	is_arb_context = (gl_context != nullptr);
 	if (!is_arb_context) {
-		WARNING("Failed to create context. OpenGL " << attributes[1] << "." << attributes[3] << " not supported");
-		MESSAGE("Creating fallback context");
+		WARNING_X("graphics", "Failed to create context. OpenGL " << attributes[1] << "." << attributes[3] << " not supported");
+		MESSAGE_X("graphics", "Creating fallback context");
 		gl_context = wglCreateContext(device_context);
 		if (!gl_context) {
-			CRITICAL("Failed to create fallback context");
+			CRITICAL_X("graphics", "Failed to create fallback context");
 			return;
 		}
 	}
@@ -116,31 +116,31 @@ void windows_gl_context::create_with_attributes(HDC device_context, int samples)
 
 void windows_gl_context::initialize_glew() {
 	if (const auto error = glewInit(); error != GLEW_OK) {
-		CRITICAL("Failed to initialize GLEW");
+		CRITICAL_X("graphics", "Failed to initialize GLEW");
 		ASSERT(error == GLEW_OK);
 	}
 }
 
 void windows_gl_context::initialize_gl() {
-	MESSAGE("Enabling depth testing");
+	MESSAGE_X("graphics", "Enabling depth testing");
 	CHECK_GL_ERROR(glEnable(GL_DEPTH_TEST));
-	MESSAGE("Setting depth function: \"less than or equal\"");
+	MESSAGE_X("graphics", "Setting depth function: \"less than or equal\"");
 	CHECK_GL_ERROR(glDepthFunc(GL_LEQUAL));
-	MESSAGE("Enabling blending");
+	MESSAGE_X("graphics", "Enabling blending");
 	CHECK_GL_ERROR(glEnable(GL_BLEND));
 	// https://www.opengl.org/sdk/docs/man/html/glBlendFunc.xhtml
-	MESSAGE("Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
+	MESSAGE_X("graphics", "Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
 	CHECK_GL_ERROR(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-	MESSAGE("Enabling scissor testing");
+	MESSAGE_X("graphics", "Enabling scissor testing");
 	CHECK_GL_ERROR(glEnable(GL_SCISSOR_TEST));
 }
 
 void windows_gl_context::enable_multisampling() {
 	if (is_arb_context) {
-		MESSAGE("Enabled multisampling");
+		MESSAGE_X("graphics", "Enabled multisampling");
 		CHECK_GL_ERROR(glEnable(GL_MULTISAMPLE));
 	} else {
-		WARNING("Cannot enable multisampling on non-ARB OpenGL context.");
+		WARNING_X("graphics", "Cannot enable multisampling on non-ARB OpenGL context.");
 	}
 }
 
@@ -188,7 +188,7 @@ void windows_gl_context::destroy() {
 }
 
 void windows_gl_context::log_renderer_info() const {
-	INFO("[b]-- Windows OpenGL --[/b]"
+	INFO_X("graphics", "[b]-- Windows OpenGL --[/b]"
 		 << "\n[b]Version:[/b] " << glGetString(GL_VERSION)
 		 << "\n[b]Vendor:[/b] " << glGetString(GL_VENDOR)
 		 << "\n[b]Renderer:[/b] " << glGetString(GL_RENDERER)
@@ -209,9 +209,9 @@ bool windows_gl_context::set_swap_interval(swap_interval interval) {
 bool windows_gl_context::set_swap_interval(int interval) {
 	const auto status = wglSwapIntervalEXT(interval);
 	if (status) {
-		MESSAGE("Set swap interval to " << interval);
+		MESSAGE_X("graphics", "Set swap interval to " << interval);
 	} else {
-		WARNING("Failed to set swap interval to " << interval << ". Error: " << GetLastError());
+		WARNING_X("graphics", "Failed to set swap interval to " << interval << ". Error: " << GetLastError());
 	}
 	return status;
 }

@@ -27,8 +27,8 @@ struct script_edit_state {
 	script_tree tree;
 	std::optional<int> node_index_link_from;
 	std::optional<int> node_link_from_out;
-	std::optional<int> node_selected;
-	std::optional<int> node_index_hovered;
+	std::optional<int> selected_node;
+	std::optional<int> hovered_node;
 	bool dirty{ false };
 	vector2f scrolling;
 
@@ -57,8 +57,7 @@ private:
 
 	script_edit_state script;
 
-	bool can_show_context_menu{ false };
-	bool open_context_menu{ false };
+	bool is_context_menu_open{ false };
 
 	void update_nodes_window(vector2f position, vector2f size);
 	void update_properties_window(vector2f position, vector2f size);

@@ -51,6 +51,10 @@ const std::vector<script_node_constructor>& get_registered_script_nodes() {
 
 void script_node::write(io_stream& stream) const {
 	stream.write<int32_t>(id);
+	stream.write<bool>(scope_id.has_value());
+	if (scope_id.has_value()) {
+		stream.write<int32_t>(scope_id.value());
+	}
 	stream.write(transform);
 	stream.write(static_cast<int32_t>(out.size()));
 	for (const auto& j : out) {
@@ -61,8 +65,12 @@ void script_node::write(io_stream& stream) const {
 
 void script_node::read(io_stream& stream) {
 	id = stream.read<int32_t>();
+	scope_id = std::nullopt;
+	if (stream.read<bool>()) {
+		scope_id = stream.read<int32_t>();
+	}
 	transform = stream.read<transform2>();
-	const int out_count{ stream.read<int32_t>() };
+	const auto out_count = stream.read<int32_t>();
 	for (int j{ 0 }; j < out_count; j++) {
 		const auto node_id = stream.read<int32_t>();
 		const auto out_id = stream.read<int32_t>();
@@ -88,36 +96,33 @@ void script_node::remove_output_type(int out_id) {
 	}
 }
 
-int script_node::get_output(int out_id) {
+std::optional<int> script_node::get_output(int out_id) {
 	for (const auto& i : out) {
 		if (i.out_id == out_id) {
 			return i.node_id;
 		}
 	}
-	return -1;
+	return std::nullopt;
 }
 
-int script_node::get_first_output() {
-	return out.empty() ? -1 : out[0].node_id;
+std::optional<int> script_node::get_first_output() {
+	return out.empty() ? std::optional<int>{} : out[0].node_id;
 }
 
-void script_node::set_output_node(std::optional<int> out_id, std::optional<int> node_id) {
-	if (!node_id.has_value()) {
-		return;
-	}
+void script_node::set_output_node(std::optional<int> out_id, int node_id) {
 	if (!out_id.has_value()) {
 		out_id = 0;
-		while (get_output(out_id.value()) != -1) {
+		while (get_output(out_id.value())) {
 			out_id.value()++;
 		}
 	}
 	for (auto& i : out) {
 		if (i.out_id == out_id.value()) {
-			i.node_id = node_id.value();
+			i.node_id = node_id;
 			return;
 		}
 	}
-	out.emplace_back(node_id.value(), out_id.value());
+	out.emplace_back(node_id, out_id.value());
 }
 
 void script_tree::write(io_stream& stream) const {
@@ -167,7 +172,7 @@ std::optional<int> script_tree::current_node() const {
 
 void script_tree::select_choice(int node_id) {
 	if (nodes.find(node_id) == nodes.end()) {
-		WARNING("Node not found: " << node_id << ". Script: " << id);
+		WARNING_X("scripts", "Node not found: " << node_id << ". Script: " << id);
 		return;
 	}
 	current_node_id = nodes[node_id]->get_first_output();
@@ -183,27 +188,30 @@ bool script_tree::process_choice_selection() {
 	if (!current_node_id.has_value()) {
 		return false;
 	}
-	const int type{ nodes[current_node_id.value()]->type() };
+	const auto type = nodes[current_node_id.value()]->type();
 	if (type == message_node::full_type) {
 		prepare_message();
 		return false;
 	}
 	if (type == choice_node::full_type) {
-		WARNING("A choice cannot be the entry point of a script.");
+		WARNING_X("scripts", "A choice cannot be the entry point of a script.");
 		return false;
 	}
 	current_node_id = process_non_interactive_node(current_node_id.value(), type);
-	return current_node_id != -1;
+	return current_node_id.has_value();
 }
 
 void script_tree::prepare_message() {
 	std::vector<node_choice_info> choice_infos;
-	std::vector<int> choices{ process_current_and_get_choices() };
-	for (const int choice : choices) {
-		choice_infos.push_back({ static_cast<choice_node*>(nodes[choice])->text, choice });
+	for (const int choice : process_current_and_get_choices()) {
+		if (const auto* node = dynamic_cast<const choice_node*>(nodes[choice])) {
+			choice_infos.emplace_back(node->text, choice);
+		} else {
+			BUG(choice << " is not a choice node!");
+		}
 	}
 	if (choice_infos.empty()) {
-		choice_infos.push_back({ "Oops, I encountered a bug. Gotta go!", -1 });
+		choice_infos.emplace_back("Oops, I encountered a bug. Gotta go!", std::nullopt);
 	}
 	events.choice.emit(choice_infos);
 }
@@ -229,7 +237,7 @@ std::optional<int> script_tree::process_nodes_get_choice(std::optional<int> id, 
 		if (type == choice_node::full_type) {
 			return id;
 		}
-		id = process_non_interactive_node(id.value(), type).value_or(-1);
+		id = process_non_interactive_node(id.value(), type);
 		if (id.has_value()) {
 			type = nodes[id.value()]->type();
 			if (type == choice_node::full_type) {
@@ -242,8 +250,8 @@ std::optional<int> script_tree::process_nodes_get_choice(std::optional<int> id, 
 
 std::optional<int> script_tree::process_non_interactive_node(int id, int type) {
 	auto node = nodes[id];
-	if (const int out{ node->process() }; out >= 0) {
-		return node->get_output(out);
+	if (const auto out = node->process()) {
+		return node->get_output(out.value());
 	} else {
 		return std::nullopt;
 	}
@@ -269,30 +277,30 @@ void choice_node::read(io_stream& stream) {
 	text = stream.read<std::string>();
 }
 
-int compare_variable_node::process() {
+std::optional<int> compare_variable_node::process() {
 	auto context = tree->context;
-	const auto* variable = context->find(is_global ? std::optional<int>{} : scope_id, variable_name);
+	const auto* variable = context->find(scope_id, variable_name);
 	if (!variable) {
-		WARNING("Attempted to check " << variable_name << " (global: " << is_global << ") but it does not exist");
-		return false;
+		WARNING_X("scripts", "Attempted to check " << variable_name << " (global: " << is_global << ") but it does not exist");
+		return std::nullopt;
 	}
 	if (comparison_value == "") {
-		return variable->name == "";
+		return variable->name == "" ? 1 : 0;
 	}
 	std::string value{ comparison_value };
 	if (other_type == node_other_variable_type::local) {
 		if (const auto* local_variable = context->find(scope_id, comparison_value)) {
 			value = local_variable->value;
 		} else {
-			WARNING("Cannot compare against " << variable_name << " because local variable " << comparison_value << " does not exist.");
-			return false;
+			WARNING_X("scripts", "Cannot compare against " << variable_name << " because local variable " << comparison_value << " does not exist.");
+			return 0;
 		}
 	} else if (other_type == node_other_variable_type::global) {
 		if (const auto* global_variable = context->find(std::nullopt, comparison_value)) {
 			value = global_variable->value;
 		} else {
-			WARNING("Cannot compare against " << variable_name << " because global variable " << comparison_value << " does not exist.");
-			return false;
+			WARNING_X("scripts", "Cannot compare against " << variable_name << " because global variable " << comparison_value << " does not exist.");
+			return 0;
 		}
 	}
 	return variable->compare(value, comparison_operator) ? 1 : 0;
@@ -316,14 +324,14 @@ void compare_variable_node::read(io_stream& stream) {
 	comparison_operator = static_cast<variable_comparison>(stream.read<int32_t>());
 }
 
-int modify_variable_node::process() {
+std::optional<int> modify_variable_node::process() {
 	if (modify_value == "") {
 		return 0;
 	}
 	auto context = tree->context;
-	auto variable = context->find(is_global ? std::optional<int>{} : scope_id, variable_name);
+	auto variable = context->find(scope_id, variable_name);
 	if (!variable) {
-		WARNING("Attempted to modify " << variable_name << " (global: " << is_global << ") but it does not exist");
+		WARNING_X("scripts", "Attempted to modify " << variable_name << " (global: " << is_global << ") but it does not exist");
 		return 0;
 	}
 	std::string value{ modify_value };
@@ -331,14 +339,14 @@ int modify_variable_node::process() {
 		if (const auto* local_variable = context->find(scope_id, modify_value)) {
 			value = local_variable->value;
 		} else {
-			WARNING("Cannot modify " << variable_name << " because the local variable " << modify_value << " does not exist.");
+			WARNING_X("scripts", "Cannot modify " << variable_name << " because the local variable " << modify_value << " does not exist.");
 			return 0;
 		}
 	} else if (other_type == node_other_variable_type::global) {
 		if (const auto* global_variable = context->find(std::nullopt, modify_value)) {
 			value = global_variable->value;
 		} else {
-			WARNING("Cannot modify " << variable_name << " because the global variable " << modify_value << " does not exist.");
+			WARNING_X("scripts", "Cannot modify " << variable_name << " because the global variable " << modify_value << " does not exist.");
 			return 0;
 		}
 	}
@@ -364,14 +372,14 @@ void modify_variable_node::read(io_stream& stream) {
 	modify_operator = static_cast<variable_modification>(stream.read<int32_t>());
 }
 
-int create_variable_node::process() {
+std::optional<int> create_variable_node::process() {
 	auto context = tree->context;
-	if (auto existing_variable = context->find(is_global ? std::optional<int>{} : scope_id, new_variable.name)) {
+	if (auto existing_variable = context->find(scope_id, new_variable.name)) {
 		if (overwrite) {
 			*existing_variable = new_variable;
 		}
 	} else {
-		context->add(is_global ? std::optional<int>{} : scope_id, new_variable);
+		context->add(scope_id, new_variable);
 	}
 	return 0;
 }
@@ -388,51 +396,51 @@ void create_variable_node::write(io_stream& stream) const {
 
 void create_variable_node::read(io_stream& stream) {
 	script_node::read(stream);
-	is_global = (stream.read<uint8_t>() != 0);
-	overwrite = (stream.read<uint8_t>() != 0);
+	is_global = stream.read<bool>();
+	overwrite = stream.read<bool>();
 	new_variable.type = static_cast<variable_type>(stream.read<int32_t>());
 	new_variable.name = stream.read<std::string>();
 	new_variable.value = stream.read<std::string>();
-	new_variable.persistent = (stream.read<uint8_t>() != 0);
+	new_variable.persistent = stream.read<bool>();
 }
 
-int variable_exists_node::process() {
-	return tree->context->find(is_global ? std::optional<int>{} : scope_id, variable_name) ? 1 : 0;
+std::optional<int> variable_exists_node::process() {
+	return tree->context->find(scope_id, variable_name) ? 1 : 0;
 }
 
 void variable_exists_node::read(io_stream& stream) {
 	script_node::read(stream);
-	is_global = (stream.read<uint8_t>() != 0);
+	is_global = stream.read<bool>();
 	variable_name = stream.read<std::string>();
 }
 
 void variable_exists_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<uint8_t>(is_global);
+	stream.write<bool>(is_global);
 	stream.write(variable_name);
 }
 
-int delete_variable_node::process() {
-	tree->context->remove(is_global ? std::optional<int>{} : scope_id, variable_name);
+std::optional<int> delete_variable_node::process() {
+	tree->context->remove(scope_id, variable_name);
 	return 0;
 }
 
 void delete_variable_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<uint8_t>(is_global);
+	stream.write<bool>(is_global);
 	stream.write(variable_name);
 }
 
 void delete_variable_node::read(io_stream& stream) {
 	script_node::read(stream);
-	is_global = (stream.read<uint8_t>() != 0);
+	is_global = stream.read<bool>();
 	variable_name = stream.read<std::string>();
 }
 
-int random_output_node::process() {
+std::optional<int> random_output_node::process() {
 	if (out.empty()) {
-		WARNING("No nodes attached.");
-		return -1;
+		WARNING_X("scripts", "No nodes attached.");
+		return std::nullopt;
 	} else {
 		return 0;
 	}
@@ -446,7 +454,7 @@ void random_output_node::read(io_stream& stream) {
 	script_node::read(stream);
 }
 
-int random_condition_node::process() {
+std::optional<int> random_condition_node::process() {
 	return 0;
 }
 
@@ -460,7 +468,7 @@ void random_condition_node::read(io_stream& stream) {
 	percent = stream.read<int32_t>();
 }
 
-int execute_node::process() {
+std::optional<int> execute_node::process() {
 	return 0;
 }
 
@@ -483,7 +491,6 @@ bool choice_node::update_editor() {
 }
 
 bool compare_variable_node::update_editor() {
-	ImGui::PushItemWidth(200.0f);
 	bool dirty = ui::checkbox("Global", is_global);
 	dirty |= ui::input("Name", variable_name);
 	if (auto new_comparison = ui::combo("Comparison", { "==", "!=", ">", "<", ">=", "<=" }, static_cast<int>(comparison_operator))) {
@@ -495,12 +502,10 @@ bool compare_variable_node::update_editor() {
 		dirty = true;
 	}
 	dirty |= ui::input("Value", comparison_value);
-	ImGui::PopItemWidth();
 	return dirty;
 }
 
 bool modify_variable_node::update_editor() {
-	ImGui::PushItemWidth(200.0f);
 	bool dirty = ui::checkbox("Global", is_global);
 	dirty |= ui::input("Name", variable_name);
 	if (auto new_operator = ui::combo("Operator", { "Set", "Negate", "Add", "Multiply", "Divide" }, static_cast<int>(modify_operator))) {
@@ -512,12 +517,10 @@ bool modify_variable_node::update_editor() {
 		dirty = true;
 	}
 	dirty |= ui::input("##set-value", modify_value);
-	ImGui::PopItemWidth();
 	return dirty;
 }
 
 bool create_variable_node::update_editor() {
-	ImGui::PushItemWidth(200.0f);
 	bool dirty = ui::checkbox("Global", is_global);
 	dirty |= ui::checkbox("Persistent", new_variable.persistent);
 	dirty |= ui::checkbox("Overwrite", overwrite);
@@ -546,23 +549,18 @@ bool create_variable_node::update_editor() {
 			new_variable.value = std::to_string(as_bool);
 		}
 	}
-	ImGui::PopItemWidth();
 	return dirty;
 }
 
 bool variable_exists_node::update_editor() {
-	ImGui::PushItemWidth(200.0f);
 	bool dirty = ui::checkbox("Global", is_global);
 	dirty |= ui::input("Name", variable_name);
-	ImGui::PopItemWidth();
 	return dirty;
 }
 
 bool delete_variable_node::update_editor() {
-	ImGui::PushItemWidth(200.0f);
 	bool dirty = ui::checkbox("Global", is_global);
 	dirty |= ui::input("Name", variable_name);
-	ImGui::PopItemWidth();
 	return dirty;
 }
 
