@@ -24,6 +24,7 @@ static constexpr std::string_view default_template_html{
 
 static std::string template_html{ default_template_html };
 
+static std::unordered_map<std::string, debug_log> logs;
 static std::vector<std::unique_ptr<log_writer>> writers;
 
 void add_writer(const std::string& name, std::unique_ptr<log_writer> writer) {
@@ -34,10 +35,15 @@ void add_writer(const std::string& name, std::unique_ptr<log_writer> writer) {
 
 namespace no::debug::internal {
 
-void initialize_debug() {
+void start_debug() {
 	if (auto buffer = file::read(asset_path("debug/template.html")); !buffer.empty()) {
 		log::internal::template_html = buffer;
 	}
+}
+
+void stop_debug() {
+	log::internal::writers.clear();
+	log::internal::logs.clear();
 }
 
 }
@@ -81,7 +87,7 @@ const std::vector<log_entry>& debug_log::entries() const {
 	return log_entries;
 }
 
-html_writer::html_writer(debug_log& log) {
+html_writer::html_writer(debug_log& log) : log_writer{ log.name } {
 	buffer = internal::template_html;
 	path = "logs/" + log.name + ".html";
 	for (const auto& entry : log.entries()) {
@@ -119,16 +125,16 @@ std::string html_writer::html_compatible_string(std::string string) {
 }
 
 void html_writer::flush() {
-	if (first_flush) [[unlikely]] {
-		file::write(path.string(), buffer);
+	if (first_flush) {
+		file::write(path, buffer);
 		first_flush = false;
 	} else [[likely]] {
-		file::append(path.string(), buffer);
+		file::append(path, buffer);
 	}
 	buffer = "";
 }
 
-stdout_writer::stdout_writer(debug_log& log) {
+stdout_writer::stdout_writer(debug_log& log) : log_writer{ log.name } {
 	for (const auto& entry : log.entries()) {
 		write(entry);
 	}
@@ -150,19 +156,21 @@ void stdout_writer::write(const log_entry& entry) {
 	std::cout << entry.type << ": " << entry.message << "\n";
 }
 
-static std::unordered_map<std::string, debug_log> logs;
-
 void add_entry(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message) {
-	const auto& [log, _] = logs.try_emplace(name, name);
+	const auto& [log, _] = internal::logs.try_emplace(name, name);
 	log->second.add(type, message, file, function, line);
 }
 
 std::optional<std::reference_wrapper<debug_log>> find_log(const std::string& name) {
-	if (auto log = logs.find(name); log != logs.end()) [[likely]] {
+	if (auto log = internal::logs.find(name); log != internal::logs.end()) [[likely]] {
 		return log->second;
 	} else {
 		return std::nullopt;
 	}
+}
+
+void html_writer::open() const {
+	platform::open_file(path, false);
 }
 
 }
@@ -195,10 +203,21 @@ void enable() {
 				ui::menu_item("Show file", log::log_flags.show_file);
 				ui::menu_item("Show line", log::log_flags.show_line);
 				ui::separate();
-				for (const auto& [name, log] : log::logs) {
+				for (const auto& [name, log] : log::internal::logs) {
 					if (auto log_menu = ui::menu(name)) {
 						if (ui::menu_item("Open in browser")) {
-							platform::open_file(log.name + ".html", false);
+							const bool absent = std::none_of(log::internal::writers.begin(), log::internal::writers.end(), [&name](const auto& writer) {
+								return writer->name == name;
+							});
+							if (absent) {
+								log::add_writer<log::html_writer>(name);
+							}
+							for (const auto& writer : log::internal::writers) {
+								if (writer->name == name) {
+									writer->open();
+									break;
+								}
+							}
 						}
 						bool is_window_open{ open_log_windows.contains(name) };
 						if (ui::menu_item("Integrated view", is_window_open)) {
@@ -246,16 +265,14 @@ void update() {
 		}
 	}
 	ImGui::EndMainMenuBar();
-	for (const auto& log_name : open_log_windows) {
-		const auto& log = log::logs.find(log_name)->second;
+	for (const auto& name : open_log_windows) {
 		bool open{ true };
-		if (auto end = ui::push_window(log_name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
+		if (auto end = ui::push_window(name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
 			if (!open) {
-				open_log_windows.erase(log_name);
+				open_log_windows.erase(name);
 				break;
 			}
-			for (const auto& entry : log.entries()) {
-				std::string text;
+			for (const auto& entry : log::find_log(name)->get().entries()) {
 				if (log::log_flags.show_time) {
 					ui::colored_text({ 0.4f, 0.35f, 0.3f }, "%s", entry.time.c_str());
 					ui::inline_next();

@@ -218,12 +218,12 @@ public:
 
 namespace file {
 
-void write(const std::string& path, const std::string& source);
-void write(const std::string& path, const char* source, size_t size);
-void write(const std::string& path, io_stream& source);
-void append(const std::string& path, const std::string& source);
-std::string read(const std::string& path);
-void read(const std::string& path, io_stream& destination);
+void write(const std::filesystem::path& path, const std::string& source);
+void write(const std::filesystem::path& path, const char* source, size_t size);
+void write(const std::filesystem::path& path, io_stream& source);
+void append(const std::filesystem::path& path, const std::string& source);
+std::string read(const std::filesystem::path& path);
+void read(const std::filesystem::path& path, io_stream& destination);
 
 }
 

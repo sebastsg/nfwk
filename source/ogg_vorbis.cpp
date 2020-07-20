@@ -3,7 +3,7 @@
 
 namespace no {
 
-ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::string& path) {
+ogg_vorbis_audio_source::ogg_vorbis_audio_source(const std::filesystem::path& path) {
 	file::read(path, file_stream);
 	ov_callbacks callbacks{
 		// read

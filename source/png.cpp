@@ -8,8 +8,8 @@
 
 namespace no {
 
-surface load_png(const std::string& path) {
-	if (!std::filesystem::is_regular_file(path) || std::filesystem::path{ path }.extension() != ".png") {
+surface load_png(const std::filesystem::path& path) {
+	if (!std::filesystem::is_regular_file(path) || path.extension() != ".png") {
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
@@ -28,7 +28,7 @@ surface load_png(const std::string& path) {
 	}
 #if PLATFORM_WINDOWS
 	FILE* file{ nullptr };
-	const errno_t error{ fopen_s(&file, path.c_str(), "rb") };
+	const errno_t error{ fopen_s(&file, path.string().c_str(), "rb") };
 #else
 	FILE* file{ fopen(path.c_str(), "rb") };
 	const int error{ errno };

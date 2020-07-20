@@ -8,14 +8,27 @@
 #include <optional>
 
 namespace no::debug::internal {
-void initialize_debug();
+void start_debug();
+void stop_debug();
 }
 
 namespace no::debug::log {
 
 class log_writer {
 public:
+
+	const std::string name;
+
+	log_writer(const std::string& name) : name{ name } {
+
+	}
+
 	virtual ~log_writer() = default;
+	
+	virtual void open() const {
+	
+	}
+
 };
 
 }
@@ -73,6 +86,8 @@ class html_writer : public log_writer {
 public:
 
 	html_writer(debug_log& log);
+	
+	void open() const override;
 
 private:
 	
@@ -84,7 +99,7 @@ private:
 
 	std::string buffer;
 	std::filesystem::path path;
-	bool first_flush{ false };
+	bool first_flush{ true };
 	event_listener new_entry_event;
 
 };

@@ -302,31 +302,31 @@ bool io_stream::is_owner() const {
 
 namespace file {
 
-void write(const std::string& path, const std::string& source) {
-	std::filesystem::create_directories(std::filesystem::path{ path }.parent_path());
+void write(const std::filesystem::path& path, const std::string& source) {
+	std::filesystem::create_directories(path.parent_path());
 	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file << source;
 	}
 }
 
-void write(const std::string& path, const char* source, size_t size) {
-	std::filesystem::create_directories(std::filesystem::path{ path }.parent_path());
+void write(const std::filesystem::path& path, const char* source, size_t size) {
+	std::filesystem::create_directories(path.parent_path());
 	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file.write(source, size);
 	}
 }
 
-void write(const std::string& path, io_stream& source) {
+void write(const std::filesystem::path& path, io_stream& source) {
 	write(path, source.data(), source.write_index());
 }
 
-void append(const std::string& path, const std::string& source) {
+void append(const std::filesystem::path& path, const std::string& source) {
 	if (std::ofstream file{ path, std::ios::app }; file.is_open()) {
 		file << source;
 	}
 }
 
-std::string read(const std::string& path) {
+std::string read(const std::filesystem::path& path) {
 	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();
@@ -336,7 +336,7 @@ std::string read(const std::string& path) {
 	}
 }
 
-void read(const std::string& path, io_stream& stream) {
+void read(const std::filesystem::path& path, io_stream& stream) {
 	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();

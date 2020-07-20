@@ -12,7 +12,7 @@ namespace no {
 class ogg_vorbis_audio_source : public audio_source {
 public:
 
-	ogg_vorbis_audio_source(const std::string& path);
+	ogg_vorbis_audio_source(const std::filesystem::path& path);
 	~ogg_vorbis_audio_source() override;
 
 	size_t size() const override;

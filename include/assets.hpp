@@ -2,7 +2,7 @@
 
 #include "scoped_context.hpp"
 
-#include <string>
+#include <filesystem>
 
 namespace no {
 
@@ -18,9 +18,9 @@ void* require_asset(const std::string& name);
 
 }
 
-void set_asset_directory(const std::string& path);
-std::string asset_directory();
-std::string asset_path(const std::string& path);
+void set_asset_directory(const std::filesystem::path& path);
+std::filesystem::path asset_directory();
+std::filesystem::path asset_path(const std::string& path);
 
 void register_asset(const std::string& name, const load_asset_function& load, const free_asset_function& free);
 

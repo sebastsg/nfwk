@@ -19,7 +19,7 @@ struct registered_asset {
 	bool is_loaded{ false };
 };
 
-static std::string asset_directory_path{ "." };
+static std::filesystem::path asset_directory_path{ "." };
 static std::unordered_map<std::string, registered_asset> assets;
 static std::unordered_set<std::string> to_be_released;
 
@@ -42,16 +42,16 @@ void* require_asset(const std::string& name) {
 
 }
 
-void set_asset_directory(const std::string& path) {
+void set_asset_directory(const std::filesystem::path& path) {
 	asset_directory_path = path;
 }
 
-std::string asset_directory() {
+std::filesystem::path asset_directory() {
 	return asset_directory_path;
 }
 
-std::string asset_path(const std::string& path) {
-	return asset_directory_path + "/" + path;
+std::filesystem::path asset_path(const std::string& path) {
+	return asset_directory_path / path;
 }
 
 void free_asset(const std::string& name) {

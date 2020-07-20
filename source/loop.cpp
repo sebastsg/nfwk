@@ -283,7 +283,7 @@ int run_main_loop() {
 	configure();
 	loop.post_configure.emit();
 
-	debug::internal::initialize_debug();
+	debug::internal::start_debug();
 	internal::initialize_editor();
 	internal::initialize_scripts();
 	internal::initialize_objects();
@@ -343,6 +343,7 @@ void destroy_main_loop() {
 	delete loop.audio;
 	loop.audio = nullptr;
 #endif
+	debug::internal::stop_debug();
 }
 
 }

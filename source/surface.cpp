@@ -23,7 +23,7 @@ surface::surface(surface&& that) noexcept {
 	std::swap(format_, that.format_);
 }
 
-surface::surface(const std::string& path) {
+surface::surface(const std::filesystem::path& path) {
 	surface result{ load_png(path) };
 	pixels = result.pixels;
 	size = result.size;

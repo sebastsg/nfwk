@@ -400,9 +400,9 @@ int create_shader_from_source(std::string_view vertex_source, std::string_view f
 	return id;
 }
 
-int create_shader(const std::string& path) {
+int create_shader(const std::filesystem::path& path) {
 	MESSAGE_X("graphics", "Loading shader " << path);
-	return create_shader_from_source(file::read(path + "/vertex.glsl"), file::read(path + "/fragment.glsl"));
+	return create_shader_from_source(file::read(path / "vertex.glsl"), file::read(path / "fragment.glsl"));
 }
 
 void bind_shader(int id) {

@@ -2,6 +2,8 @@
 
 #include "math.hpp"
 
+#include <filesystem>
+
 namespace no {
 
 enum class pixel_format { rgba, bgra };
@@ -13,7 +15,7 @@ public:
 
 	static void flip_vertically(uint32_t* pixels, vector2i size);
 
-	surface(const std::string& path);
+	surface(const std::filesystem::path& path);
 	surface(uint32_t* pixels, int width, int height, pixel_format format, construct_by construction);
 	surface(int width, int height, pixel_format format);
 	surface(int width, int height, pixel_format format, uint32_t color);

@@ -4,6 +4,6 @@
 
 namespace no {
 
-surface load_png(const std::string& path);
+surface load_png(const std::filesystem::path& path);
 
 }
