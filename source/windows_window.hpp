@@ -2,7 +2,7 @@
 
 #include "platform.hpp"
 
-#if PLATFORM_WINDOWS && ENABLE_WINDOW
+#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
 
 #include "windows_platform.hpp"
 #include "math.hpp"

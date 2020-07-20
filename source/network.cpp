@@ -1,4 +1,5 @@
 #include "network.hpp"
+#include "debug.hpp"
 
 #if ENABLE_NETWORK
 

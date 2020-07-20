@@ -2,9 +2,10 @@
 #include "script.hpp"
 #include "objects.hpp"
 #include "editor.hpp"
+#include "debug.hpp"
 #include "imgui/imgui_platform.hpp"
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 #include "window.hpp"
 #endif
 
@@ -106,7 +107,7 @@ static void update_windows() {
 	for (auto state : loop.states) {
 		loop.current_state = state;
 		const auto index = state_index(state);
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 		auto window = loop.windows[index];
 		window->poll();
 #endif
@@ -121,7 +122,7 @@ static void update_windows() {
 }
 
 static void draw_windows() {
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 	for (auto state : loop.states) {
 		loop.current_state = state;
 		auto window = loop.windows[state_index(state)];
@@ -146,7 +147,7 @@ static void destroy_stopped_states() {
 			delete loop.states[index];
 			loop.states.erase(loop.states.begin() + index);
 			if (closing) {
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 				if (loop.imgui_window_index.has_value() && loop.imgui_window_index.value() == index) {
 					ui::destroy();
 					loop.imgui_window_index = std::nullopt;
@@ -188,7 +189,7 @@ const loop_frame_counter& frame_counter() {
 }
 
 program_state::program_state() {
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 	window_close = window().close.listen([this] {
 		stop();
 	});
@@ -203,7 +204,7 @@ void program_state::stop() {
 	loop.states_to_stop.push_back(this);
 }
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 
 window& program_state::window() const {
 	if (const int index{ state_index(this) }; index >= 0) {

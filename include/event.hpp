@@ -1,7 +1,5 @@
 #pragma once
 
-#include "debug.hpp"
-
 #include <functional>
 #include <vector>
 #include <queue>
@@ -58,7 +56,8 @@ public:
 
 	event(const event&) = delete;
 
-	event(event&& that) noexcept : id{ std::move(that.id) }, handlers{ std::move(that.handlers) }, forward_events{ std::move(that.forward_events) } {
+	event(event&& that) noexcept
+		: id{ std::move(that.id) }, handlers{ std::move(that.handlers) }, forward_events{ std::move(that.forward_events) } {
 	
 	}
 

@@ -1,4 +1,5 @@
 #include "windows_sockets.hpp"
+#include "debug.hpp"
 
 #if ENABLE_WINSOCK
 

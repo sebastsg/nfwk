@@ -21,6 +21,7 @@ std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path pa
 std::vector<std::string> split_string(std::string string, char symbol);
 // todo: allow some options like 'all occurrences' or 'last occurrence'
 std::string erase_substring(const std::string& string, const std::string& substring);
+void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with);
 
 // todo: should be moved to a new file.
 template<typename T, typename U>

@@ -2,18 +2,33 @@
 
 #include "platform.hpp"
 #include "io.hpp"
+#include "event.hpp"
 
 #include <mutex>
+#include <optional>
 
 namespace no::debug::internal {
 void initialize_debug();
 }
 
-namespace no::debug {
+namespace no::debug::log {
+
+class log_writer {
+public:
+	virtual ~log_writer() = default;
+};
+
+}
+
+namespace no::debug::log::internal {
+void add_writer(const std::string& name, std::unique_ptr<log_writer> writer);
+}
+
+namespace no::debug::log {
 
 enum class message_type { message, warning, critical, info };
 
-struct debug_log_entry {
+struct log_entry {
 
 	const message_type type;
 	const std::string message;
@@ -22,47 +37,80 @@ struct debug_log_entry {
 	const int line;
 	const std::string time;
 
-	debug_log_entry(message_type type, std::string_view message, std::string_view file, std::string_view function, int line);
+	log_entry(message_type type, std::string_view message, std::string_view file, std::string_view function, int line);
 
 };
 
 class debug_log {
 public:
 
+	const std::string name;
+
+	struct {
+		event<const log_entry&> new_entry;
+	} events;
+
 	debug_log(const std::string& name);
 
-	std::string_view name() const;
+	int count() const;
+	const std::vector<log_entry>& entries() const;
 	
 	template<typename... Args>
-	const debug_log_entry& add(Args&&... args) {
+	void add(Args&&... args) {
 		std::lock_guard lock{ mutex };
-		return log_entries.emplace_back(std::forward<Args>(args)...);
+		const auto& entry = log_entries.emplace_back(std::forward<Args>(args)...);
+		events.new_entry.emit(entry);
 	}
-	
-	int count() const;
-
-	const std::vector<debug_log_entry>& entries() const;
 
 private:
 
-	const std::string log_name;
-	std::vector<debug_log_entry> log_entries;
+	std::vector<log_entry> log_entries;
 	std::mutex mutex;
 
 };
 
-class html_debug_log_writer {
+class html_writer : public log_writer {
 public:
 
-	static std::string entry_html(const debug_log_entry& entry);
+	html_writer(debug_log& log);
 
 private:
-
+	
+	static std::string entry_html(const log_entry& entry);
 	static std::string field_html(const std::string& message, int col_span = 1);
+	static std::string html_compatible_string(std::string string);
+
+	void flush();
+
+	std::string buffer;
+	std::filesystem::path path;
+	bool first_flush{ false };
+	event_listener new_entry_event;
 
 };
 
-void append(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message);
+class stdout_writer : public log_writer {
+public:
+
+	stdout_writer(debug_log& log);
+
+private:
+
+	void write(const log_entry& entry);
+
+	event_listener new_entry_event;
+
+};
+
+void add_entry(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message);
+std::optional<std::reference_wrapper<debug_log>> find_log(const std::string& name);
+
+template<typename Writer>
+void add_writer(const std::string& name) {
+	if (auto log = find_log(name)) {
+		internal::add_writer(name, std::make_unique<Writer>(log->get()));
+	}
+}
 
 }
 
@@ -77,7 +125,7 @@ void remove(std::string_view id);
 
 }
 
-#if ENABLE_DEBUG
+#if ENABLE_DEBUG_LOG
 #define BUG(MESSAGE) \
 		WARNING(#MESSAGE); \
 		abort();
@@ -92,10 +140,10 @@ void remove(std::string_view id);
 
 #if COMPILER_MSVC
 # define DEBUG(ID, TYPE, STR) \
-		no::debug::append(ID, TYPE, __FILE__, __FUNCSIG__, __LINE__, STRING(STR))
+		no::debug::log::add_entry(ID, TYPE, __FILE__, __FUNCSIG__, __LINE__, STRING(STR))
 #elif defined(COMPILER_GCC)
 # define DEBUG(ID, TYPE, STR) \
-		no::debug::append(ID, TYPE, __FILE__, __PRETTY_FUNCTION__, __LINE__, STRING(STR))
+		no::debug::log::add_entry(ID, TYPE, __FILE__, __PRETTY_FUNCTION__, __LINE__, STRING(STR))
 #endif
 
 # define DEBUG_LIMIT(ID, TYPE, STR, LIMIT) \
@@ -113,25 +161,24 @@ void remove(std::string_view id);
 # define DEBUG_LIMIT(ID, TYPE, STR, LIMIT) 
 #endif
 
-#define MESSAGE(STR)  DEBUG("main", no::debug::message_type::message, STR)
-#define WARNING(STR)  DEBUG("main", no::debug::message_type::warning, STR)
-#define CRITICAL(STR) DEBUG("main", no::debug::message_type::critical, STR)
-#define INFO(STR)     DEBUG("main", no::debug::message_type::info, STR)
+#define MESSAGE(STR)  DEBUG("main", no::debug::log::message_type::message, STR)
+#define WARNING(STR)  DEBUG("main", no::debug::log::message_type::warning, STR)
+#define CRITICAL(STR) DEBUG("main", no::debug::log::message_type::critical, STR)
+#define INFO(STR)     DEBUG("main", no::debug::log::message_type::info, STR)
 
-#define MESSAGE_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::message_type::message, STR, LIMIT)
-#define WARNING_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::message_type::warning, STR, LIMIT)
-#define CRITICAL_LIMIT(STR, LIMIT) DEBUG_LIMIT("main", no::debug::message_type::critical, STR, LIMIT)
-#define INFO_LIMIT(STR, LIMIT)     DEBUG_LIMIT("main", no::debug::message_type::info, STR, LIMIT)
+#define MESSAGE_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::log::message_type::message, STR, LIMIT)
+#define WARNING_LIMIT(STR, LIMIT)  DEBUG_LIMIT("main", no::debug::log::message_type::warning, STR, LIMIT)
+#define CRITICAL_LIMIT(STR, LIMIT) DEBUG_LIMIT("main", no::debug::log::message_type::critical, STR, LIMIT)
+#define INFO_LIMIT(STR, LIMIT)     DEBUG_LIMIT("main", no::debug::log::message_type::info, STR, LIMIT)
 
-#define MESSAGE_X(ID, STR)  DEBUG(ID, no::debug::message_type::message, STR)
-#define WARNING_X(ID, STR)  DEBUG(ID, no::debug::message_type::warning, STR)
-#define CRITICAL_X(ID, STR) DEBUG(ID, no::debug::message_type::critical, STR)
-#define INFO_X(ID, STR)     DEBUG(ID, no::debug::message_type::info, STR)
+#define MESSAGE_X(ID, STR)  DEBUG(ID, no::debug::log::message_type::message, STR)
+#define WARNING_X(ID, STR)  DEBUG(ID, no::debug::log::message_type::warning, STR)
+#define CRITICAL_X(ID, STR) DEBUG(ID, no::debug::log::message_type::critical, STR)
+#define INFO_X(ID, STR)     DEBUG(ID, no::debug::log::message_type::info, STR)
 
-#define MESSAGE_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::message_type::message, STR, LIMIT)
-#define WARNING_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::message_type::warning, STR, LIMIT)
-#define CRITICAL_LIMIT_x(ID, STR, LIMIT) DEBUG_LIMIT(ID, no::debug::message_type::critical, STR, LIMIT)
-#define INFO_LIMIT_X(ID, STR, LIMIT)     DEBUG_LIMIT(ID, no::debug::message_type::info, STR, LIMIT)
+#define MESSAGE_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::log::message_type::message, STR, LIMIT)
+#define WARNING_LIMIT_X(ID, STR, LIMIT)  DEBUG_LIMIT(ID, no::debug::log::message_type::warning, STR, LIMIT)
+#define CRITICAL_LIMIT_x(ID, STR, LIMIT) DEBUG_LIMIT(ID, no::debug::log::message_type::critical, STR, LIMIT)
+#define INFO_LIMIT_X(ID, STR, LIMIT)     DEBUG_LIMIT(ID, no::debug::log::message_type::info, STR, LIMIT)
 
-
-std::ostream& operator<<(std::ostream& out, no::debug::message_type message);
+std::ostream& operator<<(std::ostream& out, no::debug::log::message_type message);

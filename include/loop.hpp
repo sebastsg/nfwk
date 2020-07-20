@@ -1,5 +1,6 @@
 #pragma once
 
+#include "../config.hpp"
 #include "timer.hpp"
 #include "event.hpp"
 #include "audio.hpp"
@@ -81,7 +82,7 @@ public:
 
 	virtual void update() = 0;
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 	
 	virtual void draw() = 0;
 

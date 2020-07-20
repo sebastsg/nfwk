@@ -1,8 +1,7 @@
 #include "event.hpp"
+#include "debug.hpp"
 
-namespace no {
-
-namespace internal {
+namespace no::internal {
 
 struct event_state {
 	
@@ -74,6 +73,8 @@ bool is_event_listener(int event_id, int listener_id) {
 }
 
 }
+
+namespace no {
 
 event_listener::event_listener(int event_id, int listener_id) : event_id{ event_id }, listener_id{ listener_id } {
 

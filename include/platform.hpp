@@ -45,7 +45,7 @@ namespace no::platform {
 
 #if ENABLE_GL
 
-#if ENABLE_DEBUG
+#if ENABLE_DEBUG_LOG
 # if ENABLE_VERBOSE_LOGGING
 #  define LOG_VERBOSE_GL(GL_CALL) INFO(#GL_CALL);
 # else

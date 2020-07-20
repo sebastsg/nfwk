@@ -1,6 +1,6 @@
 #include "window.hpp"
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 
 #include "windows_window.hpp" // todo: shouldn't be here
 

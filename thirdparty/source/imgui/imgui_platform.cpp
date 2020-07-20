@@ -1,7 +1,5 @@
 #include "platform.hpp"
 
-#if ENABLE_IMGUI
-
 #include <glew/glew.h>
 
 #include <Windows.h>
@@ -403,5 +401,3 @@ void draw() {
 }
 
 }
-
-#endif

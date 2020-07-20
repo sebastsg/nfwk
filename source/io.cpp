@@ -56,6 +56,14 @@ std::string erase_substring(const std::string& string, const std::string& substr
 	return result;
 }
 
+void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with) {
+	auto index = string.find(substring);
+	while (index != std::string::npos) {
+		string.replace(index, substring.size(), replace_with);
+		index = string.find(substring, index + replace_with.size());
+	}
+}
+
 io_stream::io_stream(size_t size) {
 	allocate(size);
 }

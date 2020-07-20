@@ -2,7 +2,7 @@
 
 #include "platform.hpp"
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 
 #include "event.hpp"
 #include "math.hpp"

@@ -1,6 +1,6 @@
 #include "windows_window.hpp"
 
-#if PLATFORM_WINDOWS && ENABLE_WINDOW
+#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
 
 #include <Windows.h>
 #include <windowsx.h>

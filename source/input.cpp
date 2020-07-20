@@ -1,6 +1,6 @@
 #include "input.hpp"
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 
 #include "window.hpp"
 
@@ -24,7 +24,7 @@ int mouse::y() const {
 }
 
 vector2i mouse::position() const {
-#if PLATFORM_WINDOWS && ENABLE_WINDOW
+#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
 	POINT cursor;
 	GetCursorPos(&cursor);
 	ScreenToClient(parent_window->platform_window()->handle(), &cursor);
@@ -34,7 +34,7 @@ vector2i mouse::position() const {
 }
 
 bool mouse::is_button_down(button button) const {
-#if PLATFORM_WINDOWS && ENABLE_WINDOW
+#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
 	switch (button) {
 	case button::left: return (GetAsyncKeyState(VK_LBUTTON) & 0b1000000000000000) == 0b1000000000000000;
 	case button::middle: return (GetAsyncKeyState(VK_MBUTTON) & 0b1000000000000000) == 0b1000000000000000;

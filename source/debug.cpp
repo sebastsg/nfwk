@@ -7,7 +7,7 @@
 #include <iostream>
 #include <iomanip>
 
-namespace no::debug::internal {
+namespace no::debug::log::internal {
 
 // this can be used for release builds to have fewer external files.
 static constexpr std::string_view default_template_html{
@@ -24,15 +24,31 @@ static constexpr std::string_view default_template_html{
 
 static std::string template_html{ default_template_html };
 
+static std::vector<std::unique_ptr<log_writer>> writers;
+
+void add_writer(const std::string& name, std::unique_ptr<log_writer> writer) {
+	writers.emplace_back(std::move(writer));
+}
+
+}
+
+namespace no::debug::internal {
+
 void initialize_debug() {
 	if (auto buffer = file::read(asset_path("debug/template.html")); !buffer.empty()) {
-		template_html = buffer;
+		log::internal::template_html = buffer;
 	}
 }
 
 }
 
-namespace no::debug {
+namespace no::debug::log {
+
+static struct {
+	bool show_time{ true };
+	bool show_file{ true };
+	bool show_line{ true };
+} log_flags;
 
 static auto current_time_ms() {
 	const auto time_since_epoch = std::chrono::system_clock::now().time_since_epoch();
@@ -44,15 +60,55 @@ static std::string current_time_string_for_log() {
 	return platform::current_local_time_string() + "." + std::to_string(current_time_ms());
 }
 
-static void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with) {
-	auto index = string.find(substring);
-	while (index != std::string::npos) {
-		string.replace(index, substring.size(), replace_with);
-		index = string.find(substring, index + replace_with.size());
+log_entry::log_entry(message_type type, std::string_view message, std::string_view path, std::string_view function, int line)
+	: type{ type }, message{ message }, function{ function }, line{ line }, time{ current_time_string_for_log() } {
+	if (auto slash = path.rfind(std::filesystem::path::preferred_separator); slash != std::string::npos) {
+		file = path.substr(slash + 1);
+	} else {
+		file = path;
 	}
 }
 
-static std::string get_html_compatible_string(std::string string) {
+debug_log::debug_log(const std::string& name) : name{ name } {
+
+}
+
+int debug_log::count() const {
+	return static_cast<int>(log_entries.size());
+}
+
+const std::vector<log_entry>& debug_log::entries() const {
+	return log_entries;
+}
+
+html_writer::html_writer(debug_log& log) {
+	buffer = internal::template_html;
+	path = "logs/" + log.name + ".html";
+	for (const auto& entry : log.entries()) {
+		buffer += entry_html(entry);
+	}
+	new_entry_event = log.events.new_entry.listen([this](const log_entry& entry) {
+		buffer += entry_html(entry);
+		flush();
+	});
+}
+
+std::string html_writer::entry_html(const log_entry& entry) {
+	std::string html{ "\r\n<tr class=\"" + STRING(entry.type) + "\">" };
+	html += field_html(entry.time);
+	html += field_html(html_compatible_string(entry.message));
+	html += field_html(entry.file);
+	html += field_html(html_compatible_string(entry.function));
+	html += field_html(std::to_string(entry.line));
+	html += "</tr>";
+	return html;
+}
+
+std::string html_writer::field_html(const std::string& message, int col_span) {
+	return "<td colspan=\"" + std::to_string(col_span) + "\">" + message + "</td>";
+}
+
+std::string html_writer::html_compatible_string(std::string string) {
 	replace_substring(string, "&", "&amp;");
 	replace_substring(string, ">", "&gt;");
 	replace_substring(string, "<", "&lt;");
@@ -62,66 +118,51 @@ static std::string get_html_compatible_string(std::string string) {
 	return string;
 }
 
-debug_log_entry::debug_log_entry(message_type type, std::string_view message, std::string_view path, std::string_view function, int line)
-	: type{ type }, message{ message }, function{ function }, line{ line }, time{ current_time_string_for_log() } {
-	if (auto slash = path.rfind(std::filesystem::path::preferred_separator); slash != std::string::npos) {
-		file = path.substr(slash + 1);
-	} else {
-		file = path;
+void html_writer::flush() {
+	if (first_flush) [[unlikely]] {
+		file::write(path.string(), buffer);
+		first_flush = false;
+	} else [[likely]] {
+		file::append(path.string(), buffer);
 	}
+	buffer = "";
 }
 
-debug_log::debug_log(const std::string& name) : log_name{ name } {
-
-}
-
-std::string_view debug_log::name() const {
-	return log_name;
-}
-
-int debug_log::count() const {
-	return static_cast<int>(log_entries.size());
-}
-
-const std::vector<debug_log_entry>& debug_log::entries() const {
-	return log_entries;
-}
-
-std::string html_debug_log_writer::entry_html(const debug_log_entry& entry) {
-	std::string html{ "\r\n<tr class=\"" + STRING(entry.type) + "\">" };
-	html += field_html(entry.time);
-	html += field_html(get_html_compatible_string(entry.message));
-	html += field_html(entry.file);
-	html += field_html(get_html_compatible_string(entry.function));
-	html += field_html(std::to_string(entry.line));
-	html += "</tr>";
-	return html;
-}
-
-std::string html_debug_log_writer::field_html(const std::string& message, int col_span) {
-	return "<td colspan=\"" + std::to_string(col_span) + "\">" + message + "</td>";
-}
-
-class logger_state {
-	void add(int index, message_type type, const char* file, const char* func, int line) {
-		//file::append(html_logs[index].path, html_logs[index].final_buffer);
+stdout_writer::stdout_writer(debug_log& log) {
+	for (const auto& entry : log.entries()) {
+		write(entry);
 	}
-	void initialize_html_log(int index) {
-		//html_logs[index].path = "debug-log-" + std::to_string(index) + ".html";
-		//file::write(html_logs[index].path, template_buffer);
+	new_entry_event = log.events.new_entry.listen([this](const log_entry& entry) {
+		write(entry);
+	});
+}
+
+void stdout_writer::write(const log_entry& entry) {
+	if (log_flags.show_time) {
+		std::cout << std::left << std::setw(13) << current_time_string_for_log() << std::setw(1) << std::internal;
 	}
-};
+	if (log_flags.show_file) {
+		std::cout << entry.file << ": ";
+	}
+	if (log_flags.show_line) {
+		std::cout << std::setw(4) << entry.line << ": " << std::setw(1);
+	}
+	std::cout << entry.type << ": " << entry.message << "\n";
+}
 
 static std::unordered_map<std::string, debug_log> logs;
 
-void append(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message) {
+void add_entry(const std::string& name, message_type type, std::string_view file, std::string_view function, int line, std::string_view message) {
 	const auto& [log, _] = logs.try_emplace(name, name);
-	const auto& entry = log->second.add(type, message, file, function, line);
+	log->second.add(type, message, file, function, line);
+}
 
-#if ENABLE_STDOUT_LOG
-	std::cout << std::left << std::setw(13) << (current_local_time_string() + "." + current_time_ms_string()) << std::setw(1);
-	std::cout << std::internal << type << ": " << message << "\n";
-#endif
+std::optional<std::reference_wrapper<debug_log>> find_log(const std::string& name) {
+	if (auto log = logs.find(name); log != logs.end()) [[likely]] {
+		return log->second;
+	} else {
+		return std::nullopt;
+	}
 }
 
 }
@@ -140,11 +181,6 @@ static struct {
 } menu_state;
 
 static std::unordered_set<std::string> open_log_windows;
-static struct {
-	bool show_time{ true };
-	bool show_file{ true };
-	bool show_line{ true };
-} log_window_flags;
 
 void enable() {
 	menu_state.enabled = true;
@@ -155,14 +191,14 @@ void enable() {
 				set_draw_synchronization(limit_fps ? no::draw_synchronization::if_updated : no::draw_synchronization::always);
 			}
 			if (auto end = ui::menu("Debug logs")) {
-				ui::menu_item("Show time", log_window_flags.show_time);
-				ui::menu_item("Show file", log_window_flags.show_file);
-				ui::menu_item("Show line", log_window_flags.show_line);
+				ui::menu_item("Show time", log::log_flags.show_time);
+				ui::menu_item("Show file", log::log_flags.show_file);
+				ui::menu_item("Show line", log::log_flags.show_line);
 				ui::separate();
-				for (const auto& [name, log] : logs) {
+				for (const auto& [name, log] : log::logs) {
 					if (auto log_menu = ui::menu(name)) {
 						if (ui::menu_item("Open in browser")) {
-							platform::open_file(std::string{ log.name() } + ".html", false);
+							platform::open_file(log.name + ".html", false);
 						}
 						bool is_window_open{ open_log_windows.contains(name) };
 						if (ui::menu_item("Integrated view", is_window_open)) {
@@ -211,7 +247,7 @@ void update() {
 	}
 	ImGui::EndMainMenuBar();
 	for (const auto& log_name : open_log_windows) {
-		const auto& log = logs.find(log_name)->second;
+		const auto& log = log::logs.find(log_name)->second;
 		bool open{ true };
 		if (auto end = ui::push_window(log_name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
 			if (!open) {
@@ -220,15 +256,15 @@ void update() {
 			}
 			for (const auto& entry : log.entries()) {
 				std::string text;
-				if (log_window_flags.show_time) {
+				if (log::log_flags.show_time) {
 					ui::colored_text({ 0.4f, 0.35f, 0.3f }, "%s", entry.time.c_str());
 					ui::inline_next();
 				}
-				if (log_window_flags.show_file) {
+				if (log::log_flags.show_file) {
 					ui::colored_text({ 0.5f, 0.6f, 0.7f }, "%s", entry.file.c_str());
 					ui::inline_next();
 				}
-				if (log_window_flags.show_line) {
+				if (log::log_flags.show_line) {
 					ui::colored_text({ 0.3f, 0.3f, 0.3f }, "%i", entry.line);
 					ui::inline_next();
 				}
@@ -261,12 +297,12 @@ void remove(std::string_view id) {
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::debug::message_type message) {
+std::ostream& operator<<(std::ostream& out, no::debug::log::message_type message) {
 	switch (message) {
-	case no::debug::message_type::message: return out << "message";
-	case no::debug::message_type::warning: return out << "warning";
-	case no::debug::message_type::critical: return out << "critical";
-	case no::debug::message_type::info: return out << "info";
+	case no::debug::log::message_type::message: return out << "message";
+	case no::debug::log::message_type::warning: return out << "warning";
+	case no::debug::log::message_type::critical: return out << "critical";
+	case no::debug::log::message_type::info: return out << "info";
 	default: return out << "";
 	}
 }

@@ -217,7 +217,7 @@ void relaunch() {
 
 }
 
-#if ENABLE_WINDOW
+#if ENABLE_GRAPHICS
 
 int WINAPI WinMain(HINSTANCE current_instance, HINSTANCE previous_instance, LPSTR command_line, int show_command) {
 	no::platform::windows::current_instance_arg = current_instance;
