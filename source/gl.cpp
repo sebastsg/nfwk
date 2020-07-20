@@ -70,10 +70,14 @@ static struct {
 
 	int bound_shader{ -1 };
 
+#if TRACK_REDUNDANT_BINDS
 	long long redundant_texture_bind_calls{ 0 };
-	
+#endif
+
 } renderer;
 
+
+#if TRACK_REDUNDANT_BINDS
 namespace debug {
 
 long long get_redundant_texture_bind_calls() {
@@ -81,6 +85,7 @@ long long get_redundant_texture_bind_calls() {
 }
 
 }
+#endif
 
 static size_t size_of_attribute_component(attribute_component type) {
 	switch (type) {
@@ -231,7 +236,7 @@ int create_texture(const surface& surface) {
 	return id;
 }
 
-#if _DEBUG
+#if TRACK_REDUNDANT_BINDS
 void measure_redundant_bind_call(int id) {
 	int active_texture_id{ 0 };
 	CHECK_GL_ERROR(glGetIntegerv(GL_TEXTURE_BINDING_2D, &active_texture_id));
@@ -242,7 +247,7 @@ void measure_redundant_bind_call(int id) {
 #endif
 
 void bind_texture(int id) {
-#if _DEBUG
+#if TRACK_REDUNDANT_BINDS
 	measure_redundant_bind_call(id);
 #endif
 	CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D, renderer.textures[id].id));
@@ -250,7 +255,7 @@ void bind_texture(int id) {
 
 void bind_texture(int id, int slot) {
 	CHECK_GL_ERROR(glActiveTexture(GL_TEXTURE0 + slot));
-#if _DEBUG
+#if TRACK_REDUNDANT_BINDS
 	measure_redundant_bind_call(id);
 #endif
 	CHECK_GL_ERROR(glBindTexture(GL_TEXTURE_2D, renderer.textures[id].id));
@@ -298,7 +303,7 @@ static int create_shader_script(const char* source, unsigned int type) {
 	CHECK_GL_ERROR(const unsigned int id{ glCreateShader(type) });
 	CHECK_GL_ERROR(glShaderSource(id, 1, &source, 0));
 	CHECK_GL_ERROR(glCompileShader(id));
-#if _DEBUG
+#if ENABLE_DEBUG_LOG
 	int length{ 0 };
 	char buffer[1024];
 	CHECK_GL_ERROR(glGetShaderInfoLog(id, 1024, &length, buffer));
@@ -371,7 +376,7 @@ int create_shader_from_source(std::string_view vertex_source, std::string_view f
 	CHECK_GL_ERROR(glDeleteShader(vertex_shader_id));
 	CHECK_GL_ERROR(glDeleteShader(fragment_shader_id));
 
-#if _DEBUG
+#if ENABLE_DEBUG_LOG
 	char buffer[1024];
 	int length{ 0 };
 	CHECK_GL_ERROR(glGetProgramInfoLog(shader.id, 1024, &length, buffer));

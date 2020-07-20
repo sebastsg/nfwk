@@ -314,9 +314,13 @@ int run_main_loop() {
 		}
 
 		if (updated || loop.synchronization == draw_synchronization::always) {
+#if TRACK_REDUNDANT_BINDS
 			const auto redundant_texture_binds = debug::get_redundant_texture_bind_calls();
+#endif
 			draw_windows();
+#if TRACK_REDUNDANT_BINDS
 			loop.redundant_texture_binds_this_frame = debug::get_redundant_texture_bind_calls() - redundant_texture_binds;
+#endif
 			loop.frame_counter.next_frame();
 		}
 
