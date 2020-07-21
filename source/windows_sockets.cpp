@@ -245,8 +245,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 		LPOVERLAPPED overlapped{ nullptr }; // pointer to overlapped structure inside winsock_io_data
 
 		// associate this thread with the completion port as we get the queued completion status
-		const BOOL status{ GetQueuedCompletionStatus(io_port, &transferred, &completion_key, &overlapped, INFINITE) };
-		if (!status) {
+		if (!GetQueuedCompletionStatus(io_port, &transferred, &completion_key, &overlapped, INFINITE)) {
 			WS_PRINT_LAST_ERROR_X(log_name);
 			if (!overlapped) {
 				continue;
@@ -318,12 +317,13 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 
 void start_network() {
 	MESSAGE_X("network", "Initializing WinSock");
-	const WORD version{ MAKEWORD(2, 2) };
+	constexpr auto version = MAKEWORD(2, 2);
 	if (const int status{ WSAStartup(version, &winsock.wsa_data) }; status != 0) {
-		CRITICAL("WinSock failed to start. Error: " << status);
-		return;
+		CRITICAL_X("network", "WinSock failed to start. Error: " << status);
+		WS_PRINT_LAST_ERROR();
+	} else {
+		create_completion_port();
 	}
-	create_completion_port();
 }
 
 void stop_network() {
@@ -331,26 +331,26 @@ void stop_network() {
 	for (int i{ 0 }; i < static_cast<int>(winsock.sockets.size()); i++) {
 		destroy_socket(i);
 	}
-	if (const int status{ WSACleanup() }; status != 0) {
+	if (WSACleanup() != 0) {
 		WARNING_X("network", "Failed to stop WinSock. Some operations may still be ongoing.");
-		print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, 0);
+		WS_PRINT_LAST_ERROR();
 	} else {
 		MESSAGE_X("network", "WinSock has been stopped.");
 	}
 }
 
 int open_socket() {
-	for (size_t i{ 0 }; i < winsock.sockets.size(); i++) {
+	const int socket_count{ static_cast<int>(winsock.sockets.size()) };
+	for (int i{ 0 }; i < socket_count; i++) {
 		if (!winsock.sockets[i].alive) {
 			winsock.sockets[i] = {};
 			winsock.sockets[i].alive = true;
-			return static_cast<int>(i);
+			return i;
 		}
 	}
-	const int id{ static_cast<int>(winsock.sockets.size()) };
 	winsock.mutexes.emplace_back(std::make_unique<std::mutex>());
 	winsock.sockets.emplace_back().alive = true;
-	return id;
+	return socket_count;
 }
 
 int open_socket(const std::string& address, int port) {

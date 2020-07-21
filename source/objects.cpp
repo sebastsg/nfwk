@@ -1,54 +1,20 @@
 #include "objects.hpp"
-#include "transform.hpp"
+#include "object_editor.hpp"
 #include "ui.hpp"
 #include "debug.hpp"
 #include "window.hpp"
-#include "editor.hpp"
+#include "random.hpp"
 
 namespace no {
-
-struct object_class_definition {
-	std::string id;
-	std::string name;
-	std::vector<std::string> scripts;
-	object_collision collision{ object_collision::none };
-};
-
-struct object_instance {
-	transform2 transform;
-};
-
-struct object_class_instance {
-	std::shared_ptr<object_class_definition> definition;
-	std::vector<object_instance> instances;
-};
-
-class create_object_class_editor : public abstract_editor {
-public:
-
-	static constexpr std::string_view title{ "Create object class" };
-
-	void update() override;
-
-	std::string_view get_title() const override {
-		return title;
-	}
-
-	bool is_dirty() const override {
-		return false;
-	}
-
-private:
-
-	object_class_definition definition;
-	std::optional<int> selected_script;
-
-};
 
 static std::vector<std::shared_ptr<object_class_definition>> definitions;
 static std::vector<object_class_instance> instances;
 
-static std::shared_ptr<object_class_definition> find_class_definition(const std::string& class_id) {
+std::vector<std::shared_ptr<object_class_definition>> get_object_class_definitions() {
+	return definitions;
+}
+
+std::shared_ptr<object_class_definition> find_class_definition(const std::string& class_id) {
 	for (auto& definition : definitions) {
 		if (definition->id == class_id) {
 			return definition;
@@ -58,7 +24,9 @@ static std::shared_ptr<object_class_definition> find_class_definition(const std:
 }
 
 void register_object_class(const std::string& class_id) {
-	definitions.emplace_back()->id = class_id;
+	auto definition = std::make_shared<object_class_definition>();
+	definition->id = class_id;
+	definitions.emplace_back(definition);
 }
 
 void attach_object_class_script(const std::string& class_id, const std::string& script_id) {
@@ -80,26 +48,13 @@ void create_object(const std::string& class_id, const variable_map& variables) {
 
 }
 
-void create_object_class_editor::update() {
-	if (auto end = ui::push_window("Create object classs", std::nullopt, std::nullopt, ui::default_window_flags, &open)) {
-		ui::input("Identifier", definition.id);
-		ui::input("Name", definition.name);
-		if (const auto collision = ui::combo("Collision", { "None", "Extents", "Radius", "Precise" }, static_cast<int>(definition.collision))) {
-			definition.collision = static_cast<object_collision>(collision.value());
-		}
-		ui::separate();
-		if (ui::button("Save class")) {
-
-		}
-	}
-}
-
 }
 
 namespace no::internal {
 
 void initialize_objects() {
-	register_editor<create_object_class_editor>();
+	register_editor<object_class_editor>();
+	register_editor<object_class_list_editor>();
 }
 
 }

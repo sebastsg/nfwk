@@ -25,8 +25,8 @@ struct link_circle {
 struct script_edit_state {
 
 	script_tree tree;
-	std::optional<int> node_index_link_from;
-	std::optional<int> node_link_from_out;
+	std::optional<int> output_from_node;
+	std::optional<int> output_slot;
 	std::optional<int> selected_node;
 	std::optional<int> hovered_node;
 	bool dirty{ false };

@@ -264,7 +264,14 @@ void update() {
 			}
 		}
 	}
+	ui::colored_text({ 0.9f, 0.9f, 0.1f }, "\tFPS: %i", frame_counter().current_fps());
 	ImGui::EndMainMenuBar();
+	constexpr vector3f log_color[]{
+		{ 1.0f, 1.0f, 1.0f }, // message
+		{ 1.0f, 0.9f, 0.2f }, // warning
+		{ 1.0f, 0.4f, 0.4f }, // critical
+		{ 0.4f, 0.8f, 1.0f }  // info
+	};
 	for (const auto& name : open_log_windows) {
 		bool open{ true };
 		if (auto end = ui::push_window(name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
@@ -285,7 +292,7 @@ void update() {
 					ui::colored_text({ 0.3f, 0.3f, 0.3f }, "%i", entry.line);
 					ui::inline_next();
 				}
-				ui::colored_text({ 1.0f, 1.0f, 1.0f }, "%s", entry.message.c_str());
+				ui::colored_text(log_color[static_cast<int>(entry.type)], "%s", entry.message.c_str());
 			}
 		}
 	}

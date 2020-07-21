@@ -1,6 +1,7 @@
 #include "noise.hpp"
 #include "random.hpp"
 #include "math.hpp"
+#include "debug.hpp"
 
 namespace no {
 
@@ -42,6 +43,7 @@ static uint16_t permutation[512]{};
 static uint16_t permutation_mod_12[512]{};
 
 void set_noise_seed(unsigned long long seed) {
+	INFO_X("main", "New noise seed: " << seed);
 	random_number_generator rng{ seed };
 	for (int i{ 0 }; i < 256; i++) {
 		permutation[i] = rng.next(255);

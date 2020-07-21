@@ -49,6 +49,23 @@ const std::vector<script_node_constructor>& get_registered_script_nodes() {
 	return registered_nodes;
 }
 
+node_output::node_output(int to_node_id, int slot_index)
+	: to_node_id{ to_node_id }, slot_index{ slot_index } {
+	ASSERT(to_node_id >= 0);
+}
+
+int node_output::slot() const {
+	return slot_index;
+}
+
+int node_output::to_node() const {
+	return to_node_id;
+}
+
+void node_output::set_to_node(int to_node) {
+	to_node_id = to_node;
+}
+
 void script_node::write(io_stream& stream) const {
 	stream.write<int32_t>(id);
 	stream.write<bool>(scope_id.has_value());
@@ -56,10 +73,10 @@ void script_node::write(io_stream& stream) const {
 		stream.write<int32_t>(scope_id.value());
 	}
 	stream.write(transform);
-	stream.write(static_cast<int32_t>(out.size()));
-	for (const auto& j : out) {
-		stream.write<int32_t>(j.node_id);
-		stream.write<int32_t>(j.out_id);
+	stream.write(static_cast<int32_t>(outputs.size()));
+	for (const auto& output : outputs) {
+		stream.write<int32_t>(output.to_node());
+		stream.write<int32_t>(output.slot());
 	}
 }
 
@@ -74,55 +91,63 @@ void script_node::read(io_stream& stream) {
 	for (int j{ 0 }; j < out_count; j++) {
 		const auto node_id = stream.read<int32_t>();
 		const auto out_id = stream.read<int32_t>();
-		out.emplace_back(node_id, out_id);
+		outputs.emplace_back(node_id, out_id);
 	}
 }
 
-void script_node::remove_output_node(int node_id) {
-	for (int i{ 0 }; i < static_cast<int>(out.size()); i++) {
-		if (out[i].node_id == node_id) {
-			out.erase(out.begin() + i);
+void script_node::delete_output_node(int node_id) {
+	for (int i{ 0 }; i < used_output_slots_count(); i++) {
+		if (outputs[i].to_node() == node_id) {
+			outputs.erase(outputs.begin() + i);
 			i--;
 		}
 	}
 }
 
-void script_node::remove_output_type(int out_id) {
-	for (int i{ 0 }; i < static_cast<int>(out.size()); i++) {
-		if (out[i].out_id == out_id) {
-			out.erase(out.begin() + i);
+void script_node::delete_output_slot(int slot) {
+	for (int i{ 0 }; i < used_output_slots_count(); i++) {
+		if (outputs[i].slot() == slot) {
+			outputs.erase(outputs.begin() + i);
 			i--;
 		}
 	}
 }
 
-std::optional<int> script_node::get_output(int out_id) {
-	for (const auto& i : out) {
-		if (i.out_id == out_id) {
-			return i.node_id;
+std::optional<int> script_node::get_output_node(int slot) const {
+	for (const auto& i : outputs) {
+		if (i.slot() == slot) {
+			return i.to_node();
 		}
 	}
 	return std::nullopt;
 }
 
-std::optional<int> script_node::get_first_output() {
-	return out.empty() ? std::optional<int>{} : out[0].node_id;
+std::optional<node_output> script_node::get_first_output() const {
+	return outputs.empty() ? std::optional<node_output>{} : outputs[0];
 }
 
-void script_node::set_output_node(std::optional<int> out_id, int node_id) {
-	if (!out_id.has_value()) {
-		out_id = 0;
-		while (get_output(out_id.value())) {
-			out_id.value()++;
+void script_node::add_output(std::optional<int> slot, int to_node_id) {
+	if (!slot.has_value()) {
+		slot = 0;
+		while (get_output_node(slot.value())) {
+			slot.value()++;
 		}
 	}
-	for (auto& i : out) {
-		if (i.out_id == out_id.value()) {
-			i.node_id = node_id;
+	for (auto& i : outputs) {
+		if (i.slot() == slot.value()) {
+			i.set_to_node(to_node_id);
 			return;
 		}
 	}
-	out.emplace_back(node_id, out_id.value());
+	outputs.emplace_back(to_node_id, slot.value());
+}
+
+const std::vector<node_output>& script_node::get_outputs() const {
+	return outputs;
+}
+
+int script_node::used_output_slots_count() const {
+	return static_cast<int>(outputs.size());
 }
 
 void script_tree::write(io_stream& stream) const {
@@ -171,12 +196,13 @@ std::optional<int> script_tree::current_node() const {
 }
 
 void script_tree::select_choice(int node_id) {
-	if (nodes.find(node_id) == nodes.end()) {
+	if (const auto node = nodes.find(node_id); node != nodes.end()) {
+		const auto output = node->second->get_first_output();
+		current_node_id = output ? output->to_node() : std::optional<int>{};
+		while (process_choice_selection());
+	} else {
 		WARNING_X("scripts", "Node not found: " << node_id << ". Script: " << id);
-		return;
 	}
-	current_node_id = nodes[node_id]->get_first_output();
-	while (process_choice_selection());
 }
 
 void script_tree::process_entry_point() {
@@ -219,12 +245,12 @@ void script_tree::prepare_message() {
 std::vector<int> script_tree::process_current_and_get_choices() {
 	ASSERT(current_node_id.has_value());
 	std::vector<int> choices;
-	for (const auto& output : nodes[current_node_id.value()]->out) {
-		const int out_type{ nodes[output.node_id]->type() };
+	for (const auto& output : nodes[current_node_id.value()]->outputs) {
+		const int out_type{ nodes[output.to_node()]->type() };
 		if (out_type == choice_node::full_type) {
-			choices.push_back(output.node_id);
+			choices.push_back(output.to_node());
 		} else {
-			if (const auto traversed = process_nodes_get_choice(output.node_id, out_type)) {
+			if (const auto traversed = process_nodes_get_choice(output.to_node(), out_type)) {
 				choices.push_back(traversed.value());
 			}
 		}
@@ -232,26 +258,26 @@ std::vector<int> script_tree::process_current_and_get_choices() {
 	return choices;
 }
 
-std::optional<int> script_tree::process_nodes_get_choice(std::optional<int> id, int type) {
-	while (id.has_value() && type != message_node::full_type) {
+std::optional<int> script_tree::process_nodes_get_choice(std::optional<int> node_id, int type) {
+	while (node_id.has_value() && type != message_node::full_type) {
 		if (type == choice_node::full_type) {
-			return id;
+			return node_id;
 		}
-		id = process_non_interactive_node(id.value(), type);
-		if (id.has_value()) {
-			type = nodes[id.value()]->type();
+		node_id = process_non_interactive_node(node_id.value(), type);
+		if (node_id.has_value()) {
+			type = nodes[node_id.value()]->type();
 			if (type == choice_node::full_type) {
-				return id;
+				return node_id;
 			}
 		}
 	}
 	return std::nullopt;
 }
 
-std::optional<int> script_tree::process_non_interactive_node(int id, int type) {
-	auto node = nodes[id];
-	if (const auto out = node->process()) {
-		return node->get_output(out.value());
+std::optional<int> script_tree::process_non_interactive_node(int node_id, int type) {
+	auto node = nodes[node_id];
+	if (const auto slot = node->process()) {
+		return node->get_output_node(slot.value());
 	} else {
 		return std::nullopt;
 	}
@@ -438,7 +464,7 @@ void delete_variable_node::read(io_stream& stream) {
 }
 
 std::optional<int> random_output_node::process() {
-	if (out.empty()) {
+	if (outputs.empty()) {
 		WARNING_X("scripts", "No nodes attached.");
 		return std::nullopt;
 	} else {

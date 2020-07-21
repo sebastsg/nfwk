@@ -216,6 +216,7 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 		BUG("UI is already initialized.");
 		return;
 	}
+	MESSAGE_X("graphics", "Initializing UI");
 	ImGui::CreateContext();
 	data = std::make_unique<imgui_data>();
 	data->window = &window;
@@ -291,6 +292,7 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	data->shader_id = create_shader_from_source(vertex_glsl, fragment_glsl);
 
 	if (font_name.has_value()) {
+		MESSAGE_X("graphics", "Using specified font for UI: " << font_name.value());
 		if (const auto font_path = font::find_absolute_path(font_name.value())) {
 			static constexpr ImWchar glyph_ranges[]{
 				1, 256,
@@ -300,7 +302,11 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 			//data.font_config.MergeMode = true;
 			io.Fonts->AddFontFromFileTTF(font_path->c_str(), static_cast<float>(font_size), &data->font_config, glyph_ranges);
 			ImGuiFreeType::BuildFontAtlas(io.Fonts);
+		} else {
+			WARNING_X("graphics", "Did not find the font.");
 		}
+	} else {
+		MESSAGE_X("graphics", "Using default font for UI.");
 	}
 
 	unsigned char* pixels{ nullptr };
@@ -314,6 +320,7 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 
 void destroy() {
 	if (is_initialized()) {
+		MESSAGE_X("graphics", "Destroying UI state");
 		delete_shader(data->shader_id);
 		delete_texture(data->font_texture_id);
 		data.release();

@@ -52,7 +52,7 @@ long long loop_frame_counter::current_fps() const {
 }
 
 double loop_frame_counter::average_fps() const {
-	return (double)frame_count / (double)ticks();
+	return static_cast<double>(frame_count) / static_cast<double>(ticks());
 }
 
 double loop_frame_counter::delta() const {
@@ -144,6 +144,7 @@ static void destroy_stopped_states() {
 				loop.audio->stop_all_players();
 #endif
 			}
+			INFO_X("main", "About to stop state: " << typeid(*loop.states[index]).name());
 			delete loop.states[index];
 			loop.states.erase(loop.states.begin() + index);
 			if (closing) {
@@ -152,6 +153,7 @@ static void destroy_stopped_states() {
 					ui::destroy();
 					loop.imgui_window_index = std::nullopt;
 				}
+				INFO_X("main", "About to close the window associated with the closed state.");
 				delete loop.windows[index];
 				loop.windows.erase(loop.windows.begin() + index);
 #endif
@@ -169,6 +171,7 @@ static void create_state_generic(const internal::make_state_function& make_state
 		return;
 	}
 	const auto specification = make_state();
+	INFO_X("main", "Created state: " << typeid(*specification.state).name());
 	loop.states.emplace_back(specification.state);
 	if (specification.imgui) {
 		ui::create(specification.state->window(), "calibril.ttf", 18);
@@ -251,7 +254,7 @@ bool program_state::has_next_state() const {
 
 program_state* program_state::current() {
 	if (!loop.current_state) {
-		WARNING_LIMIT("No state is being updated or drawn.", 10);
+		WARNING_LIMIT_X("graphics", "No state is being updated or drawn.", 10);
 	}
 	ASSERT(loop.current_state);
 	return loop.current_state;
@@ -280,9 +283,12 @@ void create_state(const std::string& title, const make_state_function& make_stat
 }
 
 int run_main_loop() {
+	MESSAGE_X("main", "Configuring...");
 	configure();
+	MESSAGE_X("main", "Done configuring.");
 	loop.post_configure.emit();
 
+	MESSAGE_X("main", "Initializing all systems...");
 	debug::internal::start_debug();
 	internal::initialize_editor();
 	internal::initialize_scripts();
@@ -296,7 +302,11 @@ int run_main_loop() {
 	start_network();
 #endif
 
+	MESSAGE_X("main", "Done initializing all systems.");
+
 	start();
+
+	MESSAGE_X("main", "Program has been started.");
 
 	long long next_tick{ loop.frame_counter.ticks() };
 
@@ -326,11 +336,13 @@ int run_main_loop() {
 
 		destroy_stopped_states();
 	}
+	MESSAGE_X("main", "Loop has reached its end.");
 	destroy_main_loop();
 	return 0;
 }
 
 void destroy_main_loop() {
+	MESSAGE_X("main", "Cleaning up everything.");
 	for (auto state : loop.states) {
 		loop.states_to_stop.push_back(state);
 	}

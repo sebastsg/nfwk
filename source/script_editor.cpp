@@ -12,9 +12,7 @@ script_editor::script_editor() {
 	create_new_script();
 
 	debug::menu::add("nfwk-script-editor", "Script", [this] {
-		if (ui::menu_item("Properties", show_properties)) {
-			
-		}
+		ui::menu_item("Properties", show_properties);
 		if (ui::menu_item("Save")) {
 			save_script();
 		}
@@ -115,7 +113,9 @@ void script_editor::update_nodes(vector2f offset) {
 		ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
 		ImGui::SetCursorScreenPos(real_position + 8.0f);
 		ImGui::BeginGroup();
-		ui::text(node->get_name());
+		ui::text("%s", node->get_name().data());
+		ui::inline_next();
+		ui::colored_text({ 0.65f, 0.7f, 0.85f }, "(%i)", node->id);
 		script.dirty |= node->update_editor();
 		ImGui::EndGroup();
 		node->transform.scale = vector2f{ ImGui::GetItemRectSize() } + 16.0f;
@@ -200,8 +200,8 @@ void script_editor::update_context_menu(vector2f offset) {
 }
 
 void script_editor::update_node_context_menu(script_node& node) {
-	if (script.node_index_link_from.has_value()) {
-		auto from_node = script.tree.nodes[script.node_index_link_from.value()];
+	if (script.output_from_node.has_value()) {
+		auto from_node = script.tree.nodes[script.output_from_node.value()];
 		bool can_connect = true;
 		if (from_node->id == node.id) {
 			can_connect = false;
@@ -210,39 +210,47 @@ void script_editor::update_node_context_menu(script_node& node) {
 			can_connect = false;
 		}
 		if (can_connect && ImGui::MenuItem("Connect")) {
-			from_node->set_output_node(script.node_link_from_out, node.id);
-			script.node_index_link_from = std::nullopt;
-			script.node_link_from_out = std::nullopt;
+			from_node->add_output(script.output_slot, node.id);
+			script.output_from_node = std::nullopt;
+			script.output_slot = std::nullopt;
 			script.dirty = true;
 		}
 		if (ui::menu_item("Cancel connecting")) {
-			script.node_index_link_from = std::nullopt;
-			script.node_link_from_out = std::nullopt;
+			script.output_from_node = std::nullopt;
+			script.output_slot = std::nullopt;
 		}
 	} else {
 		if (node.output_type() == node_output_type::variable) {
-			if (ui::menu_item("Start link")) {
-				script.node_index_link_from = script.selected_node;
+			if (ui::menu_item("Add output")) {
+				script.output_slot = std::nullopt;
+				script.output_from_node = script.selected_node;
+			}
+		} else if (node.output_type() == node_output_type::boolean) {
+			if (auto end = ui::menu("Set output")) {
+				if (ui::menu_item("True")) {
+					script.output_slot = 1;
+					script.output_from_node = script.selected_node;
+				}
+				if (ui::menu_item("False")) {
+					script.output_slot = 0;
+					script.output_from_node = script.selected_node;
+				}
+			}
+		} else if (node.output_type() == node_output_type::single) {
+			if (ui::menu_item("Set output")) {
+				script.output_slot = 0;
+				script.output_from_node = script.selected_node;
 			}
 		} else {
-			if (auto end = ui::menu("Start link")) {
-				switch (node.output_type()) {
-				case node_output_type::boolean:
-					if (ui::menu_item("True")) {
-						script.node_link_from_out = 1;
-						script.node_index_link_from = script.selected_node;
+			BUG("Invalid output type: " << static_cast<int>(node.output_type()));
+		}
+		if (node.used_output_slots_count() > 0) {
+			if (auto end_delete_links = ui::menu("Delete output to")) {
+				for (const auto& output : node.get_outputs()) {
+					const auto name = script.tree.nodes[output.to_node()]->get_name();
+					if (ui::menu_item(STRING(name) + " (" + std::to_string(output.to_node()) + ")")) {
+						node.delete_output_slot(output.slot());
 					}
-					if (ui::menu_item("False")) {
-						script.node_link_from_out = 0;
-						script.node_index_link_from = script.selected_node;
-					}
-					break;
-				case node_output_type::single:
-					if (ui::menu_item("Forward")) {
-						script.node_link_from_out = 0;
-						script.node_index_link_from = script.selected_node;
-					}
-					break;
 				}
 			}
 		}
@@ -253,13 +261,13 @@ void script_editor::update_node_context_menu(script_node& node) {
 	}
 	if (ui::menu_item("Delete")) {
 		for (auto& other_node : script.tree.nodes) {
-			other_node.second->remove_output_node(node.id);
+			other_node.second->delete_output_node(node.id);
 		}
 		delete script.tree.nodes[script.selected_node.value()];
 		script.tree.nodes.erase(script.selected_node.value());
 		script.selected_node = std::nullopt;
-		script.node_index_link_from = std::nullopt;
-		script.node_link_from_out = std::nullopt;
+		script.output_from_node = std::nullopt;
+		script.output_slot = std::nullopt;
 		script.dirty = true;
 	}
 }
@@ -289,7 +297,7 @@ void script_editor::update_scrolling() {
 }
 
 void script_editor::update_node_link_output(const node_output& output, script_node& node, vector2f offset) {
-	const auto* out_node = script.tree.nodes[output.node_id];
+	const auto* out_node = script.tree.nodes[output.to_node()];
 	const auto from_size = node.transform.scale;
 	const auto to_size = out_node->transform.scale;
 	auto from_position = node.transform.position;
@@ -392,7 +400,7 @@ void script_editor::update_node_link_output(const node_output& output, script_no
 
 	ImU32 stroke_color{ ImColor{ 200, 200, 100 } };
 	if (node.output_type() == node_output_type::boolean) {
-		stroke_color = (output.out_id == 0 ? ImColor{ 200, 100, 100 } : ImColor{ 100, 200, 100 });
+		stroke_color = (output.slot() == 0 ? ImColor{ 200, 100, 100 } : ImColor{ 100, 200, 100 });
 	}
 
 	from_position += offset;
@@ -407,10 +415,10 @@ void script_editor::update_node_link_output(const node_output& output, script_no
 	}
 
 	auto& circles = node_circles[&node];
-	while (circles.size() <= node.out.size()) {
+	while (circles.size() <= node.used_output_slots_count()) {
 		circles.emplace_back(bezier_copy[0], 1, 0.0f);
 	}
-	auto& circle = circles[output.out_id];
+	auto& circle = circles[output.slot()];
 
 	draw_list->PathStroke(stroke_color, false, 3.0f + 3.0f * std::abs(circle.pulse - 0.5f));
 
@@ -437,10 +445,9 @@ void script_editor::update_node_link_output(const node_output& output, script_no
 
 void script_editor::update_node_links(vector2f offset) {
 	for (auto& [id, node] : script.tree.nodes) {
-		for (const auto& output : node->out) {
-			if (output.node_id != -1) {
-				update_node_link_output(output, *node, offset);
-			}
+		for (const auto& output : node->get_outputs()) {
+			ASSERT(output.to_node() != -1);
+			update_node_link_output(output, *node, offset);
 		}
 	}
 }

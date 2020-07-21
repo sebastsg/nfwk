@@ -27,14 +27,19 @@ class script_tree;
 enum class node_output_type { unknown, variable, single, boolean };
 enum class node_other_variable_type { value, local, global };
 
-struct node_output {
+class node_output {
+public:
 
-	int node_id{ -1 };
-	int out_id{ 0 };
+	node_output(int to_node_id, int slot_index);
 
-	node_output(int node_id, int out_id) 
-		: node_id{ node_id }, out_id{ out_id } {
-	}
+	int slot() const;
+	int to_node() const;
+	void set_to_node(int to_node);
+
+private:
+
+	int to_node_id{ -1 };
+	int slot_index{ 0 };
 
 };
 
@@ -46,7 +51,6 @@ public:
 	int id{ -1 };
 	std::optional<int> scope_id;
 
-	std::vector<node_output> out;
 	transform2 transform; // used in editor
 
 	virtual int type() const = 0;
@@ -61,15 +65,19 @@ public:
 	virtual void read(io_stream& stream);
 	virtual bool update_editor() = 0;
 
-	void remove_output_node(int node_id);
-	void remove_output_type(int out_id);
-	std::optional<int> get_output(int out_id);
-	std::optional<int> get_first_output();
-	void set_output_node(std::optional<int> out_id, int node_id);
+	void delete_output_node(int node_id);
+	void delete_output_slot(int slot);
+	std::optional<int> get_output_node(int slot) const;
+	std::optional<node_output> get_first_output() const;
+	void add_output(std::optional<int> slot, int to_node_id);
+
+	const std::vector<node_output>& get_outputs() const;
+	int used_output_slots_count() const;
 
 protected:
 
 	script_tree* tree{ nullptr };
+	std::vector<node_output> outputs;
 
 };
 
@@ -133,8 +141,8 @@ private:
 	bool process_choice_selection();
 	void prepare_message();
 	std::vector<int> process_current_and_get_choices();
-	std::optional<int> process_nodes_get_choice(std::optional<int> id, int type);
-	std::optional<int> process_non_interactive_node(int id, int type);
+	std::optional<int> process_nodes_get_choice(std::optional<int> node_id, int type);
+	std::optional<int> process_non_interactive_node(int node_id, int type);
 
 	std::optional<int> current_node_id;
 
@@ -293,7 +301,7 @@ public:
 class random_condition_node : public condition_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(8, "Random condition", "Random");
+	NFWK_SCRIPT_CORE_NODE(8, "Random true/false", "Random");
 
 	int percent{ 50 };
 
