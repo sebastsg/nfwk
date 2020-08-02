@@ -5,7 +5,7 @@
 #if ENABLE_GRAPHICS
 
 #include "event.hpp"
-#include "math.hpp"
+#include "vector2.hpp"
 
 namespace no {
 

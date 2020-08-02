@@ -1,6 +1,6 @@
 #include "noise.hpp"
 #include "random.hpp"
-#include "math.hpp"
+#include "vector4.hpp"
 #include "debug.hpp"
 
 namespace no {

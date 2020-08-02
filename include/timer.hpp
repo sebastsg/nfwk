@@ -27,8 +27,8 @@ private:
 	long long microseconds_to_ticks(long long microseconds) const;
 	long long ticks_to_microseconds(long long ticks) const;
 
-	bool paused = false;
-	bool started = false;
+	bool paused{ false };
+	bool started{ false };
 
 	long long paused_time{ 0 };
 	long long start_time{ 0 };

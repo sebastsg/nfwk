@@ -1,19 +1,19 @@
 #include "loop.hpp"
-#include "script.hpp"
-#include "objects.hpp"
+#include "scripts/script.hpp"
+#include "objects/objects.hpp"
 #include "editor.hpp"
 #include "debug.hpp"
 #include "imgui/imgui_platform.hpp"
 
 #if ENABLE_GRAPHICS
-#include "window.hpp"
+#include "graphics/window.hpp"
 #endif
 
 #if ENABLE_WASAPI
-#include "wasapi.hpp"
+#include "audio/wasapi.hpp"
 #endif
 
-#include "network.hpp"
+#include "network/network.hpp"
 
 #include <ctime>
 

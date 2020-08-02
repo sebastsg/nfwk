@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 project(nfwk)
 
 set(ROOT_DIR "${PROJECT_SOURCE_DIR}/../")
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 
 include_directories(
 	${PROJECT_SOURCE_DIR}/../include
@@ -18,24 +18,24 @@ if(CMAKE_CONFIGURATION_TYPES)
 	set(CMAKE_CONFIGURATION_TYPES "${CMAKE_CONFIGURATION_TYPES}" CACHE STRING "Reset configurations" FORCE)
 endif()
 
-file(GLOB_RECURSE SOURCE_CPP_FILES ${PROJECT_SOURCE_DIR}/../source/*.cpp)
-file(GLOB_RECURSE SOURCE_HPP_FILES ${PROJECT_SOURCE_DIR}/../source/*.hpp)
-file(GLOB_RECURSE HEADER_HPP_FILES ${PROJECT_SOURCE_DIR}/../include/*.hpp)
-
-source_group("Source Files" FILES ${SOURCE_HPP_FILES})
-
+file(GLOB_RECURSE SOURCE_CPP_FILES       ${PROJECT_SOURCE_DIR}/../source/*.cpp)
+file(GLOB_RECURSE SOURCE_HPP_FILES       ${PROJECT_SOURCE_DIR}/../source/*.hpp)
+file(GLOB_RECURSE INCLUDE_HPP_FILES      ${PROJECT_SOURCE_DIR}/../include/*.hpp)
 file(GLOB_RECURSE SOURCE_IMGUI_CPP_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/source/imgui/*.cpp)
-file(GLOB_RECURSE SOURCE_IMGUI_H_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/include/imgui/*.h)
+file(GLOB_RECURSE SOURCE_IMGUI_H_FILES   ${PROJECT_SOURCE_DIR}/../thirdparty/include/imgui/*.h)
 
-source_group("Source Files\\imgui" FILES ${SOURCE_IMGUI_CPP_FILES})
-source_group("Header Files\\imgui" FILES ${SOURCE_IMGUI_H_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_CPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_HPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${INCLUDE_HPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/source FILES ${SOURCE_IMGUI_CPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/include FILES ${SOURCE_IMGUI_H_FILES})
 
-add_library(nfwk STATIC 
-	${SOURCE_CPP_FILES} 
+add_library(nfwk STATIC
+	${SOURCE_CPP_FILES}
 	${SOURCE_HPP_FILES}
-	${HEADER_HPP_FILES}
-	${SOURCE_IMGUI_H_FILES}
+	${INCLUDE_HPP_FILES}
 	${SOURCE_IMGUI_CPP_FILES}
+	${SOURCE_IMGUI_H_FILES}
 )
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT nfwk)

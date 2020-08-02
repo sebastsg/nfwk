@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <optional>
 #include <unordered_map> // remove when get_map_keys is moved
 #include <future> // remove when is_future_ready is moved
 
@@ -22,6 +23,7 @@ std::vector<std::string> split_string(std::string string, char symbol);
 // todo: allow some options like 'all occurrences' or 'last occurrence'
 std::string erase_substring(const std::string& string, const std::string& substring);
 void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with);
+std::string string_to_lowercase(std::string string);
 
 // todo: should be moved to a new file.
 template<typename T, typename U>
@@ -36,6 +38,15 @@ std::vector<T> get_map_keys(const std::unordered_map<T, U>& map) {
 template<typename T>
 bool is_future_ready(const std::future<T>& future) {
 	return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+}
+
+template<typename T>
+std::vector<T> merge_vectors(const std::vector<T>& front, const std::vector<T>& back) {
+	std::vector<T> result;
+	result.reserve(front.size() + back.size());
+	result.insert(result.end(), front.begin(), front.end());
+	result.insert(result.end(), back.begin(), back.end());
+	return result;
 }
 
 class io_stream {
@@ -141,6 +152,15 @@ public:
 		read_position += size;
 	}
 
+	template<typename ReadType, typename ReturnType = ReadType>
+	std::optional<ReturnType> read_optional() {
+		if (read<bool>()) {
+			return static_cast<ReturnType>(read<ReadType>());
+		} else {
+			return std::nullopt;
+		}
+	}
+
 	template<typename T>
 	void write(T value) {
 		resize_if_needed(sizeof(T));
@@ -171,20 +191,28 @@ public:
 		write_position += size;
 	}
 
-	template<typename Dest, typename Src = Dest>
-	void write_array(const std::vector<Src>& values) {
-		write(static_cast<int32_t>(values.size()));
-		for (auto& value : values) {
-			write((Dest)value);
+	template<typename WriteType, typename SourceType>
+	void write_optional(std::optional<SourceType> value) {
+		write<bool>(value.has_value());
+		if (value.has_value()) {
+			write(static_cast<WriteType>(value.value()));
 		}
 	}
 
-	template<typename Dest, typename Src = Dest>
-	std::vector<Dest> read_array() {
-		std::vector<Dest> values;
-		int32_t count = read<int32_t>();
-		for (int32_t i = 0; i < count; i++) {
-			values.push_back((Dest)read<Src>());
+	template<typename WriteType, typename SourceType = WriteType>
+	void write_array(const std::vector<SourceType>& values) {
+		write(static_cast<int32_t>(values.size()));
+		for (auto& value : values) {
+			write(static_cast<WriteType>(value));
+		}
+	}
+
+	template<typename WriteType, typename SourceType = WriteType>
+	std::vector<WriteType> read_array() {
+		std::vector<WriteType> values;
+		const int32_t count = read<int32_t>();
+		for (int32_t i{ 0 }; i < count; i++) {
+			values.push_back(static_cast<WriteType>(read<SourceType>()));
 		}
 		return std::move(values);
 	}

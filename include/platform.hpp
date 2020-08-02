@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../config.hpp"
-#include "surface.hpp"
+#include "graphics/surface.hpp"
 
 #include <string>
 #include <vector>

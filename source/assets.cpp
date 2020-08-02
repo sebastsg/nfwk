@@ -1,9 +1,11 @@
 #include "assets.hpp"
 #include "debug.hpp"
-#include "draw.hpp"
-#include "surface.hpp"
-#include "font.hpp"
-#include "ogg_vorbis.hpp"
+#include "graphics/draw.hpp"
+#include "graphics/surface.hpp"
+#include "graphics/font.hpp"
+#include "graphics/texture.hpp"
+#include "graphics/shader.hpp"
+#include "audio/ogg_vorbis.hpp"
 
 #include <unordered_map>
 #include <unordered_set>

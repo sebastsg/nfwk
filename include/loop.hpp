@@ -3,7 +3,7 @@
 #include "../config.hpp"
 #include "timer.hpp"
 #include "event.hpp"
-#include "audio.hpp"
+#include "audio/audio_endpoint.hpp"
 
 #include <string>
 #include <functional>

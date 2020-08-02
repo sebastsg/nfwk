@@ -2,11 +2,11 @@
 
 #if ENABLE_GRAPHICS
 
-#include "window.hpp"
+#include "graphics/window.hpp"
 
 #if PLATFORM_WINDOWS
 #include <Windows.h>
-#include "windows_window.hpp"
+#include "graphics/windows_window.hpp"
 #endif
 
 namespace no {

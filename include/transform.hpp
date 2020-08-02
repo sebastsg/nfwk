@@ -1,6 +1,6 @@
 #pragma once
 
-#include "math.hpp"
+#include "vector3.hpp"
 
 #include "glm/gtc/matrix_transform.hpp"
 
@@ -22,7 +22,8 @@ enum class align_type {
 	bottom_right,
 };
 
-struct transform2 {
+class transform2 {
+public:
 
 	vector2f position;
 	float rotation = 0.0f;
@@ -55,7 +56,8 @@ struct transform2 {
 
 };
 
-struct transform3 {
+class transform3 {
+public:
 
 	vector3f position;
 	vector3f rotation;

@@ -64,6 +64,13 @@ void replace_substring(std::string& string, std::string_view substring, std::str
 	}
 }
 
+std::string string_to_lowercase(std::string string) {
+	std::transform(string.begin(), string.end(), string.begin(), [](const auto& character) {
+		return std::tolower(character);
+	});
+	return string;
+}
+
 io_stream::io_stream(size_t size) {
 	allocate(size);
 }

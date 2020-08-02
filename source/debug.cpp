@@ -1,7 +1,7 @@
 #include "debug.hpp"
 #include "assets.hpp"
 #include "loop.hpp"
-#include "ui.hpp"
+#include "graphics/ui.hpp"
 
 #include <chrono>
 #include <iostream>

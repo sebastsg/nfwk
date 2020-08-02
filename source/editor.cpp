@@ -1,6 +1,6 @@
 #include "editor.hpp"
-#include "ui.hpp"
-#include "window.hpp"
+#include "graphics/ui.hpp"
+#include "graphics/window.hpp"
 
 namespace no::internal {
 

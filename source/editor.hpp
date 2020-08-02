@@ -34,6 +34,15 @@ protected:
 
 };
 
+class add_game_event_editor : public abstract_editor {
+public:
+
+	void update() override;
+	std::string_view get_title() const override;
+	bool is_dirty() const override;
+
+};
+
 class editor_state : public program_state {
 public:
 
