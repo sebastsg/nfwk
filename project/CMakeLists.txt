@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.8)
+cmake_minimum_required(VERSION 3.18)
 
 project(nfwk)
 
@@ -20,19 +20,22 @@ endif()
 
 file(GLOB_RECURSE SOURCE_CPP_FILES       ${PROJECT_SOURCE_DIR}/../source/*.cpp)
 file(GLOB_RECURSE SOURCE_HPP_FILES       ${PROJECT_SOURCE_DIR}/../source/*.hpp)
+file(GLOB_RECURSE MODULES_CPPM_FILES     ${PROJECT_SOURCE_DIR}/../modules/*.cppm)
 file(GLOB_RECURSE INCLUDE_HPP_FILES      ${PROJECT_SOURCE_DIR}/../include/*.hpp)
 file(GLOB_RECURSE SOURCE_IMGUI_CPP_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/source/imgui/*.cpp)
 file(GLOB_RECURSE SOURCE_IMGUI_H_FILES   ${PROJECT_SOURCE_DIR}/../thirdparty/include/imgui/*.h)
 
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_CPP_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_HPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${MODULES_CPPM_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${INCLUDE_HPP_FILES})
-source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/source FILES ${SOURCE_IMGUI_CPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/source FILES  ${SOURCE_IMGUI_CPP_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/include FILES ${SOURCE_IMGUI_H_FILES})
 
 add_library(nfwk STATIC
 	${SOURCE_CPP_FILES}
 	${SOURCE_HPP_FILES}
+	${MODULES_CPPM_FILES}
 	${INCLUDE_HPP_FILES}
 	${SOURCE_IMGUI_CPP_FILES}
 	${SOURCE_IMGUI_H_FILES}
