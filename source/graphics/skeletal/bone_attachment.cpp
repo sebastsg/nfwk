@@ -1,6 +1,6 @@
 #include "graphics/skeletal/bone_attachment.hpp"
 
-namespace no {
+namespace nfwk {
 
 void bone_attachment::update() {
 	const glm::mat4 translate{ glm::translate(glm::mat4{ 1.0f }, { position.x, position.y, position.z }) };

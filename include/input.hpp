@@ -2,12 +2,10 @@
 
 #include "platform.hpp"
 
-#if ENABLE_GRAPHICS
-
 #include "event.hpp"
 #include "vector2.hpp"
 
-namespace no {
+namespace nfwk {
 
 class window;
 
@@ -142,7 +140,7 @@ public:
 
 private:
 
-	bool keys[(size_t)key::max_keys];
+	bool keys[static_cast<std::size_t>(key::max_keys)]{};
 	event_listener press_key;
 	event_listener release_key;
 
@@ -150,7 +148,5 @@ private:
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::mouse::button button);
-std::ostream& operator<<(std::ostream& out, no::key key);
-
-#endif
+std::ostream& operator<<(std::ostream& out, nfwk::mouse::button button);
+std::ostream& operator<<(std::ostream& out, nfwk::key key);

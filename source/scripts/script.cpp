@@ -11,9 +11,9 @@
 #include "scripts/nodes/random_condition_node.hpp"
 #include "scripts/nodes/execute_script_node.hpp"
 #include "scripts/nodes/trigger_event_node.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no::internal {
+namespace nfwk::internal {
 
 void initialize_scripts() {
 	register_script_node<message_node>();
@@ -27,7 +27,6 @@ void initialize_scripts() {
 	register_script_node<random_condition_node>();
 	register_script_node<execute_script_node>();
 	register_script_node<trigger_event_node>();
-	register_editor<script_editor>();
 }
 
 }

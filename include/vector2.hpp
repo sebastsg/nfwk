@@ -3,7 +3,7 @@
 #include <ostream>
 #include <cstdint>
 
-namespace no {
+namespace nfwk {
 
 template<typename T>
 struct vector2 {
@@ -201,42 +201,42 @@ constexpr vector2i expand_index(int index, int width, int height) {
 }
 
 template<typename T>
-no::vector2<T> operator*(T scalar, const no::vector2<T>& vector) {
+nfwk::vector2<T> operator*(T scalar, const nfwk::vector2<T>& vector) {
 	return vector * scalar;
 }
 
 template<typename T>
-no::vector2<T> operator/(T scalar, const no::vector2<T>& vector) {
-	return no::vector2<T>{ scalar } / vector;
+nfwk::vector2<T> operator/(T scalar, const nfwk::vector2<T>& vector) {
+	return nfwk::vector2<T>{ scalar } / vector;
 }
 namespace std {
 
 template<typename T>
-ostream& operator<<(ostream& out, const no::vector2<T>& vector) {
+ostream& operator<<(ostream& out, const nfwk::vector2<T>& vector) {
 	return out << vector.x << ", " << vector.y;
 }
 
 template <typename T>
-struct tuple_size<no::vector2<T>> : integral_constant<size_t, 2> {};
+struct tuple_size<nfwk::vector2<T>> : integral_constant<size_t, 2> {};
 
 template <size_t Index, typename T>
-struct tuple_element<Index, const no::vector2<T>> {
+struct tuple_element<Index, const nfwk::vector2<T>> {
 	static_assert(Index < 2, "Vector2 index is out of bounds");
 	using type = T;
 };
 
 template <typename T>
-constexpr T vector2_get(const no::vector2<T>& vector, integral_constant<size_t, 0>) noexcept {
+constexpr T vector2_get(const nfwk::vector2<T>& vector, integral_constant<size_t, 0>) noexcept {
 	return vector.x;
 }
 
 template <typename T>
-constexpr T vector2_get(const no::vector2<T>& vector, integral_constant<size_t, 1>) noexcept {
+constexpr T vector2_get(const nfwk::vector2<T>& vector, integral_constant<size_t, 1>) noexcept {
 	return vector.y;
 }
 
 template <size_t Index, class T>
-[[nodiscard]] constexpr tuple_element_t<Index, const no::vector2<T>> get(const no::vector2<T>& vector) noexcept {
+[[nodiscard]] constexpr tuple_element_t<Index, const nfwk::vector2<T>> get(const nfwk::vector2<T>& vector) noexcept {
 	return vector2_get<T>(vector, integral_constant<size_t, Index>());
 }
 

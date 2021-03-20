@@ -1,12 +1,12 @@
 #include "png.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
 #include <libpng/png.h>
 
 #include <cerrno>
 #include <filesystem>
 
-namespace no {
+namespace nfwk {
 
 surface load_png(const std::filesystem::path& path) {
 	if (!std::filesystem::is_regular_file(path) || path.extension() != ".png") {
@@ -14,37 +14,40 @@ surface load_png(const std::filesystem::path& path) {
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
 	if (!png) {
-		WARNING_X("graphics", "Failed to create read structure");
+		warning("graphics", "Failed to create read structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_infop info{ png_create_info_struct(png) };
 	if (!info) {
-		WARNING_X("graphics", "Failed to create info structure");
+		warning("graphics", "Failed to create info structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	if (setjmp(png_jmpbuf(png))) {
-		WARNING_X("graphics", "Failed to load image: " << path);
+		warning("graphics", "Failed to load image: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
-#if PLATFORM_WINDOWS
+#if 1
 	FILE* file{ nullptr };
-	const errno_t error{ fopen_s(&file, path.string().c_str(), "rb") };
+	const errno_t error{ fopen_s(&file, path.u8string().c_str(), "rb") };
+	if (!file) {
+		return { 2, 2, pixel_format::rgba };
+	}
 #else
 	FILE* file{ fopen(path.c_str(), "rb") };
 	const int error{ errno };
 #endif
 	if (error == ENOENT) {
-		WARNING_X("graphics", "Image file was not found: " << path);
+		warning("graphics", "Image file was not found: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 
 	png_init_io(png, file);
 	png_read_info(png, info);
 
-	const uint32_t width{ png_get_image_width(png, info) };
-	const uint32_t height{ png_get_image_height(png, info) };
-	const uint8_t color_type{ png_get_color_type(png, info) };
-	const uint8_t bit_depth{ png_get_bit_depth(png, info) };
+	const std::uint32_t width{ png_get_image_width(png, info) };
+	const std::uint32_t height{ png_get_image_height(png, info) };
+	const std::uint8_t color_type{ png_get_color_type(png, info) };
+	const std::uint8_t bit_depth{ png_get_bit_depth(png, info) };
 
 	if (bit_depth == 16) {
 		png_set_strip_16(png);
@@ -69,23 +72,23 @@ surface load_png(const std::filesystem::path& path) {
 	}
 	png_read_update_info(png, info);
 
-	auto rows = new uint8_t* [height];
-	const size_t row_size{ png_get_rowbytes(png, info) };
-	for (uint32_t y{ 0 }; y < height; y++) {
-		rows[y] = new uint8_t[row_size];
+	auto rows = new std::uint8_t* [height];
+	const std::size_t row_size{ png_get_rowbytes(png, info) };
+	for (std::uint32_t y{ 0 }; y < height; y++) {
+		rows[y] = new std::uint8_t[row_size];
 	}
 	png_read_image(png, rows);
 	fclose(file);
 	png_destroy_read_struct(&png, &info, nullptr);
 
-	uint32_t* pixels = new uint32_t[width * height];
-	for (uint32_t y{ 0 }; y < height; y++) {
-		auto destination = reinterpret_cast<uint8_t*>(pixels + y * width);
+	std::uint32_t* pixels = new std::uint32_t[width * height];
+	for (std::uint32_t y{ 0 }; y < height; y++) {
+		auto destination = reinterpret_cast<std::uint8_t*>(pixels + y * width);
 		memcpy(destination, rows[y], row_size);
 		delete[] rows[y];
 	}
 	delete[] rows;
-	MESSAGE_X("graphics", "Loaded PNG file " << path << ". Size: " << width << ", " << height);
+	message("graphics", "Loaded PNG file {}. Size: {}, {}", path, width, height);
 	return { pixels, static_cast<int>(width), static_cast<int>(height), pixel_format::rgba, surface::construct_by::move };
 }
 

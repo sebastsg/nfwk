@@ -1,75 +1,55 @@
 #pragma once
 
 #include "platform.hpp"
-
-#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
-
 #include "windows_platform.hpp"
+#include "graphics/window.hpp"
 #include "input.hpp"
+#include "graphics/gl/wgl_context.hpp"
 
-#if ENABLE_GL
-#include "graphics/gl/windows_gl.hpp"
-#endif
+namespace nfwk::platform {
 
-namespace no {
-
-class window;
-
-namespace platform {
-
-class windows_window {
+class windows_window : public window {
 public:
+	
+	static void create_classes();
+	static std::shared_ptr<render_context> create_compatibility_render_context();
 
-	windows_window(window& window, std::string_view title, int width, int height, int samples);
-	windows_window(window& window, std::string_view title, int width, int height);
-	windows_window(window& window, std::string_view title, int samples);
-	windows_window(window& window, std::string_view title);
+	windows_window(std::string_view title, std::optional<vector2i> size = std::nullopt);
+	~windows_window() override;
 
-	windows_window(const windows_window&) = delete;
-	windows_window(windows_window&&) = delete;
+	void poll() override;
+	void maximize() override;
 
-	~windows_window();
+	std::shared_ptr<render_context> create_render_context(std::optional<int> samples) const override;
 
-	windows_window& operator=(const windows_window&) = delete;
-	windows_window& operator=(windows_window&&) = delete;
+	bool is_open() const override;
+	vector2i position() const override;
+	vector2i size() const override;
+	std::string title() const override;
 
-	void poll();
-	void set_base_window(window& window);
+	void set_title(std::string_view title) override;
+	void set_size(vector2i size) override;
 
-	bool is_open() const;
-	vector2i position() const;
-	vector2i size() const;
+	void swap() override;
 
-	std::string title() const;
-
-	void set_size(const vector2i& size);
-	void set_title(std::string_view title);
-	void set_icon_from_resource(int resource_id);
-	void set_viewport(int x, int y, int width, int height);
-	void set_scissor(int x, int y, int width, int height);
-	void set_clear_color(const vector3f& color);
-	bool set_swap_interval(swap_interval interval);
-
-	void clear();
-	void swap();
+	void set_display_mode(display_mode mode) override;
+	display_mode current_display_mode() const override;
 
 	HWND handle() const;
+	HDC get_device_context() const;
+	void set_icon_from_resource(int resource_id);
 
 private:
+	
+	static HWND create_window(std::string_view name, std::string_view type, int width, int height, bool maximized);
 
-	void create_default_window(window& window, std::string_view title, int width, int height, bool maximized);
-	void create_arb_window(window& window, std::string_view title, int width, int height, int samples, bool maximized);
+	void set_data();
 	void show(bool maximized);
 
 	HWND window_handle{ nullptr };
 	HDC device_context{ nullptr };
-	window* base_window{ nullptr };
-	platform_render_context render_context;
+	display_mode last_set_display_mode{ display_mode::windowed };
 
 };
 
 }
-
-}
-
-#endif

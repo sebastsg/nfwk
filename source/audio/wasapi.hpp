@@ -17,7 +17,7 @@ struct IAudioClockAdjustment;
 struct tWAVEFORMATEX;
 using WAVEFORMATEX = tWAVEFORMATEX;
 
-namespace no {
+namespace nfwk {
 
 namespace wasapi {
 

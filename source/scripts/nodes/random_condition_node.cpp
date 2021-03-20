@@ -4,7 +4,7 @@
 #include "math.hpp"
 #include "io.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> random_condition_node::process() {
 	return random_number_generator::global().chance(0.5f);
@@ -12,12 +12,12 @@ std::optional<int> random_condition_node::process() {
 
 void random_condition_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<int32_t>(percent);
+	stream.write<std::int32_t>(percent);
 }
 
 void random_condition_node::read(io_stream& stream) {
 	script_node::read(stream);
-	percent = stream.read<int32_t>();
+	percent = stream.read<std::int32_t>();
 }
 
 bool random_condition_node::update_editor() {

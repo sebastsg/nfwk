@@ -4,7 +4,7 @@
 
 #include <optional>
 
-namespace no {
+namespace nfwk {
 
 class variable_registry;
 class script_node;
@@ -48,9 +48,6 @@ public:
 
 	void write(io_stream& stream) const;
 	void read(io_stream& stream);
-
-	void save() const;
-	void load(const std::string& id);
 
 	std::optional<int> current_node() const;
 	script_node* get_node(int id);

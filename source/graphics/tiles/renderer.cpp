@@ -1,7 +1,7 @@
 #include "graphics/tiles/renderer.hpp"
 #include "graphics/tiles/layer.hpp"
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
 void renderer::refresh_chunk(chunk& chunk) {
 	if (!chunk.rendered) {
@@ -16,14 +16,14 @@ void renderer::refresh_chunk(chunk& chunk) {
 		append_tile(*chunk.rendered, group.front());
 	}
 	for (const auto& group : tiles) {
-		for (size_t i{ 1 }; i < group.size(); i++) {
+		for (std::size_t i{ 1 }; i < group.size(); i++) {
 			append_tile(*chunk.rendered, group[i]);
 		}
 	}
 	chunk.rendered->quads.refresh();
 }
 
-size_t renderer::render_tile(std::optional<size_t> parent, layer& layer, chunk& chunk, vector2f position, vector2f size, const vector4f& tex_coords) {
+std::size_t renderer::render_tile(std::optional<std::size_t> parent, layer& layer, chunk& chunk, vector2f position, vector2f size, const vector4f& tex_coords) {
 	if (parent.has_value()) {
 		chunk.rendered->tiles[parent.value()].emplace_back(position, size, tex_coords);
 		return parent.value();

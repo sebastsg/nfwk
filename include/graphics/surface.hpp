@@ -4,7 +4,7 @@
 
 #include <filesystem>
 
-namespace no {
+namespace nfwk {
 
 enum class pixel_format { rgba, bgra };
 
@@ -13,12 +13,12 @@ public:
 
 	enum class construct_by { copy, move };
 
-	static void flip_vertically(uint32_t* pixels, vector2i size);
+	static void flip_vertically(std::uint32_t* pixels, vector2i size);
 
 	surface(const std::filesystem::path& path);
-	surface(uint32_t* pixels, int width, int height, pixel_format format, construct_by construction);
+	surface(std::uint32_t* pixels, int width, int height, pixel_format format, construct_by construction);
 	surface(int width, int height, pixel_format format);
-	surface(int width, int height, pixel_format format, uint32_t color);
+	surface(int width, int height, pixel_format format, std::uint32_t color);
 	surface() = default;
 	surface(const surface&) = delete;
 	surface(surface&&) noexcept;
@@ -33,18 +33,18 @@ public:
 	void flip_horizontally();
 	void flip_vertically();
 
-	uint32_t* data() const;
-	uint32_t at(int x, int y) const;
-	uint32_t at(int index) const;
-	void set(int x, int y, uint32_t color);
-	void set(int index, uint32_t color);
+	std::uint32_t* data() const;
+	std::uint32_t at(int x, int y) const;
+	std::uint32_t at(int index) const;
+	void set(int x, int y, std::uint32_t color);
+	void set(int index, std::uint32_t color);
 
-	void clear(uint32_t color);
-	void render(uint32_t* pixels, int width, int height);
-	void render_horizontal_line(uint32_t color, int x, int y, int width);
-	void render_vertical_line(uint32_t color, int x, int y, int height);
-	void render_rectangle(uint32_t color, int x, int y, int width, int height);
-	void render_circle(uint32_t color, int x, int y, int radius);
+	void clear(std::uint32_t color);
+	void render(std::uint32_t* pixels, int width, int height);
+	void render_horizontal_line(std::uint32_t color, int x, int y, int width);
+	void render_vertical_line(std::uint32_t color, int x, int y, int height);
+	void render_rectangle(std::uint32_t color, int x, int y, int width, int height);
+	void render_circle(std::uint32_t color, int x, int y, int radius);
 
 	vector2i dimensions() const;
 	int width() const;
@@ -54,7 +54,7 @@ public:
 
 private:
 
-	uint32_t* pixels{ nullptr };
+	std::uint32_t* pixels{ nullptr };
 	vector2i size;
 	pixel_format format_{ pixel_format::rgba };
 

@@ -4,18 +4,21 @@
 #include <sstream>
 #include <vector>
 #include <filesystem>
+#include <functional>
 #include <optional>
 #include <unordered_map> // remove when get_map_keys is moved
 #include <future> // remove when is_future_ready is moved
 
-#define STRING(X)  ((std::ostringstream&)(std::ostringstream{} << X)).str()
+#define STRING(X) [&]{ std::ostringstream S; S << X; return S.str(); }()
 #define CSTRING(X) STRING(X).c_str()
 
-namespace no {
+namespace nfwk {
 
 enum class entry_inclusion { everything, only_files, only_directories };
 
-std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path path, entry_inclusion inclusion, bool recursive);
+std::filesystem::path _workaround_fix_windows_path(std::filesystem::path path);
+
+std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path path, entry_inclusion inclusion, bool recursive, const std::function<bool(const std::filesystem::path&)>& predicate = {});
 
 // todo: move these string functions
 // todo: split by string should also be possible
@@ -35,28 +38,14 @@ std::vector<T> get_map_keys(const std::unordered_map<T, U>& map) {
 	return keys;
 }
 
-template<typename T>
-bool is_future_ready(const std::future<T>& future) {
-	return future.valid() && future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
-}
-
-template<typename T>
-std::vector<T> merge_vectors(const std::vector<T>& front, const std::vector<T>& back) {
-	std::vector<T> result;
-	result.reserve(front.size() + back.size());
-	result.insert(result.end(), front.begin(), front.end());
-	result.insert(result.end(), back.begin(), back.end());
-	return result;
-}
-
 class io_stream {
 public:
 
 	enum class construct_by { copy, move, shallow_copy };
 
 	io_stream() = default;
-	io_stream(size_t size);
-	io_stream(char* data, size_t size, construct_by construction);
+	io_stream(std::size_t size);
+	io_stream(char* data, std::size_t size, construct_by construction);
 	io_stream(const io_stream&) = delete;
 	io_stream(io_stream&&) noexcept;
 	~io_stream();
@@ -64,9 +53,9 @@ public:
 	io_stream& operator=(const io_stream&) = delete;
 	io_stream& operator=(io_stream&&) noexcept;
 
-	void allocate(size_t size);
-	void resize(size_t new_size);
-	void resize_if_needed(size_t size_to_write);
+	void allocate(std::size_t size);
+	void resize(std::size_t new_size);
+	void resize_if_needed(std::size_t size_to_write);
 	void free();
 
 	// move everything from the read position to the beginning
@@ -81,19 +70,19 @@ public:
 	void move_write_index(long long size);
 
 	bool empty() const;
-	size_t size() const;
-	size_t size_left_to_write() const;
-	size_t size_left_to_read() const;
-	size_t read_index() const;
-	size_t write_index() const;
+	std::size_t size() const;
+	std::size_t size_left_to_write() const;
+	std::size_t size_left_to_read() const;
+	std::size_t read_index() const;
+	std::size_t write_index() const;
 
-	char* at(size_t index) const;
+	char* at(std::size_t index) const;
 	char* at_read() const;
 	char* at_write() const;
 
 	// todo: merge this with peek() instead?
 	template<typename T>
-	T read(size_t index) const {
+	T read(std::size_t index) const {
 		if (begin + index > end) {
 			return {};
 		}
@@ -108,7 +97,7 @@ public:
 	}
 
 	template<typename T>
-	T peek(size_t offset) const {
+	T peek(std::size_t offset) const {
 		return read<T>(read_index() + offset);
 	}
 
@@ -125,7 +114,7 @@ public:
 
 	template<>
 	std::string read() {
-		size_t length = read<uint32_t>();
+		const std::size_t length{ read<std::uint32_t>() };
 		if (length == 0) {
 			return "";
 		}
@@ -134,21 +123,21 @@ public:
 		}
 		std::string result;
 		result.insert(result.begin(), length, '\0');
-		memcpy(&result[0], read_position, length);
+		std::memcpy(&result[0], read_position, length);
 		read_position += length;
 		return result;
 	}
 
 	template<>
 	bool read() {
-		return read<uint8_t>() != 0;
+		return read<std::uint8_t>() != 0;
 	}
 
-	void read(char* destination, size_t size) {
+	void read(char* destination, std::size_t size) {
 		if (read_position + size > end) {
 			return;
 		}
-		memcpy(destination, read_position, size);
+		std::memcpy(destination, read_position, size);
 		read_position += size;
 	}
 
@@ -170,24 +159,24 @@ public:
 
 	template<>
 	void write(std::string value) {
-		size_t size = value.size();
-		write((uint32_t)size);
+		const auto size = value.size();
+		write(static_cast<std::uint32_t>(size));
 		if (size == 0) {
 			return;
 		}
 		resize_if_needed(size);
-		memcpy(write_position, value.c_str(), size);
+		std::memcpy(write_position, value.c_str(), size);
 		write_position += size;
 	}
 
 	template<>
 	void write(bool value) {
-		write<uint8_t>(value ? 1 : 0);
+		write<std::uint8_t>(value ? 1 : 0);
 	}
 
-	void write(const char* source, size_t size) {
+	void write(const char* source, std::size_t size) {
 		resize_if_needed(size);
-		memcpy(write_position, source, size);
+		std::memcpy(write_position, source, size);
 		write_position += size;
 	}
 
@@ -201,7 +190,7 @@ public:
 
 	template<typename WriteType, typename SourceType = WriteType>
 	void write_array(const std::vector<SourceType>& values) {
-		write(static_cast<int32_t>(values.size()));
+		write(static_cast<std::int32_t>(values.size()));
 		for (auto& value : values) {
 			write(static_cast<WriteType>(value));
 		}
@@ -210,29 +199,29 @@ public:
 	template<typename WriteType, typename SourceType = WriteType>
 	std::vector<WriteType> read_array() {
 		std::vector<WriteType> values;
-		const int32_t count = read<int32_t>();
-		for (int32_t i{ 0 }; i < count; i++) {
+		const auto count = read<std::int32_t>();
+		for (std::int32_t i{ 0 }; i < count; i++) {
 			values.push_back(static_cast<WriteType>(read<SourceType>()));
 		}
 		return std::move(values);
 	}
 
-	size_t read_line(char* destination, size_t max_size, bool remove_newline);
+	std::size_t read_line(char* destination, std::size_t max_size, bool remove_newline);
 	std::string read_line(bool remove_newline);
 
-	int find_first(const std::string& key, size_t start) const;
-	int find_last(const std::string& key, size_t start) const;
+	int find_first(const std::string& key, std::size_t start) const;
+	int find_last(const std::string& key, std::size_t start) const;
 
 	char* data() const;
 	bool is_owner() const;
 
 private:
 
-	char* begin = nullptr;
-	char* end = nullptr;
-	char* read_position = nullptr;
-	char* write_position = nullptr;
-	bool owner = true;
+	char* begin{ nullptr };
+	char* end{ nullptr };
+	char* read_position{ nullptr };
+	char* write_position{ nullptr };
+	bool owner{ true };
 
 };
 
@@ -244,15 +233,11 @@ public:
 
 };
 
-namespace file {
-
-void write(const std::filesystem::path& path, const std::string& source);
-void write(const std::filesystem::path& path, const char* source, size_t size);
-void write(const std::filesystem::path& path, io_stream& source);
-void append(const std::filesystem::path& path, const std::string& source);
-std::string read(const std::filesystem::path& path);
-void read(const std::filesystem::path& path, io_stream& destination);
-
-}
+void write_file(const std::filesystem::path& path, const std::string& source);
+void write_file(const std::filesystem::path& path, const char* source, std::size_t size);
+void write_file(const std::filesystem::path& path, io_stream& source);
+void append_file(const std::filesystem::path& path, const std::string& source);
+std::string read_file(const std::filesystem::path& path);
+void read_file(const std::filesystem::path& path, io_stream& destination);
 
 }

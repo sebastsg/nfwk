@@ -1,6 +1,6 @@
 #include "graphics/rectangle.hpp"
 
-namespace no {
+namespace nfwk {
 
 rectangle::rectangle(float x, float y, float width, float height) {
 	set_tex_coords(x, y, width, height);
@@ -17,10 +17,6 @@ void rectangle::set_tex_coords(float x, float y, float width, float height) {
 		{ { 1.0f, 1.0f }, 1.0f, { x + width, y + height } },
 		{ { 0.0f, 1.0f }, 1.0f, { x, y + height } }
 		}, { 0, 1, 2, 3, 2, 0 });
-}
-
-void rectangle::bind() const {
-	vertices.bind();
 }
 
 void rectangle::draw() const {

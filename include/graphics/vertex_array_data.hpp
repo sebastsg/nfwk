@@ -2,7 +2,7 @@
 
 #include <vector>
 
-namespace no {
+namespace nfwk {
 
 template<typename Vertex, typename Index>
 struct vertex_array_data {
@@ -17,12 +17,12 @@ struct vertex_array_data {
 		if (indices.size() != that.indices.size()) {
 			return false;
 		}
-		for (size_t i{ 0 }; i < vertices.size(); i++) {
+		for (std::size_t i{ 0 }; i < vertices.size(); i++) {
 			if (memcmp(&vertices[i], &that.vertices[i], sizeof(Vertex))) {
 				return false;
 			}
 		}
-		for (size_t i{ 0 }; i < indices.size(); i++) {
+		for (std::size_t i{ 0 }; i < indices.size(); i++) {
 			if (indices[i] != that.indices[i]) {
 				return false;
 			}

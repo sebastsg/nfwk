@@ -4,25 +4,23 @@
 #include "event.hpp"
 #include "graphics/vertex.hpp"
 
-namespace no {
+namespace nfwk {
 
 class ortho_camera;
+class shader;
 
 }
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
 class tile;
 
 class layer {
 public:
 
+	event<int, int, int, int, int> on_load_area;
+
 	bool autotile_neighbours{ true };
-
-	struct {
-		event<int, int, int, int, int> load_area;
-	} events;
-
 	int depth{ 0 };
 	bool dirty{ false };
 	bool active{ true };
@@ -36,7 +34,7 @@ public:
 	layer& operator=(layer&&) = delete;
 
 	void render();
-	void draw();
+	void draw(shader& shader);
 	void view(const ortho_camera& camera);
 
 	vector2i tile_index_to_chunk_index(int x, int y) const;
@@ -55,10 +53,13 @@ public:
 	void set_renderer(std::unique_ptr<renderer> renderer);
 	int tiles_per_axis_in_chunk() const;
 
-	renderer& get_renderer();
-
 	const std::vector<chunk>& get_chunks() const {
 		return chunks;
+	}
+
+	template<typename Renderer>
+	Renderer& get_renderer() {
+		return static_cast<Renderer&>(*renderer);
 	}
 
 private:

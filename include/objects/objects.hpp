@@ -7,11 +7,11 @@
 #include <functional>
 #include <vector>
 
-namespace no::internal {
+namespace nfwk::internal {
 void initialize_objects();
 }
 
-namespace no {
+namespace nfwk {
 
 enum class object_collision { none, extents, radius, precise };
 

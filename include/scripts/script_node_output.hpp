@@ -1,6 +1,6 @@
 #pragma once
 
-namespace no {
+namespace nfwk {
 
 enum class script_node_output_type { unknown, variable, single, boolean };
 

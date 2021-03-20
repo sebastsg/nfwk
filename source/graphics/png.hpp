@@ -2,7 +2,7 @@
 
 #include "graphics/surface.hpp"
 
-namespace no {
+namespace nfwk {
 
 surface load_png(const std::filesystem::path& path);
 

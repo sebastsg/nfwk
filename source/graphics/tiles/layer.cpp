@@ -1,16 +1,13 @@
 #include "graphics/tiles/layer.hpp"
 #include "graphics/tiles/tile.hpp"
 #include "graphics/shader.hpp"
-#include "graphics/texture.hpp"
 #include "graphics/ortho_camera.hpp"
 #include "transform.hpp"
 #include "math.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 #include "graphics/tiles/tiles.hpp"
 
-#include "graphics/font.hpp"
-
-namespace no::tiles {
+namespace nfwk::tiles {
 
 layer::layer(int depth, int chunk_tiles_per_axis, vector2i grid, renderer::method method)
 	: depth{ depth }, chunk_tiles_per_axis{ chunk_tiles_per_axis }, grid{ grid }, method{ method } {
@@ -26,12 +23,10 @@ void layer::render() {
 	}
 }
 
-void layer::draw() {
-	set_shader_model(transform2{ 0.0f, 1.0f });
-	bind_texture(get_tileset_texture());
+void layer::draw(shader& shader) {
+	shader.set_model(transform2{ 0.0f, 1.0f });
 	for (auto& chunk : chunks) {
 		if (chunk.rendered) {
-			chunk.rendered->quads.bind();
 			chunk.rendered->quads.draw();
 		}
 	}
@@ -54,7 +49,7 @@ void layer::view(const ortho_camera& camera) {
 			}
 			auto& chunk = create_chunk(x, y);
 			const auto [tile_x, tile_y] = chunk.get_tile_index();
-			events.load_area.emit(depth, tile_x, tile_y, chunk_tiles_per_axis, chunk_tiles_per_axis);
+			on_load_area.emit(depth, tile_x, tile_y, chunk_tiles_per_axis, chunk_tiles_per_axis);
 			chunk.visible = true;
 		}
 	}
@@ -176,10 +171,6 @@ void layer::set_renderer(std::unique_ptr<tiles::renderer> new_renderer) {
 
 int layer::tiles_per_axis_in_chunk() const {
 	return chunk_tiles_per_axis;
-}
-
-renderer& layer::get_renderer() {
-	return *renderer;
 }
 
 }

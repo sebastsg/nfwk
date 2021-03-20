@@ -6,19 +6,20 @@
 #include <mutex>
 #include <vector>
 
-namespace no {
+namespace nfwk {
 
 class model;
 class skeletal_animation;
 class synced_skeletal_animation;
 class skeletal_animation_update;
+class shader;
 
 class skeletal_animator {
 public:
 
 	struct {
-		shader_variable bones;
-	} shader;
+		std::optional<shader_variable> bones;
+	} shader_data;
 
 	skeletal_animator(const model& skeleton);
 	skeletal_animator(const skeletal_animator&) = delete;
@@ -45,7 +46,7 @@ public:
 	void animate();
 	void sync();
 
-	void draw() const;
+	void draw(shader& shader) const;
 	void play(int id, int animation_index, int loops);
 	void play(int id, const std::string& animation_name, int loops);
 

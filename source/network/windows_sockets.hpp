@@ -10,9 +10,7 @@
 #include <mutex>
 #include <unordered_set>
 
-#if ENABLE_WINSOCK
-
-namespace no {
+namespace nfwk {
 
 enum class iocp_operation { invalid, send, receive, accept, close };
 
@@ -28,7 +26,7 @@ struct iocp_send_data : iocp_data<iocp_operation::send> {
 };
 
 struct iocp_receive_data : iocp_data<iocp_operation::receive> {
-	static const size_t buffer_size = 262144; // 256 KiB
+	static const std::size_t buffer_size = 262144; // 256 KiB
 
 	char data[buffer_size];
 	WSABUF buffer = { buffer_size, data };
@@ -38,8 +36,8 @@ struct iocp_accept_data : iocp_data<iocp_operation::accept> {
 	// the buffer size for the local and remote address must be 16 bytes more than the
 	// size of the sockaddr structure because the addresses are written in an internal format.
 	// https://msdn.microsoft.com/en-us/library/windows/desktop/ms737524(v=vs.85).aspx
-	static const size_t padded_addr_size{ sizeof(SOCKADDR_IN) + 16 };
-	static const size_t buffer_size{ padded_addr_size * 2 };
+	static const std::size_t padded_addr_size{ sizeof(SOCKADDR_IN) + 16 };
+	static const std::size_t buffer_size{ padded_addr_size * 2 };
 
 	char data[buffer_size];
 	WSABUF buffer{ buffer_size, data };
@@ -105,6 +103,4 @@ struct winsock_state {
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::iocp_operation operation);
-
-#endif
+std::ostream& operator<<(std::ostream& out, nfwk::iocp_operation operation);

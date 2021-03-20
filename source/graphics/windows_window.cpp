@@ -1,19 +1,17 @@
 #include "windows_window.hpp"
 
-#if PLATFORM_WINDOWS && ENABLE_GRAPHICS
-
 #include <Windows.h>
 #include <windowsx.h>
 
 #include "graphics/window.hpp"
 #include "input.hpp"
 #include "vector4.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-static no::vector2i current_mouse_position;
+static nfwk::vector2i current_mouse_position;
 
 LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM w_param, LPARAM l_param) {
-	auto active_window = reinterpret_cast<no::window*>(GetWindowLongPtr(window_handle, 0));
+	auto active_window = reinterpret_cast<nfwk::platform::windows_window*>(GetWindowLongPtr(window_handle, 0));
 	if (!active_window) {
 		return DefWindowProc(window_handle, message, w_param, l_param);
 	}
@@ -34,35 +32,35 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 			return 0;
 		}
 		current_mouse_position = { new_x, new_y };
-		mouse.move.emit(no::vector2i{ relative_x, relative_y }, no::vector2i{ new_x, new_y });
+		mouse.move.emit(nfwk::vector2i{ relative_x, relative_y }, nfwk::vector2i{ new_x, new_y });
 		return 0;
 	}
 	case WM_LBUTTONDOWN:
-		mouse.press.emit(no::mouse::button::left);
+		mouse.press.emit(nfwk::mouse::button::left);
 		return 0;
 	case WM_LBUTTONUP:
-		mouse.release.emit(no::mouse::button::left);
+		mouse.release.emit(nfwk::mouse::button::left);
 		return 0;
 	case WM_LBUTTONDBLCLK:
-		mouse.double_click.emit(no::mouse::button::left);
+		mouse.double_click.emit(nfwk::mouse::button::left);
 		return 0;
 	case WM_RBUTTONDOWN:
-		mouse.press.emit(no::mouse::button::right);
+		mouse.press.emit(nfwk::mouse::button::right);
 		return 0;
 	case WM_RBUTTONUP:
-		mouse.release.emit(no::mouse::button::right);
+		mouse.release.emit(nfwk::mouse::button::right);
 		return 0;
 	case WM_RBUTTONDBLCLK:
-		mouse.double_click.emit(no::mouse::button::right);
+		mouse.double_click.emit(nfwk::mouse::button::right);
 		return 0;
 	case WM_MBUTTONDOWN:
-		mouse.press.emit(no::mouse::button::middle);
+		mouse.press.emit(nfwk::mouse::button::middle);
 		return 0;
 	case WM_MBUTTONUP:
-		mouse.release.emit(no::mouse::button::middle);
+		mouse.release.emit(nfwk::mouse::button::middle);
 		return 0;
 	case WM_MBUTTONDBLCLK:
-		mouse.double_click.emit(no::mouse::button::middle);
+		mouse.double_click.emit(nfwk::mouse::button::middle);
 		return 0;
 	case WM_MOUSEWHEEL:
 		// TODO: Maybe this won't work for mouse wheels without notches.
@@ -72,11 +70,11 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	case WM_SYSKEYDOWN:
 	{
 		const LPARAM repeat{ l_param >> 30 };
-		no::key key{ static_cast<no::key>(w_param) };
+		nfwk::key key{ static_cast<nfwk::key>(w_param) };
 		if (w_param == VK_SHIFT) {
-			key = ((GetKeyState(VK_LSHIFT) & 0x8000) != 0 ? no::key::left_shift : no::key::right_shift);
+			key = ((GetKeyState(VK_LSHIFT) & 0x8000) != 0 ? nfwk::key::left_shift : nfwk::key::right_shift);
 		} else if (w_param == VK_CONTROL) {
-			key = ((GetKeyState(VK_LCONTROL) & 0x8000) != 0 ? no::key::left_control : no::key::right_control);
+			key = ((GetKeyState(VK_LCONTROL) & 0x8000) != 0 ? nfwk::key::left_control : nfwk::key::right_control);
 		}
 		keyboard.repeated_press.emit(key);
 		if (repeat == 0) {
@@ -87,18 +85,18 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	case WM_SYSKEYUP:
 	case WM_KEYUP:
 	{
-		no::key key{ static_cast<no::key>(w_param) };
+		nfwk::key key{ static_cast<nfwk::key>(w_param) };
 		if (w_param == VK_SHIFT) {
-			if (keyboard.is_key_down(no::key::left_shift) && (GetKeyState(VK_LSHIFT) & 0x8000) == 0) {
-				key = no::key::left_shift;
+			if (keyboard.is_key_down(nfwk::key::left_shift) && (GetKeyState(VK_LSHIFT) & 0x8000) == 0) {
+				key = nfwk::key::left_shift;
 			} else {
-				key = no::key::right_shift;
+				key = nfwk::key::right_shift;
 			}
 		} else if (w_param == VK_CONTROL) {
-			if (keyboard.is_key_down(no::key::left_control) && (GetKeyState(VK_LCONTROL) & 0x8000) == 0) {
-				key = no::key::left_control;
+			if (keyboard.is_key_down(nfwk::key::left_control) && (GetKeyState(VK_LCONTROL) & 0x8000) == 0) {
+				key = nfwk::key::left_control;
 			} else {
-				key = no::key::right_control;
+				key = nfwk::key::right_control;
 			}
 		}
 		keyboard.release.emit(key);
@@ -108,8 +106,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 		keyboard.input.emit(static_cast<unsigned int>(w_param));
 		return 0;
 	case WM_SIZE:
-		active_window->set_viewport(0, 0, LOWORD(l_param), HIWORD(l_param));
-		active_window->resize.emit<int, int>(LOWORD(l_param), HIWORD(l_param));
+		active_window->on_resize.emit<int, int>(LOWORD(l_param), HIWORD(l_param));
 		return 0;
 	case WM_SETCURSOR:
 		if (LOWORD(l_param) == HTCLIENT && mouse.icon.total_listeners() > 0) {
@@ -120,19 +117,17 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 	case WM_ERASEBKGND:
 		return 1;
 	case WM_CLOSE:
-		active_window->close.emit();
+		active_window->on_close.emit();
 		return 0;
 	default:
 		return DefWindowProc(window_handle, message, w_param, l_param);
 	}
 }
 
-namespace no {
-
-namespace platform {
+namespace nfwk::platform {
 
 static bool create_window_class(WNDPROC procedure, std::string_view name) {
-	MESSAGE_X("graphics", "Registering window class: " << name);
+	message("draw", "Registering window class: {}", name);
 	WNDCLASS window{};
 	window.style = CS_OWNDC | CS_DBLCLKS;
 	window.lpfnWndProc = procedure;
@@ -147,7 +142,7 @@ static bool create_window_class(WNDPROC procedure, std::string_view name) {
 	if (RegisterClass(&window)) {
 		return true;
 	} else {
-		CRITICAL_X("graphics", "Failed to register window class");
+		error("draw", "Failed to register window class");
 		return false;
 	}
 }
@@ -164,119 +159,83 @@ static vector4i calculate_maximized_window_rectangle() {
 	return { area.left, area.top, area.right, area.bottom };
 }
 
-static HWND create_window(std::string_view name, std::string_view type, int width, int height, bool maximized) {
-	MESSAGE_X("graphics", "Creating window: " << name << ". Class: " << type);
-	const HINSTANCE instance{ windows::current_instance() };
-	const DWORD style{ WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN };
-	if (maximized) {
-		const auto [x, y, w, h] = calculate_maximized_window_rectangle();
-		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, instance, nullptr);
-	} else {
-		const int x{ CW_USEDEFAULT };
-		const int y{ CW_USEDEFAULT };
-		const auto [w, h] = calculate_actual_window_size(width, height, style);
-		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, instance, nullptr);
-	}
-}
-
-static void destroy_window(HWND window_handle, HDC device_context, windows_gl_context& context) {
+static void destroy_window(HWND window_handle, HDC device_context) {
 	if (window_handle) {
-		MESSAGE_X("graphics", "Destroying window");
+		message("draw", "Destroying window");
 		ReleaseDC(window_handle, device_context);
-		context.destroy();
 		DestroyWindow(window_handle);
 	}
 }
 
-windows_window::windows_window(window& base_window, std::string_view title, int width, int height, int samples) {
-	create_arb_window(base_window, title, width, height, samples, false);
+void windows_window::create_classes() {
+	create_window_class(DefWindowProc, "compatibility");
+	create_window_class(process_window_messages, "main");
 }
 
-windows_window::windows_window(window& base_window, std::string_view title, int width, int height) {
-	create_default_window(base_window, title, width, height, false);
-}
-
-windows_window::windows_window(window& base_window, std::string_view title, int samples) {
-	create_arb_window(base_window, title, 4, 4, samples, true);
-}
-
-windows_window::windows_window(window& base_window, std::string_view title) {
-	create_default_window(base_window, title, 4, 4, true);
-}
-
-void windows_window::create_default_window(window& window, std::string_view title, int width, int height, bool maximized) {
-	create_window_class(process_window_messages, "Main");
-	window_handle = create_window(title, "Main", width, height, maximized);
-	if (!window_handle) {
-		CRITICAL_X("graphics", "Failed to create window");
-		return;
+HWND windows_window::create_window(std::string_view name, std::string_view type, int width, int height, bool maximized) {
+	message("draw", "Creating \"{}\" window \"{}\"", type, name);
+	const DWORD style{ WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN };
+	if (maximized) {
+		const auto [x, y, w, h] = calculate_maximized_window_rectangle();
+		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
+	} else {
+		const int x{ CW_USEDEFAULT };
+		const int y{ CW_USEDEFAULT };
+		const auto [w, h] = calculate_actual_window_size(width, height, style);
+		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
 	}
-	device_context = GetDC(window_handle);
-	render_context.create_default(device_context);
-	render_context.make_current();
-	render_context.initialize_gl();
-	render_context.log_renderer_info();
-	set_base_window(window);
-	show(maximized);
 }
 
-void windows_window::create_arb_window(window& window, std::string_view title, int width, int height, int samples, bool maximized) {
-	if (samples > 0) {
-		create_window_class(DefWindowProc, "Default");
-		const HWND default_window_handle{ create_window("Default", "Default", 4, 4, false) };
-		if (!default_window_handle) {
-			CRITICAL_X("graphics", "Failed to create default window");
-			return;
-		}
-		const HDC default_device_context{ GetDC(default_window_handle) };
-		render_context.create_default(default_device_context);
-		render_context.make_current();
-		destroy_window(default_window_handle, default_device_context, render_context);
+windows_window::windows_window(std::string_view title, std::optional<vector2i> size) {
+	const bool maximized{ !size.has_value() };
+	window_handle = create_window(title, "main", size.value_or(0).x, size.value_or(0).y, maximized);
+	if (window_handle) {
+		device_context = GetDC(window_handle);
+		set_data();
+		show(maximized);
+	} else {
+		error("draw", "Failed to create window");
 	}
-	create_window_class(process_window_messages, "Main");
-	window_handle = create_window(title, "Main", width, height, maximized);
-	if (!window_handle) {
-		CRITICAL_X("graphics", "Failed to create window");
-		return;
+}
+
+windows_window::~windows_window() {
+	destroy_window(window_handle, device_context);
+}
+
+std::shared_ptr<render_context> windows_window::create_compatibility_render_context() {
+	if (const auto default_window_handle = create_window("Compatibility", "compatibility", 0, 0, false)) {
+		const auto default_device_context = GetDC(default_window_handle);
+		auto compatibility_context = std::make_shared<wgl_compatibility_context>(default_device_context);
+		destroy_window(default_window_handle, default_device_context);
+		return compatibility_context;
+	} else {
+		error("draw", "Failed to create compatibility window");
+		return nullptr;
 	}
-	device_context = GetDC(window_handle);
-	render_context.create_with_attributes(device_context, samples);
-	render_context.make_current();
-	render_context.initialize_gl();
-	if (samples > 0) {
-		render_context.enable_multisampling();
-	}
-	render_context.log_renderer_info();
-	set_base_window(window);
-	show(maximized);
+}
+
+std::shared_ptr<render_context> windows_window::create_render_context(std::optional<int> samples) const {
+	return std::make_shared<wgl_attribute_context>(device_context, samples);
 }
 
 void windows_window::show(bool maximized) {
 	int show_command{ windows::show_command() };
-	if ((show_command == SW_SHOWDEFAULT || show_command == SW_SHOWNORMAL) && maximized) {
+	if (maximized && (show_command == SW_SHOWDEFAULT || show_command == SW_SHOWNORMAL)) {
 		show_command = SW_MAXIMIZE;
-	}
-	if (!base_window) {
-		WARNING_X("graphics", "Base window is not assigned. The message will not be processed.");
 	}
 	ShowWindow(window_handle, show_command);
 }
 
-windows_window::~windows_window() {
-	destroy_window(window_handle, device_context, render_context);
-}
-
 void windows_window::poll() {
-	MSG message;
+	MSG message{};
 	while (PeekMessage(&message, window_handle, 0, 0, PM_REMOVE)) {
 		TranslateMessage(&message);
 		DispatchMessage(&message);
 	}
 }
 
-void windows_window::set_base_window(window& new_window) {
-	base_window = &new_window;
-	SetWindowLongPtr(window_handle, 0, reinterpret_cast<LONG_PTR>(base_window));
+void windows_window::set_data() {
+	SetWindowLongPtr(window_handle, 0, reinterpret_cast<LONG_PTR>(this));
 }
 
 bool windows_window::is_open() const {
@@ -302,13 +261,38 @@ std::string windows_window::title() const {
 	return buffer;
 }
 
-void windows_window::set_size(const vector2i& size) {
+void windows_window::set_size(vector2i size) {
 	RECT area{ 0, 0, size.x, size.y };
 	const auto style = GetWindowLong(window_handle, GWL_STYLE);
 	AdjustWindowRect(&area, style, false);
 	area.right -= area.left;
 	area.bottom -= area.top;
 	SetWindowPos(window_handle, nullptr, 0, 0, area.right, area.bottom, SWP_NOMOVE | SWP_NOZORDER);
+}
+
+void windows_window::set_display_mode(display_mode mode) {
+	// todo: change mode
+	switch (mode) {
+	case display_mode::windowed:
+		break;
+	case display_mode::fullscreen:
+		break;
+	case display_mode::fullscreen_desktop:
+		break;
+	default:
+		warning("bugs", "Window mode not found: {}", mode);
+		return;
+	}
+	last_set_display_mode = mode;
+}
+
+window::display_mode windows_window::current_display_mode() const {
+	return last_set_display_mode;
+}
+
+void windows_window::maximize() {
+	error("bugs", "Not implemented.");
+	ASSERT(false);
 }
 
 void windows_window::set_title(std::string_view title) {
@@ -321,33 +305,14 @@ void windows_window::set_icon_from_resource(int resource_id) {
 		SendMessage(window_handle, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
 		// no need to destroy icon, since it's shared
 	} else {
-		WARNING_X("graphics", "Failed to load icon resource " << resource_id);
+		warning("draw", "Failed to load icon resource {}", resource_id);
 	}
-}
-
-void windows_window::set_viewport(int x, int y, int width, int height) {
-	render_context.set_viewport(x, y, width, height);
-}
-
-void windows_window::set_scissor(int x, int y, int width, int height) {
-	render_context.set_scissor(x, y, width, height);
-}
-
-void windows_window::set_clear_color(const vector3f& color) {
-	render_context.set_clear_color(color);
-}
-
-bool windows_window::set_swap_interval(swap_interval interval) {
-	return render_context.set_swap_interval(interval);
-}
-
-void windows_window::clear() {
-	render_context.clear();
 }
 
 void windows_window::swap() {
 	if (!SwapBuffers(device_context)) {
-		WARNING_LIMIT_X("graphics", "HDC: " << device_context << "\nHWND: " << window_handle << "\nError: " << GetLastError(), 10);
+		const auto message = platform::windows::get_error_message(GetLastError());
+		warning("draw", "Error: {}\nHDC: {}\nHWND: {}", message, (void*)device_context, (void*)window_handle);
 	}
 }
 
@@ -355,8 +320,8 @@ HWND windows_window::handle() const {
 	return window_handle;
 }
 
+HDC windows_window::get_device_context() const {
+	return device_context;
 }
 
 }
-
-#endif

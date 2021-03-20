@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 3.8)
 project(nfwk)
 
 set(ROOT_DIR "${PROJECT_SOURCE_DIR}/../")
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 
 include_directories(
 	${PROJECT_SOURCE_DIR}/../include
@@ -23,11 +23,12 @@ file(GLOB_RECURSE SOURCE_HPP_FILES       ${PROJECT_SOURCE_DIR}/../source/*.hpp)
 file(GLOB_RECURSE INCLUDE_HPP_FILES      ${PROJECT_SOURCE_DIR}/../include/*.hpp)
 file(GLOB_RECURSE SOURCE_IMGUI_CPP_FILES ${PROJECT_SOURCE_DIR}/../thirdparty/source/imgui/*.cpp)
 file(GLOB_RECURSE SOURCE_IMGUI_H_FILES   ${PROJECT_SOURCE_DIR}/../thirdparty/include/imgui/*.h)
+file(GLOB_RECURSE SOURCE_FMT_CC_FILES    ${PROJECT_SOURCE_DIR}/../thirdparty/source/fmt/*.cc)
 
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_CPP_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${SOURCE_HPP_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/.. FILES ${INCLUDE_HPP_FILES})
-source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/source FILES ${SOURCE_IMGUI_CPP_FILES})
+source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/source  FILES ${SOURCE_IMGUI_CPP_FILES})
 source_group(TREE ${PROJECT_SOURCE_DIR}/../thirdparty/include FILES ${SOURCE_IMGUI_H_FILES})
 
 add_library(nfwk STATIC
@@ -36,6 +37,7 @@ add_library(nfwk STATIC
 	${INCLUDE_HPP_FILES}
 	${SOURCE_IMGUI_CPP_FILES}
 	${SOURCE_IMGUI_H_FILES}
+	${SOURCE_FMT_CC_FILES}
 )
 
 set_property(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT nfwk)

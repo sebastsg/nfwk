@@ -2,7 +2,7 @@
 
 #include "graphics/skeletal/bone_attachment.hpp"
 
-namespace no {
+namespace nfwk {
 
 class skeletal_animation_update {
 public:

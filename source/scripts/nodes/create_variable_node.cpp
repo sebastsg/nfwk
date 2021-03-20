@@ -2,7 +2,7 @@
 #include "scripts/script_tree.hpp"
 #include "graphics/ui.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> create_variable_node::process() {
 	auto context = tree->context;
@@ -18,19 +18,19 @@ std::optional<int> create_variable_node::process() {
 
 void create_variable_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<uint8_t>(is_global);
-	stream.write<uint8_t>(overwrite);
-	stream.write(static_cast<int32_t>(new_variable.type));
+	stream.write(is_global);
+	stream.write(overwrite);
+	stream.write(static_cast<std::int32_t>(new_variable.type));
 	stream.write(new_variable.name);
 	stream.write(new_variable.value);
-	stream.write<uint8_t>(new_variable.persistent);
+	stream.write(new_variable.persistent);
 }
 
 void create_variable_node::read(io_stream& stream) {
 	script_node::read(stream);
 	is_global = stream.read<bool>();
 	overwrite = stream.read<bool>();
-	new_variable.type = static_cast<variable_type>(stream.read<int32_t>());
+	new_variable.type = static_cast<variable_type>(stream.read<std::int32_t>());
 	new_variable.name = stream.read<std::string>();
 	new_variable.value = stream.read<std::string>();
 	new_variable.persistent = stream.read<bool>();

@@ -2,7 +2,7 @@
 
 #include <random>
 
-namespace no {
+namespace nfwk {
 
 class random_number_generator {
 public:

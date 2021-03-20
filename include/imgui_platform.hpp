@@ -3,18 +3,17 @@
 #include <optional>
 #include <string>
 
-namespace no {
-
+namespace nfwk {
 class window;
+class render_context;
+}
 
-namespace ui {
+namespace nfwk::ui {
 
 void create(window& window, std::optional<std::string> font_name, int font_size = 16);
 void destroy();
 void start_frame();
 void end_frame();
-void draw();
-
-}
+void draw(render_context& context);
 
 }

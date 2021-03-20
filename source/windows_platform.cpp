@@ -1,9 +1,7 @@
 #include "platform.hpp"
 #include "io.hpp"
-#include "debug.hpp"
-#include "loop.hpp"
-
-#if PLATFORM_WINDOWS
+#include "log.hpp"
+#include "nfwk.hpp"
 
 #include <Windows.h>
 #include <ShObjIdl.h>
@@ -15,7 +13,7 @@
 extern int __argc;
 extern char** __argv;
 
-namespace no::platform::windows {
+namespace nfwk::platform::windows {
 
 static HINSTANCE current_instance_arg{ nullptr };
 static int show_command_arg{ 0 };
@@ -28,27 +26,23 @@ int show_command() {
 	return show_command_arg;
 }
 
+std::string get_error_message(int error_code) {
+	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
+	char* buffer{ nullptr };
+	const auto flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER;
+	FormatMessage(flags, nullptr, error_code, language, reinterpret_cast<char*>(&buffer), 0, nullptr);
+	if (buffer) {
+		const std::string message{ buffer };
+		LocalFree(buffer);
+		return std::to_string(error_code) + ": " + message;
+	} else {
+		return std::to_string(error_code);
+	}
 }
 
-namespace no::platform {
-
-std::string current_local_time_string() {
-	const time_t now{ std::time(nullptr) };
-	tm local_time;
-	localtime_s(&local_time, &now);
-	char buffer[64];
-	std::strftime(buffer, 64, "%X", &local_time);
-	return buffer;
 }
 
-std::string curent_local_date_string() {
-	const time_t now{ std::time(nullptr) };
-	tm local_time;
-	localtime_s(&local_time, &now);
-	char buffer[64];
-	std::strftime(buffer, 64, "%Y.%m.%d", &local_time);
-	return buffer;
-}
+namespace nfwk::platform {
 
 static LPCSTR get_system_cursor_resource(system_cursor cursor) {
 	switch (cursor) {
@@ -113,25 +107,16 @@ std::vector<std::filesystem::path> get_root_directories() {
 }
 
 std::string open_file_browse_window() {
-	char file[MAX_PATH];
-	char file_title[MAX_PATH];
-	char template_name[MAX_PATH];
+	char file[MAX_PATH]{};
+	char file_title[MAX_PATH]{};
+	char template_name[MAX_PATH]{};
 	OPENFILENAME data{};
 	data.lStructSize = sizeof(data);
-	data.hwndOwner = nullptr;
-	data.lpstrDefExt = nullptr;
-	data.lpstrCustomFilter = nullptr;
 	data.lpstrFile = file;
-	data.lpstrFile[0] = '\0';
 	data.nMaxFile = MAX_PATH;
 	data.lpstrFileTitle = file_title;
-	data.lpstrFileTitle[0] = '\0';
 	data.lpTemplateName = template_name;
-	data.nMaxFileTitle = 0;
 	data.lpstrFilter = "All\0*.*\0";
-	data.nFilterIndex = 0;
-	data.lpstrInitialDir = nullptr;
-	data.lpstrTitle = nullptr;
 	data.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 	GetOpenFileName(&data);
 	return file;
@@ -143,7 +128,7 @@ bool open_file_browser_and_select(std::filesystem::path path) {
 	auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
 	ILFree(items);
 	if (result != S_OK) {
-		WARNING("Failed to open and select file: " << path);
+		warning("main", "Failed to open and select file: {}", path);
 	}
 	return result == S_OK;
 }
@@ -152,7 +137,7 @@ surface bitmap_as_surface(HBITMAP bitmap_handle) {
 	DIBSECTION dib_section{};
 	GetObject(bitmap_handle, sizeof(DIBSECTION), &dib_section);
 	const BITMAP& bitmap{ dib_section.dsBm };
-	auto pixels = static_cast<uint32_t*>(bitmap.bmBits);
+	auto pixels = static_cast<std::uint32_t*>(bitmap.bmBits);
 	surface result{ pixels, bitmap.bmWidth, bitmap.bmHeight, pixel_format::bgra, surface::construct_by::copy };
 	// todo: figure out when bitmap is flipped. docs are a bit confusing.
 	//if (dib_section.dsBmih.biHeight < 0) {
@@ -166,7 +151,7 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 	IShellItemImageFactory* factory{ nullptr };
 	auto result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
 	if (result != S_OK) {
-		WARNING("Failed to create shell item: " << path);
+		warning("main", "Failed to create shell item: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	HBITMAP bitmap_handle{ nullptr };
@@ -174,7 +159,7 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 		result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT | SIIGBF_BIGGERSIZEOK, &bitmap_handle);
 	} while (result == E_PENDING);
 	if (result != S_OK) {
-		WARNING("Failed to load thumbnail: " << path);
+		warning("main", "Failed to load thumbnail: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	surface thumbnail{ bitmap_as_surface(bitmap_handle) };
@@ -185,9 +170,9 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 void open_file(std::filesystem::path path, bool minimized) {
 	path.make_preferred();
 	const auto show = minimized ? SW_HIDE : SW_SHOW;
-	const auto status = reinterpret_cast<int>(ShellExecute(nullptr, nullptr, path.string().c_str(), nullptr, nullptr, show));
+	const auto status = reinterpret_cast<int>(ShellExecuteW(nullptr, nullptr, path.wstring().c_str(), nullptr, nullptr, show));
 	if (status <= 32) {
-		WARNING("Failed to open " << path << ". Error: " << status);
+		warning("main", "Failed to open {}. Error: {}", path, status);
 	}
 }
 
@@ -200,64 +185,55 @@ std::vector<std::string> command_line_arguments() {
 }
 
 void relaunch() {
+	info("core", "Relaunching program.");
 	STARTUPINFO startup{};
 	startup.cb = sizeof(startup);
 	PROCESS_INFORMATION process{};
-	const auto success{ CreateProcess(__argv[0], nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process) };
-	if (success) {
+	// todo: pass on arguments? need to implode argv into command line string.
+	if (CreateProcess(__argv[0], nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process)) {
 		// note: doesn't close process
 		CloseHandle(process.hProcess);
 		CloseHandle(process.hThread);
 	} else {
-		WARNING("Failed to start " << __argv[0] << ". Error: " << GetLastError());
+		warning("main", "Failed to start {}. Error: {}", __argv[0], GetLastError());
 	}
-	internal::destroy_main_loop();
+	// todo: exit event?
 	std::exit(0);
 }
 
 }
 
-#if ENABLE_GRAPHICS
+int main() {
+	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
+		nfwk::warning("platform", "Failed to initialize COM library.");
+		return nfwk::return_code::windows_com_initialize_failed;
+	}
+	start();
+	CoUninitialize();
+	return nfwk::return_code::success;
+}
 
 int WINAPI WinMain(HINSTANCE current_instance, HINSTANCE previous_instance, LPSTR command_line, int show_command) {
-	no::platform::windows::current_instance_arg = current_instance;
-	no::platform::windows::show_command_arg = show_command;
-	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
-		WARNING("Failed to initialize COM library.");
-	}
-	const int result{ no::internal::run_main_loop() };
-	CoUninitialize();
-	return result;
+	nfwk::platform::windows::current_instance_arg = current_instance;
+	nfwk::platform::windows::show_command_arg = show_command;
+	return main();
 }
 
-#else
-
-int main() {
-	CoInitialize(nullptr);
-	int result = no::internal::run_main_loop();
-	CoUninitialize();
-	return result;
-}
-
-#endif
-
-#endif
-
-std::ostream& operator<<(std::ostream& out, no::platform::system_cursor cursor) {
+std::ostream& operator<<(std::ostream& out, nfwk::platform::system_cursor cursor) {
 	switch (cursor) {
-	case no::platform::system_cursor::none: return out << "None";
-	case no::platform::system_cursor::arrow: return out << "Arrow";
-	case no::platform::system_cursor::beam: return out << "Beam";
-	case no::platform::system_cursor::resize_all: return out << "Resize (all)";
-	case no::platform::system_cursor::resize_horizontal: return out << "Resize (horizontal)";
-	case no::platform::system_cursor::resize_vertical: return out << "Resize (vertical)";
-	case no::platform::system_cursor::resize_diagonal_from_bottom_left: return out << "Resize (bottom left -> top right)";
-	case no::platform::system_cursor::resize_diagonal_from_top_left: return out << "Resize (top left -> bottom right)";
-	case no::platform::system_cursor::block: return out << "Block";
-	case no::platform::system_cursor::hand: return out << "Hand";
-	case no::platform::system_cursor::help: return out << "Help";
-	case no::platform::system_cursor::cross: return out << "Cross";
-	case no::platform::system_cursor::wait: return out << "Wait";
+	case nfwk::platform::system_cursor::none: return out << "None";
+	case nfwk::platform::system_cursor::arrow: return out << "Arrow";
+	case nfwk::platform::system_cursor::beam: return out << "Beam";
+	case nfwk::platform::system_cursor::resize_all: return out << "Resize (all)";
+	case nfwk::platform::system_cursor::resize_horizontal: return out << "Resize (horizontal)";
+	case nfwk::platform::system_cursor::resize_vertical: return out << "Resize (vertical)";
+	case nfwk::platform::system_cursor::resize_diagonal_from_bottom_left: return out << "Resize (bottom left -> top right)";
+	case nfwk::platform::system_cursor::resize_diagonal_from_top_left: return out << "Resize (top left -> bottom right)";
+	case nfwk::platform::system_cursor::block: return out << "Block";
+	case nfwk::platform::system_cursor::hand: return out << "Hand";
+	case nfwk::platform::system_cursor::help: return out << "Help";
+	case nfwk::platform::system_cursor::cross: return out << "Cross";
+	case nfwk::platform::system_cursor::wait: return out << "Wait";
 	default: return out << "Invalid";
 	}
 }

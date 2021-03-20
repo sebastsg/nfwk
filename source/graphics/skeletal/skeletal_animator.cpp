@@ -5,7 +5,7 @@
 #include "graphics/model.hpp"
 #include "graphics/shader.hpp"
 
-namespace no {
+namespace nfwk {
 
 static glm::mat4 interpolate_positions(float factor, const vector3f& begin, const vector3f& end) {
 	const vector3f delta{ end - begin };
@@ -126,13 +126,12 @@ bool skeletal_animator::will_be_reset(int id) const {
 	return play_duration >= static_cast<double>(animation.duration);
 }
 
-void skeletal_animator::draw() const {
+void skeletal_animator::draw(shader& shader) const {
 	std::lock_guard lock{ reading_synced };
-	skeleton.bind();
 	for (auto& animation : synced_animations) {
 		if (animation.active) {
-			set_shader_model(model_transforms[animation.id]);
-			shader.bones.set(animation.bones, animation.bone_count);
+			shader.set_model(model_transforms[animation.id]);
+			shader_data.bones->set(animation.bones, animation.bone_count);
 			skeleton.draw();
 		}
 	}

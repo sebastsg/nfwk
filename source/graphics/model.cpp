@@ -1,6 +1,6 @@
 #include "graphics/model.hpp"
 
-namespace no {
+namespace nfwk {
 
 model::model(model&& that) noexcept : mesh{ std::move(that.mesh) } {
 	std::swap(root_transform, that.root_transform);
@@ -27,7 +27,7 @@ model& model::operator=(model&& that) noexcept {
 }
 
 int model::index_of_animation(const std::string& name) const {
-	for (size_t i{ 0 }; i < animations.size(); i++) {
+	for (std::size_t i{ 0 }; i < animations.size(); i++) {
 		if (animations[i].name == name) {
 			return static_cast<int>(i);
 		}
@@ -57,10 +57,6 @@ int model::total_nodes() const {
 
 glm::mat4 model::bone(int index) const {
 	return bones[index];
-}
-
-void model::bind() const {
-	mesh.bind();
 }
 
 void model::draw() const {

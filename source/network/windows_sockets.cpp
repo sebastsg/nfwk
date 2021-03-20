@@ -1,34 +1,29 @@
 #include "windows_sockets.hpp"
-#include "debug.hpp"
-
-#if ENABLE_WINSOCK
+#include "log.hpp"
+#include "windows_platform.hpp"
 
 #define WS_PRINT_ERROR(ERR)        print_winsock_error(ERR, __FUNCSIG__, __LINE__, "network")
-#define WS_PRINT_ERROR_X(ERR, LOG) print_winsock_error(ERR, __FUNCSIG__, __LINE__, LOG)
 #define WS_PRINT_LAST_ERROR()      print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, "network")
-#define WS_PRINT_LAST_ERROR_X(LOG) print_winsock_error(WSAGetLastError(), __FUNCSIG__, __LINE__, LOG)
 
-namespace no {
+namespace nfwk {
 
 DWORD io_port_thread(HANDLE io_port, int thread_num);
 
 static winsock_state winsock;
 
-static void print_winsock_error(int error, const std::string& funcsig, int line, const std::string& log) {
-	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
-	char message[256]{};
-	FormatMessage(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, nullptr, error, language, message, 256, nullptr);
-	CRITICAL_X(log, "WSA Error " << error << " on line " << line << " in " << funcsig << "\n" << message);
+static void print_winsock_error(int error_code, const std::string& funcsig, int line, const std::string& log) {
+	const auto message = platform::windows::get_error_message(error_code);
+	error("network", "WSA Error {} on line {} in {}\n{}", error_code, line, funcsig, message);
 }
 
 static void create_completion_port() {
 	// it is possible to create more threads than specified below
 	// but only max this amount of threads can run simultaneously
 	// 0 -> number of CPUs -- not supported in the for loop below
-	const int thread_count{ 2 };
+	const int thread_count{ 1 };
 	winsock.io_port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, thread_count);
 	if (!winsock.io_port) {
-		CRITICAL("Failed to create I/O completion port. Error: " << GetLastError());
+		error("network", "Failed to create I/O completion port. Error: {}", GetLastError());
 		return;
 	}
 	for (int i{ 0 }; i < thread_count; i++) {
@@ -147,7 +142,7 @@ static bool connect_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		WARNING_X("network", "Failed to get address info for " << address << ":" << port <<"\nStatus: " << status);
+		warning("network", "Failed to get address info for {}:{}\nStatus: {}", address, port, status);
 		return false;
 	}
 	while (result) {
@@ -238,7 +233,6 @@ static bool accept_ex(int id) {
 }
 
 DWORD io_port_thread(HANDLE io_port, int thread_num) {
-	const std::string log_name{ "WinSock IOCP #" + std::to_string(thread_num) };
 	while (true) {
 		DWORD transferred{ 0 }; // bytes transferred during this operation
 		ULONG_PTR completion_key{ 0 }; // pointer to winsock_socket the operation was completed on
@@ -246,7 +240,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 
 		// associate this thread with the completion port as we get the queued completion status
 		if (!GetQueuedCompletionStatus(io_port, &transferred, &completion_key, &overlapped, INFINITE)) {
-			WS_PRINT_LAST_ERROR_X(log_name);
+			WS_PRINT_LAST_ERROR();
 			if (!overlapped) {
 				continue;
 			}
@@ -257,7 +251,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 		// reference for the macro: https://msdn.microsoft.com/en-us/library/aa447688.aspx
 		auto data = CONTAINING_RECORD(overlapped, iocp_data<iocp_operation::invalid>, overlapped);
 		if (data->operation == iocp_operation::close) {
-			INFO_X(log_name, "Leaving thread");
+			nfwk::info("network", "Leaving thread");
 			return 0;
 		}
 		const int socket_id{ static_cast<int>(completion_key) };
@@ -279,7 +273,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 				continue;
 			}
 			auto receive_data = reinterpret_cast<iocp_receive_data*>(data);
-			const size_t previous_write{ socket.receive_packetizer.write_index() };
+			const std::size_t previous_write{ socket.receive_packetizer.write_index() };
 			socket.receive_packetizer.write(receive_data->buffer.buf, transferred);
 			// queue the stream events. use the packetizer's buffer
 			char* stream_begin{ socket.receive_packetizer.data() + previous_write };
@@ -301,8 +295,8 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 			get_accept_sockaddrs(*accept_data);
 			auto& accepted = winsock.sockets[accept_data->accepted_id];
 			if (const int status{ update_accept_context(accepted.handle, socket.handle) }; status != NO_ERROR) {
-				WARNING_X(log_name, "Failed to update context for accepted socket " << accept_data->accepted_id);
-				WS_PRINT_LAST_ERROR_X(log_name);
+				warning("network", "Failed to update context for accepted socket {}", accept_data->accepted_id);
+				WS_PRINT_LAST_ERROR();
 				// todo: should the socket be closed here?
 			}
 			accepted.connected = true;
@@ -316,10 +310,10 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 }
 
 void start_network() {
-	MESSAGE_X("network", "Initializing WinSock");
+	message("network", "Initializing WinSock");
 	constexpr auto version = MAKEWORD(2, 2);
 	if (const int status{ WSAStartup(version, &winsock.wsa_data) }; status != 0) {
-		CRITICAL_X("network", "WinSock failed to start. Error: " << status);
+		error("network", "WinSock failed to start. Error: {}", status);
 		WS_PRINT_LAST_ERROR();
 	} else {
 		create_completion_port();
@@ -332,10 +326,10 @@ void stop_network() {
 		destroy_socket(i);
 	}
 	if (WSACleanup() != 0) {
-		WARNING_X("network", "Failed to stop WinSock. Some operations may still be ongoing.");
+		warning("network", "Failed to stop WinSock. Some operations may still be ongoing.");
 		WS_PRINT_LAST_ERROR();
 	} else {
-		MESSAGE_X("network", "WinSock has been stopped.");
+		message("network", "WinSock has been stopped.");
 	}
 }
 
@@ -391,7 +385,7 @@ void synchronize_socket(int id) {
 }
 
 void synchronize_sockets() {
-	for (size_t i{ 0 }; i < winsock.sockets.size(); i++) {
+	for (std::size_t i{ 0 }; i < winsock.sockets.size(); i++) {
 		if (winsock.sockets[i].alive) {
 			synchronize_socket(static_cast<int>(i));
 		}
@@ -407,7 +401,7 @@ bool bind_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
 	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		WARNING_X("network", "Failed to get address info for " << address << ":" << port << "\nStatus: " << status);
+		warning("network", "Failed to get address info for {}:{}\nStatus: {}", status, address, port);
 		return false;
 	}
 	while (result) {
@@ -484,15 +478,13 @@ socket_events& socket_event(int id) {
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::iocp_operation operation) {
+std::ostream& operator<<(std::ostream& out, nfwk::iocp_operation operation) {
 	switch (operation) {
-	case no::iocp_operation::invalid: return out << "Invalid";
-	case no::iocp_operation::send: return out << "Send";
-	case no::iocp_operation::receive: return out << "Receive";
-	case no::iocp_operation::accept: return out << "Accept";
-	case no::iocp_operation::close: return out << "Close";
+	case nfwk::iocp_operation::invalid: return out << "Invalid";
+	case nfwk::iocp_operation::send: return out << "Send";
+	case nfwk::iocp_operation::receive: return out << "Receive";
+	case nfwk::iocp_operation::accept: return out << "Accept";
+	case nfwk::iocp_operation::close: return out << "Close";
 	default: return out << "Unknown (" << static_cast<int>(operation) << ")";
 	}
 }
-
-#endif

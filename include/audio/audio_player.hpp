@@ -2,7 +2,7 @@
 
 #include "audio/pcm_stream.hpp"
 
-namespace no {
+namespace nfwk {
 
 class pcm_stream;
 class audio_source;

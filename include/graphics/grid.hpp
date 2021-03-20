@@ -1,15 +1,29 @@
 #pragma once
 
 #include "vector2.hpp"
+#include "graphics/rectangle.hpp"
 
-#include <optional>
+#include <memory>
 
-namespace no {
+namespace nfwk {
 
+class shader;
+class texture;
 class ortho_camera;
 
-void create_grid(std::optional<int> texture = std::nullopt);
-void destroy_grid();
-void draw_grid(const ortho_camera& camera, vector2f size);
+class grid {
+public:
+
+	grid(std::shared_ptr<texture> texture = nullptr);
+	~grid();
+
+	void draw(shader& shader, const ortho_camera& camera, vector2f size);
+
+private:
+
+	rectangle shape;
+	std::shared_ptr<texture> grid_texture;
+
+};
 
 }

@@ -6,7 +6,7 @@
 
 struct ImDrawList;
 
-namespace no {
+namespace nfwk {
 
 class script_node_output;
 
@@ -41,7 +41,7 @@ public:
 
 	static constexpr std::string_view title{ "Script editor" };
 
-	script_editor();
+	script_editor(editor_state& editor);
 	~script_editor() override;
 
 	void update() override;

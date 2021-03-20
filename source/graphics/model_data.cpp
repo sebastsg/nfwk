@@ -1,6 +1,6 @@
 #include "graphics/model_data.hpp"
 #include "io.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
 #if ENABLE_ASSIMP
 #include "assimp/scene.h"
@@ -12,7 +12,7 @@
 #include <unordered_map>
 #include <cfloat>
 
-namespace no {
+namespace nfwk {
 
 #if ENABLE_ASSIMP
 static glm::mat4 ai_mat4_to_glm_mat4(const aiMatrix4x4& ai_matrix) {
@@ -85,7 +85,7 @@ assimp_importer::assimp_importer(const std::string& input, model_import_options 
 	if (scene->mFlags & AI_SCENE_FLAGS_INCOMPLETE) {
 		WARNING_X("graphics", "Scene flags incomplete. Error loading model \"" << input << "\". Error: " << importer.GetErrorString());
 	}
-	model.name = std::filesystem::path(input).filename().stem().string();
+	model.name = std::filesystem::path(input).filename().stem().u8string();
 	aiMatrix4x4 root_transform{ scene->mRootNode->mTransformation };
 	model.transform = ai_mat4_to_glm_mat4(root_transform.Inverse());
 	load_node(scene->mRootNode);
@@ -130,7 +130,7 @@ void assimp_importer::load_animations() {
 				node.scales.emplace_back(static_cast<float>(key.mTime), vector3f{ key.mValue.x, key.mValue.y, key.mValue.z });
 			}
 			bool found_node{ false };
-			for (size_t n{ 0 }; n < model.nodes.size(); n++) {
+			for (std::size_t n{ 0 }; n < model.nodes.size(); n++) {
 				if (model.nodes[n].name == animation_node_name) {
 					/*INFO("[b]Channel #" << c << "[/b]: " << animation_node_name << " uses bone " << node.bone << " as node " << n
 						 << " (positions = " << node.positions.size()
@@ -151,7 +151,7 @@ void assimp_importer::load_animations() {
 void assimp_importer::load_node(aiNode* node) {
 	/*MESSAGE(std::string(node_depth, '.') << model.nodes.size() << " [b]" << node->mName.C_Str() << "[/b]: "
 			<< node->mNumMeshes << " meshes / " << node->mNumChildren << " children");*/
-	const size_t index{ model.nodes.size() };
+	const std::size_t index{ model.nodes.size() };
 	model.nodes.emplace_back();
 	model.nodes[index].transform = ai_mat4_to_glm_mat4(node->mTransformation);
 	model.nodes[index].name = node->mName.C_Str();
@@ -295,9 +295,9 @@ void convert_model(const std::string& source, const std::string& destination, mo
 
 transform3 load_model_bounding_box(const std::string& path) {
 	io_stream stream;
-	file::read(path, stream);
+	read_file(path, stream);
 	if (stream.write_index() == 0) {
-		WARNING_X("graphics", "Failed to open file: " << path);
+		warning("graphics", "Failed to open file: {}", path);
 		return {};
 	}
 	stream.move_read_index(sizeof(glm::mat4));

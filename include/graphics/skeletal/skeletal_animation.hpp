@@ -3,7 +3,7 @@
 #include "graphics/skeletal/bone_attachment.hpp"
 #include "timer.hpp"
 
-namespace no {
+namespace nfwk {
 
 class skeletal_animation_update;
 

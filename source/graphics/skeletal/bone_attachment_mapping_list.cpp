@@ -3,37 +3,37 @@
 #include "graphics/model.hpp"
 #include "io.hpp"
 
-namespace no {
+namespace nfwk {
 
 void bone_attachment_mapping_list::save(const std::string& path) {
 	io_stream stream;
-	stream.write(static_cast<int32_t>(mappings.size()));
+	stream.write(static_cast<std::int32_t>(mappings.size()));
 	for (auto& attachment : mappings) {
 		stream.write(attachment.root_model);
 		stream.write(attachment.root_animation);
 		stream.write(attachment.attached_model);
 		stream.write(attachment.attached_animation);
-		stream.write(static_cast<int32_t>(attachment.attached_to_channel));
+		stream.write(static_cast<std::int32_t>(attachment.attached_to_channel));
 		stream.write(attachment.position);
 		stream.write(attachment.rotation);
 	}
-	file::write(path, stream);
+	write_file(path, stream);
 }
 
 void bone_attachment_mapping_list::load(const std::string& path) {
 	io_stream stream;
-	file::read(path, stream);
+	read_file(path, stream);
 	if (stream.write_index() == 0) {
 		return;
 	}
-	const int32_t count{ stream.read<int32_t>() };
-	for (int32_t i{ 0 }; i < count; i++) {
+	const std::int32_t count{ stream.read<std::int32_t>() };
+	for (std::int32_t i{ 0 }; i < count; i++) {
 		bone_attachment_mapping mapping;
 		mapping.root_model = stream.read<std::string>();
 		mapping.root_animation = stream.read<std::string>();
 		mapping.attached_model = stream.read<std::string>();
 		mapping.attached_animation = stream.read<std::string>();
-		mapping.attached_to_channel = stream.read<int32_t>();
+		mapping.attached_to_channel = stream.read<std::int32_t>();
 		mapping.position = stream.read<vector3f>();
 		mapping.rotation = stream.read<glm::quat>();
 		mappings.push_back(mapping);

@@ -2,7 +2,7 @@
 
 #include "io.hpp"
 
-namespace no {
+namespace nfwk {
 
 class packetizer {
 public:
@@ -13,18 +13,18 @@ public:
 	packetizer();
 
 	char* data();
-	size_t write_index() const;
-	void write(char* data, size_t size);
+	std::size_t write_index() const;
+	void write(char* data, std::size_t size);
 	io_stream next();
 	void clean();
 
 private:
 
-	using magic_type = uint32_t;
-	using body_size_type = uint32_t;
+	using magic_type = std::uint32_t;
+	using body_size_type = std::uint32_t;
 
 	static const magic_type magic = 'NFWK';
-	static const size_t header_size = sizeof(magic_type) + sizeof(body_size_type);
+	static const std::size_t header_size = sizeof(magic_type) + sizeof(body_size_type);
 
 	io_stream stream;
 

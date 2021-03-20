@@ -3,9 +3,9 @@
 #include "graphics/generic_vertex_array.hpp"
 #include "graphics/model_data.hpp"
 #include "graphics/model_animation.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 class model {
 public:
@@ -33,7 +33,7 @@ public:
 	template<typename Vertex, typename Index>
 	void load(const model_data<Vertex, Index>& model) {
 		if (model.shape.vertices.empty()) {
-			WARNING_X("graphics", "Failed to load model");
+			warning("graphics", "Failed to load model");
 			return;
 		}
 		mesh = { std::move(vertex_array<Vertex, Index>{model.shape.vertices, model.shape.indices }) };
@@ -55,13 +55,12 @@ public:
 		model_data<Vertex, Index> model;
 		import_model(path, model);
 		if (model.shape.vertices.empty()) {
-			WARNING_X("graphics", "Failed to load model: " << path);
+			warning("graphics", "Failed to load model: {}", path);
 			return;
 		}
 		load(model);
 	}
 
-	void bind() const;
 	void draw() const;
 
 	bool is_drawable() const;

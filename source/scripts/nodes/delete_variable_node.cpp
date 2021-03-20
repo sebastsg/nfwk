@@ -3,7 +3,7 @@
 #include "scripts/variables.hpp"
 #include "graphics/ui.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> delete_variable_node::process() {
 	tree->context->remove(scope_id, variable_name);

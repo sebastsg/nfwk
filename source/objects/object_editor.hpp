@@ -5,15 +5,15 @@
 
 #include <optional>
 
-namespace no {
+namespace nfwk {
 
 class object_class_editor : public abstract_editor {
 public:
 
 	static constexpr std::string_view title{ "Object class" };
 
-	object_class_editor();
-	object_class_editor(const object_class& definition);
+	object_class_editor(editor_state& editor);
+	object_class_editor(editor_state& editor, const object_class& definition);
 
 	void update() override;
 	void save();
@@ -40,6 +40,8 @@ class object_class_list_editor : public abstract_editor {
 public:
 
 	static constexpr std::string_view title{ "Object class list" };
+
+	object_class_list_editor(editor_state& editor) : abstract_editor{ editor } {}
 
 	void update() override;
 

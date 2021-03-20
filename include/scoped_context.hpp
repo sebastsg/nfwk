@@ -3,14 +3,15 @@
 #include <functional>
 #include <optional>
 
-namespace no {
+namespace nfwk {
 
 class [[nodiscard]] scoped_logic {
 public:
 
-	scoped_logic(std::function<void()> clean = {}) : clean{ std::move(clean) } {
+	template<typename F>
+	scoped_logic(F&& clean) : clean{ std::move(clean) } {}
 
-	}
+	scoped_logic() = default;
 
 	scoped_logic(const scoped_logic&) = delete;
 

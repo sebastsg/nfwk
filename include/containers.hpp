@@ -1,11 +1,11 @@
 #pragma once
 
-#include "debug.hpp"
+#include "log.hpp"
 #include "io.hpp"
 
 #include <functional>
 
-namespace no {
+namespace nfwk {
 
 template<typename T>
 class shifting_2d_array {

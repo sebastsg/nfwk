@@ -2,12 +2,10 @@
 
 #include "platform.hpp"
 
-#if ENABLE_GRAPHICS
-
 #include "transform.hpp"
 #include "input.hpp"
 
-namespace no {
+namespace nfwk {
 
 class ortho_camera {
 public:
@@ -58,5 +56,3 @@ public:
 
 
 }
-
-#endif

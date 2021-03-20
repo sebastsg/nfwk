@@ -5,14 +5,14 @@
 #include "graphics/texture.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace no::gl {
+namespace nfwk::gl {
 
 int gl_pixel_format(pixel_format format);
 int gl_scale_option(scale_option scaling, bool mipmap);
 
 struct gl_buffer {
 	unsigned int id{ 0 };
-	size_t allocated{ 0 };
+	std::size_t allocated{ 0 };
 	bool exists{ false };
 };
 
@@ -21,7 +21,7 @@ struct gl_vertex_array {
 	int draw_mode{ GL_TRIANGLES };
 	gl_buffer vertex_buffer;
 	gl_buffer index_buffer;
-	size_t indices{ 0 };
+	std::size_t indices{ 0 };
 	int index_type{ GL_UNSIGNED_SHORT };
 };
 

@@ -2,13 +2,13 @@
 #include "random.hpp"
 #include "graphics/ui.hpp"
 
-namespace no {
+namespace nfwk {
 
-object_class_editor::object_class_editor() {
+object_class_editor::object_class_editor(editor_state& editor) : abstract_editor{ editor } {
 	definition.id = random_number_generator::global().string(16);
 }
 
-object_class_editor::object_class_editor(const object_class& definition) : definition{ definition } {
+object_class_editor::object_class_editor(editor_state& editor, const object_class& definition) : abstract_editor{ editor }, definition { definition } {
 
 }
 
@@ -155,9 +155,7 @@ void object_class_list_editor::update() {
 		for (const auto& definition : objects.get_classes()) {
 			ImGui::PushID(definition->id.c_str());
 			if (ui::button("Edit")) {
-				if (auto editor = dynamic_cast<editor_state*>(program_state::current())) {
-					editor->open(std::make_unique<object_class_editor>(*definition));
-				}
+				editor.open(std::make_unique<object_class_editor>(editor, *definition));
 			}
 			ui::inline_next();
 			ui::colored_text({ 0.8f, 0.4f, 0.4f }, "[%s] %s", definition->id.c_str(), definition->name.c_str());

@@ -2,7 +2,7 @@
 
 #include "graphics/vertex_array.hpp"
 
-namespace no {
+namespace nfwk {
 
 template<typename Vertex, typename Index>
 class quad_array {
@@ -44,10 +44,6 @@ public:
 		if (!vertices.empty()) {
 			shape.set(vertices, indices);
 		}
-	}
-
-	void bind() const {
-		shape.bind();
 	}
 
 	void draw() const {

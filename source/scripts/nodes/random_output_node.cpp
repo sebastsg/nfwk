@@ -1,12 +1,12 @@
 #include "scripts/nodes/random_output_node.hpp"
 #include "random.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> random_output_node::process() {
 	if (outputs.empty()) {
-		WARNING_X("scripts", "No nodes attached.");
+		warning("scripts", "No nodes attached.");
 		return std::nullopt;
 	} else {
 		return random_number_generator::global().next(static_cast<int>(outputs.size()) - 1);

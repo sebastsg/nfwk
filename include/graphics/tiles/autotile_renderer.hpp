@@ -4,14 +4,18 @@
 
 #include <unordered_map>
 
-namespace no::tiles {
+namespace nfwk {
+class texture;
+}
+
+namespace nfwk::tiles {
 
 class tile;
 
 class autotile_renderer : public renderer {
 public:
 
-	autotile_renderer(vector2i size, int types, int tileset_texture);
+	autotile_renderer(vector2i size, int types, const texture& tileset_texture);
 
 	void render_area(layer& layer, int x, int y, int width, int height) override;
 	void render_chunk(layer& layer, chunk& chunk) override;

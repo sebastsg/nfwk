@@ -1,7 +1,7 @@
 #include "graphics/skeletal/skeletal_animation.hpp"
 #include "graphics/skeletal/skeletal_animation_update.hpp"
 
-namespace no {
+namespace nfwk {
 
 skeletal_animation::skeletal_animation(int id) : id{ id } {
 

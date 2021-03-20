@@ -2,7 +2,7 @@
 
 #include "graphics/vertex_array.hpp"
 
-namespace no {
+namespace nfwk {
 
 class generic_vertex_array {
 public:
@@ -21,17 +21,16 @@ public:
 	generic_vertex_array& operator=(const generic_vertex_array&) = delete;
 	generic_vertex_array& operator=(generic_vertex_array&&) noexcept;
 
-	void bind() const;
 	void draw() const;
-	void draw(size_t offset, size_t count) const;
+	void draw(std::size_t offset, std::size_t count) const;
 	bool exists() const;
 
-	size_t size_of_index() const;
+	std::size_t size_of_index() const;
 
 private:
 
 	int id{ -1 };
-	size_t index_size{ 0 };
+	std::size_t index_size{ 0 };
 
 };
 

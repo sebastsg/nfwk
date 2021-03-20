@@ -5,11 +5,11 @@
 #include "vector2.hpp"
 #include "timer.hpp"
 
-namespace no {
+namespace nfwk {
 class io_stream;
 }
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
 class layer;
 class renderer;
@@ -26,19 +26,25 @@ struct tile_vertex {
 class chunk {
 public:
 
-	struct rendered_tile {
+	class rendered_tile {
+	public:
+
 		vector2f position;
 		vector2f size;
 		vector4f tex_coords;
+
 		rendered_tile(vector2f position, vector2f size, const vector4f& tex_coords)
-			: position{ position }, size{ size }, tex_coords{ tex_coords } {
-		}
+			: position{ position }, size{ size }, tex_coords{ tex_coords } {}
+	
 	};
 
-	struct rendered_chunk {
+	class rendered_chunk {
+	public:
+
 		quad_array<tile_vertex, unsigned short> quads;
 		std::vector<std::vector<rendered_tile>> tiles;
 		timer since_hidden;
+	
 	};
 
 	bool visible{ false };

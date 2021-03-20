@@ -1,7 +1,7 @@
 #include "network/packetizer.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 void packetizer::start(io_stream& stream) {
 	stream.write(magic);
@@ -13,7 +13,7 @@ void packetizer::end(io_stream& stream) {
 		return;
 	}
 	// go back to the beginning and write the size
-	const size_t size{ stream.write_index() - header_size };
+	const std::size_t size{ stream.write_index() - header_size };
 	stream.set_write_index(sizeof(magic_type));
 	stream.write(static_cast<body_size_type>(size));
 	stream.move_write_index(size);
@@ -27,11 +27,11 @@ char* packetizer::data() {
 	return stream.data();
 }
 
-size_t packetizer::write_index() const {
+std::size_t packetizer::write_index() const {
 	return stream.write_index();
 }
 
-void packetizer::write(char* data, size_t size) {
+void packetizer::write(char* data, std::size_t size) {
 	stream.write(data, size);
 }
 
@@ -44,7 +44,7 @@ io_stream packetizer::next() {
 		return {};
 	}
 	if (stream.peek<magic_type>() != magic) {
-		WARNING_X("network", "Skipping magic... " << stream.peek<magic_type>() << " != " << magic);
+		warning("network", "Skipping magic... {} != {}", stream.peek<magic_type>(), magic);
 		stream.move_read_index(1); // no point in reading the same magic again
 		return {};
 	}

@@ -3,7 +3,10 @@
 #include "transform.hpp"
 #include "graphics/rectangle.hpp"
 
-namespace no {
+namespace nfwk {
+
+class texture;
+class shader;
 
 class sprite_animation {
 public:
@@ -12,9 +15,9 @@ public:
 	float fps{ 10.0f };
 
 	void update(float delta);
-	void draw(vector2f position, vector2f size) const;
-	void draw(vector2f position, int texture) const;
-	void draw(const transform2& transform) const;
+	void draw(shader& shader, vector2f position, vector2f size) const;
+	void draw(shader& shader, vector2f position, std::shared_ptr<texture> texture) const;
+	void draw(shader& shader, const transform2& transform) const;
 
 	void pause();
 	void resume();

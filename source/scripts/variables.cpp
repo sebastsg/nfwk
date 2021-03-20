@@ -1,8 +1,8 @@
 #include "scripts/variables.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 #include "loop.hpp"
 
-namespace no {
+namespace nfwk {
 
 bool variable::compare(const std::string& right, variable_comparison comparison_operator) const {
 	const auto string = std::get<std::string>(value);
@@ -62,7 +62,7 @@ void variable::modify(const std::string& right, variable_operator modify_operato
 		std::get<std::string>(value) += right;
 		break;
 	default:
-		WARNING_X("scripts", "Cannot run operator " << modify_operator << " on a string - " << name);
+		warning("scripts", "Cannot run operator {} on a string - {}", modify_operator, name);
 		break;
 	}
 }
@@ -85,7 +85,7 @@ void variable::modify(int right, variable_operator modify_operator) {
 		if (right != 0) {
 			std::get<int>(value) /= right;
 		} else {
-			WARNING_X("scripts", "Prevented division of " << name << " by 0. Setting the value to 0 to minimize errors.");
+			warning("scripts", "Prevented division of {} by 0. Setting the value to 0 to minimize errors.", name);
 			std::get<int>(value) = 0;
 		}
 		break;
@@ -110,7 +110,7 @@ void variable::modify(float right, variable_operator modify_operator) {
 		if (right != 0.0f) {
 			std::get<float>(value) /= right;
 		} else {
-			WARNING_X("scripts", "Prevented division of " << name << " by 0.0. Setting the value to 0.0 to minimize errors.");
+			warning("scripts", "Prevented division of {} by 0.0. Setting the value to 0.0 to minimize errors.", name);
 			std::get<float>(value) = 0.0f;
 		}
 		break;
@@ -133,14 +133,14 @@ void variable::modify(const variable& right, variable_operator modify_operator) 
 }
 
 void variable::write(io_stream& stream) const {
-	stream.write(static_cast<int32_t>(type));
+	stream.write(static_cast<std::int32_t>(type));
 	stream.write(name);
 	switch (type) {
 	case variable_type::string:
 		stream.write(std::get<std::string>(value));
 		break;
 	case variable_type::integer:
-		stream.write<int32_t>(std::get<int>(value));
+		stream.write<std::int32_t>(std::get<int>(value));
 		break;
 	case variable_type::boolean:
 		stream.write(static_cast<bool>(std::get<int>(value)));
@@ -153,14 +153,14 @@ void variable::write(io_stream& stream) const {
 }
 
 void variable::read(io_stream& stream) {
-	type = static_cast<variable_type>(stream.read<int32_t>());
+	type = static_cast<variable_type>(stream.read<std::int32_t>());
 	name = stream.read<std::string>();
 	switch (type) {
 	case variable_type::string:
 		value = stream.read<std::string>();
 		break;
 	case variable_type::integer:
-		value = static_cast<int>(stream.read<int32_t>());
+		value = static_cast<int>(stream.read<std::int32_t>());
 		break;
 	case variable_type::boolean:
 		value = static_cast<int>(stream.read<bool>());
@@ -201,12 +201,12 @@ void variable_scope::add(variable variable) {
 	if (!find(variable.name)) {
 		variables.emplace_back(variable);
 	} else {
-		WARNING_X("scripts", "Variable " << variable.name << " already exists.");
+		warning("scripts", "Variable {} already exists.", variable.name);
 	}
 }
 
 void variable_scope::remove(const std::string& name) {
-	for (size_t i{ 0 }; i < variables.size(); i++) {
+	for (std::size_t i{ 0 }; i < variables.size(); i++) {
 		if (variables[i].name == name) {
 			variables.erase(variables.begin() + i);
 			break;
@@ -221,17 +221,17 @@ void variable_scope::for_each(const std::function<void(const variable&)>& functi
 }
 
 void variable_scope::write(io_stream& stream) const {
-	stream.write_optional<int32_t>(scope_id);
-	stream.write(static_cast<int32_t>(variables.size()));
+	stream.write_optional<std::int32_t>(scope_id);
+	stream.write(static_cast<std::int32_t>(variables.size()));
 	for (const auto& variable : variables) {
 		variable.write(stream);
 	}
 }
 
 void variable_scope::read(io_stream& stream) {
-	scope_id = stream.read_optional<int32_t>();
-	const int32_t count{ stream.read<int32_t>() };
-	for (int32_t i{ 0 }; i < count; i++) {
+	scope_id = stream.read_optional<std::int32_t>();
+	const std::int32_t count{ stream.read<std::int32_t>() };
+	for (std::int32_t i{ 0 }; i < count; i++) {
 		variables.emplace_back(stream);
 	}
 }
@@ -263,15 +263,15 @@ void variable_registry::for_each(std::optional<int> scope_id, const std::functio
 }
 
 void variable_registry::write(io_stream& stream) const {
-	stream.write(static_cast<int32_t>(scopes.size()));
+	stream.write(static_cast<std::int32_t>(scopes.size()));
 	for (const auto& scope : scopes) {
 		scope.write(stream);
 	}
 }
 
 void variable_registry::read(io_stream& stream) {
-	const int32_t count{ stream.read<int32_t>() };
-	for (int32_t i{ 0 }; i < count; i++) {
+	const auto count = stream.read<std::int32_t>();
+	for (std::int32_t i{ 0 }; i < count; i++) {
 		scopes.emplace_back(stream);
 	}
 }
@@ -304,35 +304,35 @@ const variable_scope* variable_registry::find_scope(std::optional<int> scope_id)
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::variable_comparison type) {
+std::ostream& operator<<(std::ostream& out, nfwk::variable_comparison type) {
 	switch (type) {
-	case no::variable_comparison::equal: return out << "= Equals";
-	case no::variable_comparison::not_equal: return out << "!= Not Equals";
-	case no::variable_comparison::greater_than: return out << "> Greater Than";
-	case no::variable_comparison::less_than: return out << "< Less Than";
-	case no::variable_comparison::equal_or_greater_than: return out << ">= Equal or Greater Than";
-	case no::variable_comparison::equal_or_less_than: return out << "<= Equal or Less Than";
+	case nfwk::variable_comparison::equal: return out << "= Equals";
+	case nfwk::variable_comparison::not_equal: return out << "!= Not Equals";
+	case nfwk::variable_comparison::greater_than: return out << "> Greater Than";
+	case nfwk::variable_comparison::less_than: return out << "< Less Than";
+	case nfwk::variable_comparison::equal_or_greater_than: return out << ">= Equal or Greater Than";
+	case nfwk::variable_comparison::equal_or_less_than: return out << "<= Equal or Less Than";
 	default: return out << "Invalid comparison";
 	}
 }
 
-std::ostream& operator<<(std::ostream& out, no::variable_type type) {
+std::ostream& operator<<(std::ostream& out, nfwk::variable_type type) {
 	switch (type) {
-	case no::variable_type::string: return out << "String";
-	case no::variable_type::integer: return out << "Integer";
-	case no::variable_type::boolean: return out << "Boolean";
-	case no::variable_type::floating: return out << "Float";
+	case nfwk::variable_type::string: return out << "String";
+	case nfwk::variable_type::integer: return out << "Integer";
+	case nfwk::variable_type::boolean: return out << "Boolean";
+	case nfwk::variable_type::floating: return out << "Float";
 	default: return out << "Invalid variable type";
 	}
 }
 
-std::ostream& operator<<(std::ostream& out, no::variable_operator type) {
+std::ostream& operator<<(std::ostream& out, nfwk::variable_operator type) {
 	switch (type) {
-	case no::variable_operator::set: return out << "Set";
-	case no::variable_operator::negate: return out << "Negate";
-	case no::variable_operator::add: return out << "Add";
-	case no::variable_operator::multiply: return out << "Multiply";
-	case no::variable_operator::divide: return out << "Divide";
+	case nfwk::variable_operator::set: return out << "Set";
+	case nfwk::variable_operator::negate: return out << "Negate";
+	case nfwk::variable_operator::add: return out << "Add";
+	case nfwk::variable_operator::multiply: return out << "Multiply";
+	case nfwk::variable_operator::divide: return out << "Divide";
 	default: return out << "Invalid operator";
 	}
 }

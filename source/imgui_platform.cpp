@@ -20,10 +20,10 @@
 #include "GLM/gtc/type_ptr.hpp"
 
 #include "imgui/imgui.h"
-#include "imgui/imgui_platform.hpp"
+#include "imgui_platform.hpp"
 #include "imgui/imgui_freetype.h"
 
-namespace no::ui {
+namespace nfwk::ui {
 
 static constexpr std::string_view vertex_glsl{
 	"#version 330\n"
@@ -55,7 +55,7 @@ struct imgui_vertex {
 	static constexpr vertex_attribute_specification attributes[]{ 2, 2, { attribute_component::is_byte, 4, true } };
 	vector2f position;
 	vector2f tex_coords;
-	uint32_t color{ 0 };
+	std::uint32_t color{ 0 };
 };
 
 struct imgui_data {
@@ -63,8 +63,8 @@ struct imgui_data {
 	long long time{ 0 };
 	long long ticks_per_second{ 0 };
 	platform::system_cursor old_cursor{ platform::system_cursor::none };
-	int shader_id{ -1 };
-	int font_texture_id{ -1 };
+	std::unique_ptr<shader> ui_shader;
+	std::unique_ptr<texture> font_texture;
 	event_listener keyboard_repeated_press;
 	event_listener keyboard_release;
 	event_listener keybord_input;
@@ -188,7 +188,8 @@ static void update_cursor_icon() {
 
 static void update_mouse_position() {
 	auto& io = ImGui::GetIO();
-	const auto window_handle = data->window->platform_window()->handle();
+	const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
+	const auto window_handle = window->handle();
 	if (io.WantSetMousePos) {
 		POINT position{ static_cast<int>(io.MousePos.x), static_cast<int>(io.MousePos.y) };
 		ClientToScreen(window_handle, &position);
@@ -217,10 +218,11 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 
 void create(window& window, std::optional<std::string> font_name, int font_size) {
 	if (is_initialized()) {
-		BUG("UI is already initialized.");
+		warning("ui", "UI is already initialized.");
+		ASSERT(false);
 		return;
 	}
-	MESSAGE_X("graphics", "Initializing UI");
+	message("ui", "Initializing UI");
 	ImGui::CreateContext();
 	data = std::make_unique<imgui_data>();
 	data->window = &window;
@@ -230,7 +232,7 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 	io.BackendPlatformName = "nfwk-windows";
 	io.BackendRendererName = "nfwk-opengl";
-	io.ImeWindowHandle = window.platform_window()->handle();
+	//io.ImeWindowHandle = window.platform_window()->handle();
 	io.ConfigWindowsMoveFromTitleBarOnly = true;
 	io.KeyMap[ImGuiKey_Backspace] = static_cast<int>(key::backspace);
 	io.KeyMap[ImGuiKey_Tab] = static_cast<int>(key::tab);
@@ -276,27 +278,30 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 	});
 	data->mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			SetCapture(data->window->platform_window()->handle());
+			const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
+			SetCapture(window->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
 	data->mouse_double_click = window.mouse.double_click.listen([&](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			SetCapture(data->window->platform_window()->handle());
+			const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
+			SetCapture(window->handle());
 		}
 		set_mouse_down(pressed_button, true);
 	});
 	data->mouse_release = window.mouse.release.listen([&](mouse::button released_button) {
 		set_mouse_down(released_button, false);
-		if (!ImGui::IsAnyMouseDown() && GetCapture() == data->window->platform_window()->handle()) {
+		const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
+		if (!ImGui::IsAnyMouseDown() && GetCapture() == window->handle()) {
 			ReleaseCapture();
 		}
 	});
 
-	data->shader_id = create_shader_from_source(vertex_glsl, fragment_glsl);
+	data->ui_shader = std::make_unique<shader>(vertex_glsl, fragment_glsl);
 
 	if (font_name.has_value()) {
-		MESSAGE_X("graphics", "Using specified font for UI: " << font_name.value());
+		message("ui", "Using specified font for UI: {}", font_name.value());
 		if (const auto font_path = font::find_absolute_path(font_name.value())) {
 			static constexpr ImWchar glyph_ranges[]{
 				1, 256,
@@ -304,30 +309,28 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 				0
 			};
 			//data.font_config.MergeMode = true;
-			io.Fonts->AddFontFromFileTTF(font_path->c_str(), static_cast<float>(font_size), &data->font_config, glyph_ranges);
+			io.Fonts->AddFontFromFileTTF(font_path->u8string().c_str(), static_cast<float>(font_size), &data->font_config, glyph_ranges);
 			ImGuiFreeType::BuildFontAtlas(io.Fonts);
 		} else {
-			WARNING_X("graphics", "Did not find the font.");
+			warning("ui", "Did not find the font.");
 		}
 	} else {
-		MESSAGE_X("graphics", "Using default font for UI.");
+		message("ui", "Using default font for UI.");
 	}
 
 	unsigned char* pixels{ nullptr };
 	int width{ 0 };
 	int height{ 0 };
 	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	data->font_texture_id = create_texture({ reinterpret_cast<uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
-	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data->font_texture_id);
+	data->font_texture = std::make_unique<texture>(surface{ reinterpret_cast<std::uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data->font_texture.get());
 	initialize_style();
 }
 
 void destroy() {
 	if (is_initialized()) {
-		MESSAGE_X("graphics", "Destroying UI state");
-		delete_shader(data->shader_id);
-		delete_texture(data->font_texture_id);
-		data.release();
+		message("ui", "Destroying UI state");
+		data = nullptr;
 		ImGui::GetIO().Fonts->TexID = 0;
 	}
 }
@@ -336,7 +339,8 @@ void start_frame() {
 	if (is_initialized()) {
 		auto& io = ImGui::GetIO();
 		RECT rect;
-		GetClientRect(data->window->platform_window()->handle(), &rect);
+		const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
+		GetClientRect(window->handle(), &rect);
 		io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
 		const long long current_time{ platform::performance_counter() };
 		io.DeltaTime = static_cast<float>(current_time - data->time) / static_cast<float>(data->ticks_per_second);
@@ -357,13 +361,14 @@ void end_frame() {
 	}
 }
 
-void draw() {
+void draw(render_context& context) {
 	if (!is_initialized()) {
 		return;
 	}
 	auto draw_data = ImGui::GetDrawData();
 	if (!draw_data) {
-		BUG("Invalid draw data.");
+		warning("ui", "Invalid draw data.");
+		ASSERT(false);
 	}
 	const auto& io = ImGui::GetIO();
 	const vector2f display_position{ draw_data->DisplayPos };
@@ -372,23 +377,25 @@ void draw() {
 	ortho_camera camera;
 	camera.transform.scale = display_size;
 
-	bind_shader(data->shader_id);
-	set_shader_view_projection(camera);
+	data->ui_shader->set_view_projection(camera);
+
+	auto window = dynamic_cast<platform::windows_window*>(data->window);
 
 	vertex_array<imgui_vertex, unsigned short> vertex_array;
 	for (int list_index{ 0 }; list_index < draw_data->CmdListsCount; list_index++) {
 		const auto draw_list = draw_data->CmdLists[list_index];
-		const auto vertex_data = reinterpret_cast<const uint8_t*>(draw_list->VtxBuffer.Data);
-		const auto index_data = reinterpret_cast<const uint8_t*>(draw_list->IdxBuffer.Data);
+		const auto vertex_data = reinterpret_cast<const std::uint8_t*>(draw_list->VtxBuffer.Data);
+		const auto index_data = reinterpret_cast<const std::uint8_t*>(draw_list->IdxBuffer.Data);
 		vertex_array.set(vertex_data, draw_list->VtxBuffer.Size, index_data, draw_list->IdxBuffer.Size);
-		size_t offset{ 0 };
+		std::size_t offset{ 0 };
 		for (int buffer_index{ 0 }; buffer_index < draw_list->CmdBuffer.Size; buffer_index++) {
 			auto& buffer = draw_list->CmdBuffer[buffer_index];
 			const auto current_offset = offset;
 			offset += buffer.ElemCount;
 			if (buffer.UserCallback) {
 				if (buffer.UserCallback == ImDrawCallback_ResetRenderState) {
-					BUG("Not supported.");
+					warning("ui", "Not supported.");
+					ASSERT(false);
 				} else {
 					buffer.UserCallback(draw_list, &buffer);
 				}
@@ -401,14 +408,15 @@ void draw() {
 				};
 				if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
 					const auto [sx, sy, sw, sh] = vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>();
-					data->window->scissor(sx, sy, sw, sh);
-					bind_texture(reinterpret_cast<int>(buffer.TextureId));
+					context.set_scissor(sx, sy, sw, sh);
+					reinterpret_cast<texture*>(buffer.TextureId)->bind();
 					vertex_array.draw(current_offset, buffer.ElemCount);
 				}
 			}
 		}
 	}
-	data->window->reset_scissor();
+	const auto [width, height] = window->size();
+	context.set_scissor(0, 0, width, height);
 }
 
 }

@@ -1,9 +1,9 @@
 #include "noise.hpp"
 #include "random.hpp"
 #include "vector4.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 // This code has been adapted for nfwk.
 // Thanks to the original authors:
@@ -38,12 +38,8 @@ static constexpr vector4b simplex[64]{
 	{ 2, 1, 0, 3 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 0, 0, 0, 0 }, { 3, 1, 0, 2 }, { 0, 0, 0, 0 }, { 3, 2, 0, 1 }, { 3, 2, 1, 0 }
 };
 
-// todo: store this as 8 bits? the problem is the 256+ index access for the repeated list
-static uint16_t permutation[512]{};
-static uint16_t permutation_mod_12[512]{};
-
-void set_noise_seed(unsigned long long seed) {
-	INFO_X("main", "New noise seed: " << seed);
+simplex_noise_map::simplex_noise_map(unsigned long long seed) : seed{ seed } {
+	info("main", "Seed: {}", seed);
 	random_number_generator rng{ seed };
 	for (int i{ 0 }; i < 256; i++) {
 		permutation[i] = rng.next(255);
@@ -55,12 +51,12 @@ void set_noise_seed(unsigned long long seed) {
 	}
 }
 
-float simplex_noise(float x, float y) {
+float simplex_noise_map::get(float x, float y) const {
 	constexpr float F2{ 0.366025f }; // 0.5f * (std::sqrt(3.0f) - 1.0f);
 	constexpr float G2{ 0.211325f }; // (3.0f - std::sqrt(3.0f)) / 6.0f;
 	const float skew_factor{ (x + y) * F2 };
-	const float i{ floor(x + skew_factor) };
-	const float j{ floor(y + skew_factor) };
+	const float i{ std::floor(x + skew_factor) };
+	const float j{ std::floor(y + skew_factor) };
 	const float unskew_factor{ (i + j) * G2 };
 	const vector2f unskewed{ i - unskew_factor, j - unskew_factor };
 	const vector2f origin_offset{ x - unskewed.x, y - unskewed.y };
@@ -98,13 +94,13 @@ float simplex_noise(float x, float y) {
 	return 70.0f * n;
 }
 
-float simplex_noise(float x, float y, float z) {
+float simplex_noise_map::get(float x, float y, float z) const {
 	constexpr float F3{ 1.0f / 3.0f };
 	constexpr float G3{ 1.0f / 6.0f };
 	const float skew_factor{ (x + y + z) * F3 };
-	const float i{ floor(x + skew_factor) };
-	const float j{ floor(y + skew_factor) };
-	const float k{ floor(z + skew_factor) };
+	const float i{ std::floor(x + skew_factor) };
+	const float j{ std::floor(y + skew_factor) };
+	const float k{ std::floor(z + skew_factor) };
 	const float unskew_factor{ (i + j + k) * G3 };
 	const vector3f unskewed{ i - unskew_factor, j - unskew_factor, k - unskew_factor };
 	const vector3f origin_offset{ x - unskewed.x, y - unskewed.y, z - unskewed.z };
@@ -173,15 +169,15 @@ float simplex_noise(float x, float y, float z) {
 	return 32.0f * n;
 }
 
-float simplex_noise(float x, float y, float z, float w) {
+float simplex_noise_map::get(float x, float y, float z, float w) const {
 	constexpr float F4{ 0.309017f }; // (std::sqrt(5.0f) - 1.0f) / 4.0f;
 	constexpr float G4{ 0.138197f }; // (5.0f - std::sqrt(5.0f)) / 20.0f;
 	// Skew the (x,y,z,w) space to determine which cell of 24 simplices we're in
 	const float skew_factor{ (x + y + z + w) * F4 };
-	const float i{ floor(x + skew_factor) };
-	const float j{ floor(y + skew_factor) };
-	const float k{ floor(z + skew_factor) };
-	const float l{ floor(w + skew_factor) };
+	const float i{ std::floor(x + skew_factor) };
+	const float j{ std::floor(y + skew_factor) };
+	const float k{ std::floor(z + skew_factor) };
+	const float l{ std::floor(w + skew_factor) };
 	const float unskew_factor{ (i + j + k + l) * G4 };
 	const vector4f unskewed{ i - unskew_factor, j - unskew_factor, k - unskew_factor, l - unskew_factor };
 	const vector4f origin_offset{ x - unskewed.x, y - unskewed.y, z - unskewed.z, w - unskewed.w };
@@ -244,13 +240,13 @@ float simplex_noise(float x, float y, float z, float w) {
 	return 27.0f * n;
 }
 
-float simplex_octave_noise(int octaves, float persistence, float scale, float x, float y) {
+float simplex_noise_map::get(int octaves, float persistence, float scale, float x, float y) const {
 	float total{ 0.0f };
 	float frequency{ scale };
 	float amplitude{ 1.0f };
 	float max_amplitude{ 0.0f };
 	for (int octave{ 0 }; octave < octaves; octave++) {
-		total += simplex_noise(x * frequency, y * frequency) * amplitude;
+		total += get(x * frequency, y * frequency) * amplitude;
 		max_amplitude += amplitude;
 		amplitude *= persistence;
 		frequency *= 2.0f;

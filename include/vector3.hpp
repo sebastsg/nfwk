@@ -2,7 +2,7 @@
 
 #include "vector2.hpp"
 
-namespace no {
+namespace nfwk {
 
 template<typename T>
 struct vector3 {
@@ -188,48 +188,48 @@ using vector3d = vector3<double>;
 }
 
 template<typename T>
-no::vector3<T> operator*(T scalar, const no::vector3<T>& vector) {
+nfwk::vector3<T> operator*(T scalar, const nfwk::vector3<T>& vector) {
 	return vector * scalar;
 }
 
 template<typename T>
-no::vector3<T> operator/(T scalar, const no::vector3<T>& vector) {
-	return no::vector3<T>{ scalar } / vector;
+nfwk::vector3<T> operator/(T scalar, const nfwk::vector3<T>& vector) {
+	return nfwk::vector3<T>{ scalar } / vector;
 }
 
 namespace std {
 
 template<typename T>
-ostream& operator<<(ostream& out, const no::vector3<T>& vector) {
+ostream& operator<<(ostream& out, const nfwk::vector3<T>& vector) {
 	return out << vector.x << ", " << vector.y << ", " << vector.z;
 }
 
 template <typename T>
-struct tuple_size<no::vector3<T>> : integral_constant<size_t, 3> {};
+struct tuple_size<nfwk::vector3<T>> : integral_constant<size_t, 3> {};
 
 template <size_t Index, typename T>
-struct tuple_element<Index, const no::vector3<T>> {
+struct tuple_element<Index, const nfwk::vector3<T>> {
 	static_assert(Index < 3, "Vector3 index is out of bounds");
 	using type = T;
 };
 
 template <typename T>
-constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 0>) noexcept {
+constexpr T vector3_get(const nfwk::vector3<T>& vector, integral_constant<size_t, 0>) noexcept {
 	return vector.x;
 }
 
 template <typename T>
-constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 1>) noexcept {
+constexpr T vector3_get(const nfwk::vector3<T>& vector, integral_constant<size_t, 1>) noexcept {
 	return vector.y;
 }
 
 template <typename T>
-constexpr T vector3_get(const no::vector3<T>& vector, integral_constant<size_t, 2>) noexcept {
+constexpr T vector3_get(const nfwk::vector3<T>& vector, integral_constant<size_t, 2>) noexcept {
 	return vector.z;
 }
 
 template <size_t Index, class T>
-[[nodiscard]] constexpr tuple_element_t<Index, const no::vector3<T>> get(const no::vector3<T>& vector) noexcept {
+[[nodiscard]] constexpr tuple_element_t<Index, const nfwk::vector3<T>> get(const nfwk::vector3<T>& vector) noexcept {
 	return vector3_get<T>(vector, integral_constant<size_t, Index>());
 }
 

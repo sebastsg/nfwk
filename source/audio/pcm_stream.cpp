@@ -1,10 +1,10 @@
 #include "audio/pcm_stream.hpp"
 #include "audio/audio_source.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
 #include <climits>
 
-namespace no {
+namespace nfwk {
 
 pcm_stream::pcm_stream(audio_source* source) : source{ source } {
 
@@ -12,7 +12,7 @@ pcm_stream::pcm_stream(audio_source* source) : source{ source } {
 
 bool pcm_stream::is_empty() const {
 	switch (source->format()) {
-	case pcm_format::int_16: return position + sizeof(int16_t) >= source->size();
+	case pcm_format::int_16: return position + sizeof(std::int16_t) >= source->size();
 	case pcm_format::float_32: return position + sizeof(float) >= source->size();
 	default: return true;
 	}
@@ -23,11 +23,11 @@ float pcm_stream::read_float() {
 		return 0.0f;
 	}
 	if (source->format() == pcm_format::int_16) {
-		const auto pcm = source->stream().read<int16_t>(position);
+		const auto pcm = source->stream().read<std::int16_t>(position);
 		position += sizeof(pcm);
 		return static_cast<float>(static_cast<double>(pcm) / static_cast<double>(SHRT_MAX));
 	}
-	WARNING_LIMIT_X("audio", "Unknown source format " << source->format(), 10);
+	warning("audio", "Unknown source format {}", source->format());
 	return 0.0f;
 }
 
@@ -35,7 +35,7 @@ void pcm_stream::reset() {
 	position = 0;
 }
 
-void pcm_stream::stream(pcm_format format, uint8_t* destination, size_t size, size_t channels) {
+void pcm_stream::stream(pcm_format format, std::uint8_t* destination, std::size_t size, std::size_t channels) {
 	switch (format) {
 	case pcm_format::float_32:
 		stream(reinterpret_cast<float*>(destination), size / sizeof(float), channels);
@@ -46,9 +46,9 @@ void pcm_stream::stream(pcm_format format, uint8_t* destination, size_t size, si
 	}
 }
 
-void pcm_stream::stream(float* destination, size_t count, size_t channels) {
-	for (size_t i{ 0 }; i < count; i += channels) {
-		for (size_t j{ 0 }; j < channels; j++) {
+void pcm_stream::stream(float* destination, std::size_t count, std::size_t channels) {
+	for (std::size_t i{ 0 }; i < count; i += channels) {
+		for (std::size_t j{ 0 }; j < channels; j++) {
 			destination[i + j] = read_float();
 		}
 	}
@@ -60,10 +60,10 @@ int pcm_stream::sample_rate() const {
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::pcm_format format) {
+std::ostream& operator<<(std::ostream& out, nfwk::pcm_format format) {
 	switch (format) {
-	case no::pcm_format::float_32: return out << "Float32";
-	case no::pcm_format::int_16: return out << "Int16";
+	case nfwk::pcm_format::float_32: return out << "Float32";
+	case nfwk::pcm_format::int_16: return out << "Int16";
 	default: return out << "Unknown";
 	}
 }

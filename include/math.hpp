@@ -1,6 +1,6 @@
 #pragma once
 
-namespace no {
+namespace nfwk {
 
 constexpr float pi_f{ 3.14159265359f };
 constexpr double pi{ 3.14159265359 };

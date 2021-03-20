@@ -1,7 +1,7 @@
 #include "graphics/perspective_camera.hpp"
 #include "math.hpp"
 
-namespace no {
+namespace nfwk {
 
 void perspective_camera::update() {
 	if (size.x > 2.0f && size.y > 2.0f) {

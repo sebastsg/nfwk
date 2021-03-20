@@ -4,7 +4,7 @@
 
 #include <functional>
 
-namespace no {
+namespace nfwk {
 
 class model;
 class bone_attachment;

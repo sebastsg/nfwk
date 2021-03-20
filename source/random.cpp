@@ -1,7 +1,7 @@
 #include "random.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 random_number_generator::random_number_generator() {
 	seed(std::random_device{}());
@@ -38,7 +38,7 @@ random_number_generator& random_number_generator::global() {
 	static thread_local random_number_generator rng;
 	static thread_local bool print_seed{ true };
 	if (print_seed) {
-		INFO_X("main", "Global random seed for this thread: " << rng.seed());
+		info("main", "Global random seed for this thread: {}", rng.seed());
 		print_seed = false;
 	}
 	return rng;

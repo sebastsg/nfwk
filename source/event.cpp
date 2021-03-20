@@ -1,7 +1,7 @@
 #include "event.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no::internal {
+namespace nfwk::internal {
 
 struct event_state {
 	
@@ -24,7 +24,7 @@ static struct {
 } data;
 
 int add_event() {
-	for (size_t i{ 0 }; i < data.events.size(); i++) {
+	for (std::size_t i{ 0 }; i < data.events.size(); i++) {
 		if (!data.events[i].event_exists && !data.events[i].has_listeners()) {
 			data.events[i] = { true, {} };
 			return static_cast<int>(i);
@@ -42,7 +42,7 @@ void remove_event(int event_id) {
 
 int add_event_listener(int event_id) {
 	if (event_id < 0 || event_id >= static_cast<int>(data.events.size()) || !data.events[event_id].event_exists) {
-		WARNING("Trying to add event listener to non-existing event " << event_id);
+		warning("main", "Trying to add event listener to non-existing event {}", event_id);
 		return -1;
 	}
 	auto& event = data.events[event_id];
@@ -74,7 +74,7 @@ bool is_event_listener(int event_id, int listener_id) {
 
 }
 
-namespace no {
+namespace nfwk {
 
 event_listener::event_listener(int event_id, int listener_id) : event_id{ event_id }, listener_id{ listener_id } {
 

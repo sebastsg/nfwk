@@ -2,9 +2,7 @@
 #include "graphics/color.hpp"
 #include "assets.hpp"
 
-#if ENABLE_GRAPHICS
-
-namespace no::ui {
+namespace nfwk::ui {
 
 void separate() {
 	ImGui::NewLine();
@@ -174,11 +172,11 @@ void outline(vector2f position, vector2f size, const vector4f& color) {
 
 std::optional<int> combo(std::string_view label, const std::vector<std::string>& values, int selected) {
 	if (selected >= static_cast<int>(values.size())) {
-		BUG("Index is too high.");
+		error("ui", "Index is too high. {} >= {}", selected, values.size());
 		return std::nullopt;
 	}
 	std::optional<int> clicked;
-	if (ImGui::BeginCombo(label.data(), values[static_cast<size_t>(selected)].c_str())) {
+	if (ImGui::BeginCombo(label.data(), values[static_cast<std::size_t>(selected)].c_str())) {
 		for (int i{ 0 }; i < static_cast<int>(values.size()); i++) {
 			if (ImGui::Selectable(values[i].c_str())) {
 				clicked = i;
@@ -245,6 +243,19 @@ scoped_logic push_window(std::string_view label, std::optional<vector2f> positio
 	}
 }
 
+scoped_logic disable_if(bool disable) {
+	if (disable) {
+		ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+		ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+		return [] {
+			ImGui::PopStyleVar();
+			ImGui::PopItemFlag();
+		};
+	} else {
+		return {};
+	}
+}
+
 void pop_window() {
 	ImGui::End();
 }
@@ -290,5 +301,3 @@ bool menu_item(std::string_view label, std::string_view shortcut, bool& checked,
 }
 
 }
-
-#endif

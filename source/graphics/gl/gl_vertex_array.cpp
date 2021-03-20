@@ -1,14 +1,12 @@
 #include "platform.hpp"
 
-#if ENABLE_GL
-
 #include "graphics/gl/gl.hpp"
 #include "graphics/vertex_array.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
 #include "glm/gtc/type_ptr.hpp"
 
-namespace no::gl {
+namespace nfwk::gl {
 
 int gl_pixel_format(pixel_format format) {
 	switch (format) {
@@ -28,22 +26,31 @@ int gl_scale_option(scale_option scaling, bool mipmap) {
 
 }
 
-namespace no {
+namespace nfwk {
 
 static std::vector<gl::gl_vertex_array> vertex_arrays;
+static int bound_vertex_array{ -1 };
 
-static size_t size_of_attribute_component(attribute_component type) {
+static std::size_t size_of_attribute_component(attribute_component type) {
 	switch (type) {
 	case attribute_component::is_float: return sizeof(float);
 	case attribute_component::is_integer: return sizeof(int);
-	case attribute_component::is_byte: return sizeof(uint8_t);
+	case attribute_component::is_byte: return sizeof(std::uint8_t);
 	default: return sizeof(float);
 	}
 }
 
+static void bind_vertex_array(int id) {
+	bound_vertex_array = id;
+	const auto& gl_vertex_array = vertex_arrays[id];
+	CHECK_GL_ERROR(glBindVertexArray(gl_vertex_array.id));
+	CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, gl_vertex_array.vertex_buffer.id));
+	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, gl_vertex_array.index_buffer.id));
+}
+
 int create_vertex_array(const vertex_specification& specification) {
 	std::optional<int> id;
-	for (size_t i{ 0 }; i < vertex_arrays.size(); i++) {
+	for (std::size_t i{ 0 }; i < vertex_arrays.size(); i++) {
 		if (vertex_arrays[i].id == 0) {
 			id = static_cast<int>(i);
 			break;
@@ -78,19 +85,15 @@ int create_vertex_array(const vertex_specification& specification) {
 			break;
 		}
 		CHECK_GL_ERROR(glEnableVertexAttribArray(i));
-		attribute_pointer += static_cast<size_t>(attribute.components) * size_of_attribute_component(attribute.type);
+		attribute_pointer += static_cast<std::size_t>(attribute.components) * size_of_attribute_component(attribute.type);
 	}
 	return id.value();
 }
 
-void bind_vertex_array(int id) {
-	const auto& vertex_array = vertex_arrays[id];
-	CHECK_GL_ERROR(glBindVertexArray(vertex_array.id));
-	CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, vertex_array.vertex_buffer.id));
-	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));
-}
-
-void set_vertex_array_vertices(int id, const uint8_t* data, size_t size) {
+void set_vertex_array_vertices(int id, const std::uint8_t* data, std::size_t size) {
+	if (id != bound_vertex_array) {
+		bind_vertex_array(id);
+	}
 	ASSERT(data && size > 0);
 	auto& vertex_array = vertex_arrays[id];
 	CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, vertex_array.vertex_buffer.id));
@@ -103,7 +106,10 @@ void set_vertex_array_vertices(int id, const uint8_t* data, size_t size) {
 	}
 }
 
-void set_vertex_array_indices(int id, const uint8_t* data, size_t size, size_t element_size) {
+void set_vertex_array_indices(int id, const std::uint8_t* data, std::size_t size, std::size_t element_size) {
+	if (id != bound_vertex_array) {
+		bind_vertex_array(id);
+	}
 	ASSERT(data && size > 0);
 	auto& vertex_array = vertex_arrays[id];
 	switch (element_size) {
@@ -117,7 +123,7 @@ void set_vertex_array_indices(int id, const uint8_t* data, size_t size, size_t e
 		vertex_array.index_type = GL_UNSIGNED_INT;
 		break;
 	default:
-		WARNING_LIMIT("Invalid index element size: " << element_size, 100);
+		warning("graphics", "Invalid index element size: {}", element_size);
 		break;
 	}
 	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));
@@ -132,16 +138,30 @@ void set_vertex_array_indices(int id, const uint8_t* data, size_t size, size_t e
 }
 
 void draw_vertex_array(int id) {
+	if (id != bound_vertex_array) {
+		bind_vertex_array(id);
+	}
 	const auto& vertex_array = vertex_arrays[id];
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, vertex_array.indices, vertex_array.index_type, nullptr));
 }
 
-void draw_vertex_array(int id, size_t offset, int count) {
+void draw_vertex_array(int id, std::size_t offset, int count) {
+	if (id != bound_vertex_array) {
+		bind_vertex_array(id);
+	}
 	const auto& vertex_array = vertex_arrays[id];
 	CHECK_GL_ERROR(glDrawElements(vertex_array.draw_mode, count, vertex_array.index_type, (void*)offset));
 }
 
 void delete_vertex_array(int id) {
+	if (id < 0) {
+		return;
+	}
+	if (id == bound_vertex_array) {
+		CHECK_GL_ERROR(glBindVertexArray(0));
+		CHECK_GL_ERROR(glBindBuffer(GL_ARRAY_BUFFER, 0));
+		CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0));
+	}
 	auto& vertex_array = vertex_arrays[id];
 	CHECK_GL_ERROR(glDeleteVertexArrays(1, &vertex_array.id));
 	CHECK_GL_ERROR(glDeleteBuffers(1, &vertex_array.vertex_buffer.id));
@@ -151,7 +171,7 @@ void delete_vertex_array(int id) {
 
 vector3i read_pixel_at(vector2i position) {
 	int alignment{ 0 };
-	uint8_t pixel[3];
+	std::uint8_t pixel[3];
 	CHECK_GL_ERROR(glFlush());
 	CHECK_GL_ERROR(glFinish());
 	CHECK_GL_ERROR(glGetIntegerv(GL_UNPACK_ALIGNMENT, &alignment));
@@ -162,5 +182,3 @@ vector3i read_pixel_at(vector2i position) {
 }
 
 }
-
-#endif

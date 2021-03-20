@@ -2,7 +2,7 @@
 #include "graphics/ui.hpp"
 #include "io.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> trigger_event_node::process() {
 

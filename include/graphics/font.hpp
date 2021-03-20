@@ -2,10 +2,10 @@
 
 #include "surface.hpp"
 
-#include <string>
 #include <optional>
+#include <filesystem>
 
-namespace no {
+namespace nfwk {
 
 class font {
 public:
@@ -17,29 +17,29 @@ public:
 		int rows{ 1 };
 	};
 
-	font() = default;
-	font(const std::string& path, int size);
+	font(const std::filesystem::path& path, int size);
 	font(const font&) = delete;
-	font(font&&) noexcept;
+	font(font&&) = delete;
+
 	~font();
 
 	font& operator=(const font&) = delete;
-	font& operator=(font&&) noexcept;
+	font& operator=(font&&) = delete;
 
-	void render(surface& surface, const std::string& text, uint32_t color = 0x00FFFFFF) const;
-	surface render(const std::string& text, uint32_t color = 0x00FFFFFF) const;
-	text_size size(const std::string& text) const;
+	void render(surface& surface, std::string_view text, std::uint32_t color = 0x00ffffff) const;
+	surface render(std::string_view text, std::uint32_t color = 0x00ffffff) const;
+	text_size size(std::string_view text) const;
 
-	static bool exists(const std::string& path);
-	static std::optional<std::string> find_absolute_path(const std::string& path);
+	static bool exists(const std::filesystem::path& path);
+	static std::optional<std::filesystem::path> find_absolute_path(const std::filesystem::path& path);
 
 private:
 
 	class font_face;
-	font_face* face{ nullptr };
 
-	std::pair<uint32_t*, vector2i> render_text(const std::string& text, uint32_t color) const;
+	std::pair<std::uint32_t*, vector2i> render_text(std::string_view text, std::uint32_t color) const;
 
+	std::unique_ptr<font_face> face;
 	float line_space{ 1.25f };
 
 };

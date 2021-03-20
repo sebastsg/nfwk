@@ -1,7 +1,7 @@
 #include "transform.hpp"
 #include "math.hpp"
 
-namespace no {
+namespace nfwk {
 
 transform2::transform2(vector2f position) : position{ position } {
 

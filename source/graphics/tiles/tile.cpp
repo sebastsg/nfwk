@@ -1,6 +1,6 @@
 #include "graphics/tiles/tile.hpp"
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
 tile::tile(unsigned char top_left, unsigned char top_right, unsigned char bottom_left, unsigned char bottom_right)
 	: top_left{ top_left }, top_right{ top_right }, bottom_left{ bottom_left }, bottom_right{ bottom_right } {

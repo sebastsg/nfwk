@@ -1,159 +1,73 @@
 #pragma once
 
-#include "../config.hpp"
-#include "timer.hpp"
-#include "event.hpp"
-#include "audio/audio_endpoint.hpp"
+#include "frame_rate_controller.hpp"
 
-#include <string>
-#include <functional>
+#include <memory>
+#include <vector>
 
-namespace no {
+namespace nfwk {
 
-class window;
-class program_state;
-class keyboard;
-class mouse;
+class subprogram;
+class component;
 
-namespace internal {
-
-struct make_state_specification {
-	program_state* state{ nullptr };
-	bool imgui{ false };
-};
-
-using make_state_function = std::function<make_state_specification()>;
-
-void create_state(const std::string& title, int width, int height, int samples, const make_state_function& make_state);
-void create_state(const std::string& title, int width, int height, const make_state_function& make_state);
-void create_state(const std::string& title, int samples, const make_state_function& make_state);
-void create_state(const std::string& title, const make_state_function& make_state);
-
-int run_main_loop();
-void destroy_main_loop();
-
-}
-
-class loop_frame_counter {
+class loop {
 public:
 
-	loop_frame_counter();
+	event<> on_begin_update;
+	event<> on_end_update;
+	event<> on_begin_frame;
+	event<> on_end_frame;
 
-	void next_frame();
+	virtual ~loop();
 
-	long long ticks() const;
-	long long frames() const;
-	long long current_fps() const;
-	double average_fps() const;
-	double delta() const;
+	virtual bool is_running() const;
 
-private:
+	void run();
 
-	timer run_timer;
-	long long frame_count{ 0 };
-	long long old_time{ 0 };
-	long long new_time{ 0 };
-	long long time_last_second{ 0 };
-	long long frames_this_second{ 0 };
-	long long frames_last_second{ 0 };
-	double delta_time{ 0.0 };
+	int current_fps() const;
+	float delta() const;
 
-};
+	void add(std::unique_ptr<subprogram> subprogram);
+	void remove(const subprogram& subprogram);
 
-// 'always' should only used to test performance, and requires swap_interval::immediate.
-enum class draw_synchronization { always, if_updated };
-
-draw_synchronization get_draw_synchronization();
-void set_draw_synchronization(draw_synchronization synchronization);
-
-const loop_frame_counter& frame_counter();
-
-class program_state {
-public:
-
-	program_state();
-	program_state(const program_state&) = delete;
-	program_state(program_state&&) = delete;
-
-	virtual ~program_state();
-
-	program_state& operator=(const program_state&) = delete;
-	program_state& operator=(program_state&&) = delete;
-
-	virtual void update() = 0;
-
-#if ENABLE_GRAPHICS
-	
-	virtual void draw() = 0;
-
-	window& window() const;
-	keyboard& keyboard() const;
-	mouse& mouse() const;
-
-#endif
-
-#if ENABLE_AUDIO
-
-	audio_endpoint& audio() const;
-
-#endif
-
-	loop_frame_counter& frame_counter();
-	bool has_next_state() const;
-
-	template<typename T, bool CreateImGui = false>
-	void change_state() {
-		change_state([] {
-			return internal::make_state_specification{ new T{}, CreateImGui };
-		});
+	template<typename Subprogram>
+	Subprogram& add() {
+		auto subprogram = std::make_unique<Subprogram>(*this);
+		auto& subprogram_reference = *subprogram;
+		add(std::move(subprogram));
+		return subprogram_reference;
 	}
-
-	static program_state* current();
 
 protected:
 
-	long long redundant_texture_binds_this_frame();
+	void destroy_stopped_subprograms();
+	void move_new_subprograms();
 
-	void stop();
+	frame_counter counter;
+	std::vector<std::unique_ptr<subprogram>> subprograms;
+	std::vector<std::unique_ptr<subprogram>> new_subprograms;
+	std::vector<const subprogram*> subprograms_to_stop;
+	bool inside_run{ false };
 
 private:
 
-	void change_state(const internal::make_state_function& make_state);
-
-	internal::make_state_function make_next_state;
-	event_listener window_close;
+	virtual void update();
 
 };
 
-event<>& post_configure_event();
-event<>& pre_exit_event();
+class fixed_time_step_loop : public loop {
+public:
 
-template<typename T, bool CreateImGui = false>
-void create_state(const std::string& title, int width, int height, int samples) {
-	internal::create_state(title, width, height, samples, [] {
-		return internal::make_state_specification{ new T{}, CreateImGui };
-	});
-}
+	fixed_time_step_loop();
 
-template<typename T, bool CreateImGui = false>
-void create_state(const std::string& title, int width, int height) {
-	internal::create_state(title, width, height, [] {
-		return internal::make_state_specification{ new T{}, CreateImGui };
-	});
-}
+	const fixed_frame_rate_controller& get_frame_rate_controller() const;
 
-template<typename T, bool CreateImGui = false>
-void create_state(const std::string& title, int samples) {
-	internal::create_state(title, samples, [] {
-		return internal::make_state_specification{ new T{}, CreateImGui };
-	});
-}
+private:
 
-template<typename T, bool CreateImGui = false>
-void create_state(const std::string& title) {
-	internal::create_state(title, [] {
-		return internal::make_state_specification{ new T{}, CreateImGui };
-	});
-}
+	void update() override;
+
+	fixed_frame_rate_controller frame_rate_controller;
+
+};
 
 }

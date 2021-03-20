@@ -7,7 +7,7 @@
 #include <vorbis/codec.h>
 #include <vorbis/vorbisfile.h>
 
-namespace no {
+namespace nfwk {
 
 class ogg_vorbis_audio_source : public audio_source {
 public:
@@ -15,7 +15,7 @@ public:
 	ogg_vorbis_audio_source(const std::filesystem::path& path);
 	~ogg_vorbis_audio_source() override;
 
-	size_t size() const override;
+	std::size_t size() const override;
 	pcm_format format() const override;
 	const io_stream& stream() const override;
 	int sample_rate() const override;

@@ -3,9 +3,9 @@
 #include "graphics/ui.hpp"
 #include "graphics/window.hpp"
 #include "random.hpp"
-#include "debug.hpp"
+#include "log.hpp"
 
-namespace no {
+namespace nfwk {
 
 static object_manager objects;
 
@@ -80,15 +80,6 @@ std::shared_ptr<object_class> object_manager::register_class(const std::string& 
 	auto definition = std::make_shared<object_class>();
 	definition->id = class_id;
 	return definitions.emplace_back(definition);
-}
-
-}
-
-namespace no::internal {
-
-void initialize_objects() {
-	register_editor<object_class_editor>();
-	register_editor<object_class_list_editor>();
 }
 
 }

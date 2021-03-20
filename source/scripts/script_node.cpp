@@ -1,9 +1,10 @@
 #include "scripts/script_node.hpp"
 #include "scripts/script_tree.hpp"
 #include "io.hpp"
-#include "debug.hpp"
+#include "log.hpp"
+#include "utility_functions.hpp"
 
-namespace no {
+namespace nfwk {
 
 class script_node_factory {
 public:
@@ -107,9 +108,12 @@ const std::vector<script_node_constructor>& get_user_script_node_constructors() 
 
 std::vector<script_node_constructor> get_all_script_node_constructors() {
 	auto constructors = merge_vectors(node_factory.get_core_constructors(), node_factory.get_user_constructors());
-	std::erase_if(constructors, [](const auto& constructor) {
-		return !constructor.is_valid();
-	});
+	for (int i{ 0 }; i < static_cast<int>(constructors.size()); i++) {
+		if (!constructors[i].is_valid()) {
+			constructors.erase(constructors.begin() + i);
+			i--;
+		}
+	}
 	return constructors;
 }
 
@@ -118,24 +122,24 @@ std::optional<int> script_node::process() {
 }
 
 void script_node::write(io_stream& stream) const {
-	stream.write<int32_t>(id);
-	stream.write_optional<int32_t>(scope_id);
+	stream.write<std::int32_t>(id);
+	stream.write_optional<std::int32_t>(scope_id);
 	stream.write(transform);
-	stream.write(static_cast<int32_t>(outputs.size()));
+	stream.write(static_cast<std::int32_t>(outputs.size()));
 	for (const auto& output : outputs) {
-		stream.write<int32_t>(output.to_node());
-		stream.write<int32_t>(output.slot());
+		stream.write<std::int32_t>(output.to_node());
+		stream.write<std::int32_t>(output.slot());
 	}
 }
 
 void script_node::read(io_stream& stream) {
-	id = stream.read<int32_t>();
-	scope_id = stream.read_optional<int32_t>();
+	id = stream.read<std::int32_t>();
+	scope_id = stream.read_optional<std::int32_t>();
 	transform = stream.read<transform2>();
-	const auto out_count = stream.read<int32_t>();
+	const auto out_count = stream.read<std::int32_t>();
 	for (int j{ 0 }; j < out_count; j++) {
-		const auto node_id = stream.read<int32_t>();
-		const auto out_id = stream.read<int32_t>();
+		const auto node_id = stream.read<std::int32_t>();
+		const auto out_id = stream.read<std::int32_t>();
 		outputs.emplace_back(node_id, out_id);
 	}
 }

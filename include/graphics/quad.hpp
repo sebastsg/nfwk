@@ -2,7 +2,7 @@
 
 #include "graphics/vertex_array.hpp"
 
-namespace no {
+namespace nfwk {
 
 template<typename Vertex>
 class quad {

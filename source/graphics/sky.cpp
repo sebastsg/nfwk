@@ -8,7 +8,7 @@
 
 #include <optional>
 
-namespace no {
+namespace nfwk {
 
 struct skybox_vertex {
 	static constexpr vertex_attribute_specification attributes[]{ 3, 2 };
@@ -16,7 +16,7 @@ struct skybox_vertex {
 	vector2f tex_coords;
 };
 
-static model* skybox{ nullptr };
+std::unique_ptr<model> skybox;
 
 void create_skybox() {
 	model_data<skybox_vertex, unsigned short> data;
@@ -68,20 +68,18 @@ void create_skybox() {
 		16, 17, 19, 19, 18, 16, // bottom
 		20, 21, 23, 23, 22, 20, // top
 	};
-	skybox = new model{};
+	skybox = std::make_unique<model>();
 	skybox->load(data);
 }
 
 void delete_skybox() {
-	delete skybox;
 	skybox = nullptr;
 }
 
-void draw_skybox(const perspective_camera& camera, float size, int shader, int texture) {
-	bind_shader(shader);
-	set_shader_view_projection(camera);
-	bind_texture(texture);
-	draw_shape(*skybox, transform3{ camera.transform.position - size / 2.0f - camera.transform.scale / 2.0f, {}, size });
+void draw_skybox(const perspective_camera& camera, float size, shader& shader, const texture& texture) {
+	shader.set_view_projection(camera);
+	texture.bind();
+	shader.draw(*skybox, transform3{ camera.transform.position - size / 2.0f - camera.transform.scale / 2.0f, {}, size });
 }
 
 }

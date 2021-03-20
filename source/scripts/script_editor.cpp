@@ -6,10 +6,12 @@
 #include "assets.hpp"
 #include "platform.hpp"
 #include "random.hpp"
+#include "debug_menu.hpp"
+#include "imgui_loop_component.hpp"
 
-namespace no {
+namespace nfwk {
 
-script_editor::script_editor() {
+script_editor::script_editor(editor_state& editor) : abstract_editor{ editor } {
 	create_new_script();
 
 	debug::menu::add("nfwk-script-editor", "Script", [this] {
@@ -27,7 +29,7 @@ script_editor::~script_editor() {
 }
 
 void script_editor::update() {
-	const auto window_size = program_state::current()->window().size().to<float>();
+	const auto window_size = editor.window->size().to<float>();
 	vector2f position{ 0.0f, 24.0f };
 	vector2f size{ window_size - position };
 	if (show_properties) {
@@ -94,12 +96,16 @@ void script_editor::create_new_script() {
 
 void script_editor::load_script(const std::string& id) {
 	script = {};
-	script.tree.load(id);
+	//script.tree.load(id);
+	error("scripts", "Not implemented");
+	ASSERT(false);
 }
 
 void script_editor::save_script() {
-	script.tree.save();
-	script.dirty = false;
+	error("scripts", "Not implemented");
+	ASSERT(false);
+	//script.tree.save();
+	//script.dirty = false;
 }
 
 void script_editor::update_nodes(vector2f offset) {
@@ -242,7 +248,7 @@ void script_editor::update_node_context_menu(script_node& node) {
 				script.output_from_node = script.selected_node;
 			}
 		} else {
-			BUG("Invalid output type: " << static_cast<int>(node.output_type()));
+			warning("scripts", "Invalid output type: {}", static_cast<int>(node.output_type()));
 		}
 		if (node.used_output_slots_count() > 0) {
 			if (auto end_delete_links = ui::menu("Delete output to")) {
@@ -282,7 +288,7 @@ void script_editor::update_scrolling() {
 		script.scrolling.y -= ImGui::GetIO().MouseDelta.y;
 	}
 	const float scroll_speed{ 20.0f };
-	const auto& keyboard = program_state::current()->keyboard();
+	const auto& keyboard = editor.window->keyboard;
 	if (keyboard.is_key_down(key::up)) {
 		script.scrolling.y -= scroll_speed;
 	}

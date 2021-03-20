@@ -6,7 +6,7 @@
 #include <optional>
 #include <variant>
 
-namespace no {
+namespace nfwk {
 
 enum class other_variable_type { value, local, global };
 
@@ -101,6 +101,6 @@ private:
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::variable_comparison type);
-std::ostream& operator<<(std::ostream& out, no::variable_type type);
-std::ostream& operator<<(std::ostream& out, no::variable_operator type);
+std::ostream& operator<<(std::ostream& out, nfwk::variable_comparison type);
+std::ostream& operator<<(std::ostream& out, nfwk::variable_type type);
+std::ostream& operator<<(std::ostream& out, nfwk::variable_operator type);

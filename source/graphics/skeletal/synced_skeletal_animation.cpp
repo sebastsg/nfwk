@@ -1,7 +1,7 @@
 #include "graphics/skeletal/synced_skeletal_animation.hpp"
 #include "graphics/skeletal/skeletal_animation.hpp"
 
-namespace no {
+namespace nfwk {
 
 synced_skeletal_animation::synced_skeletal_animation(const skeletal_animation& animation) {
 	active = animation.active;

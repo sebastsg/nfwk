@@ -3,7 +3,7 @@
 #include "scripts/variables.hpp"
 #include "graphics/ui.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> variable_exists_node::process() {
 	return tree->context->find(scope_id, variable_name) ? 1 : 0;

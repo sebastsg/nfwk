@@ -3,7 +3,7 @@
 #include "graphics/draw.hpp"
 #include "graphics/shader.hpp"
 
-namespace no {
+namespace nfwk {
 
 void sprite_animation::update(float delta) {
 	if (paused || done) {
@@ -26,16 +26,16 @@ void sprite_animation::update(float delta) {
 	}
 }
 
-void sprite_animation::draw(vector2f position, vector2f size) const {
-	draw_shape(rectangle, transform2{ position, size });
+void sprite_animation::draw(shader& shader, vector2f position, vector2f size) const {
+	shader.draw(rectangle, transform2{ position, size });
 }
 
-void sprite_animation::draw(vector2f position, int texture) const {
-	draw_shape(rectangle, transform2{ position, texture_size(texture).to<float>() });
+void sprite_animation::draw(shader& shader, vector2f position, std::shared_ptr<texture> texture) const {
+	shader.draw(rectangle, transform2{ position, texture->size().to<float>() });
 }
 
-void sprite_animation::draw(const transform2& transform) const {
-	draw_shape(rectangle, transform);
+void sprite_animation::draw(shader& shader, const transform2& transform) const {
+	shader.draw(rectangle, transform);
 }
 
 void sprite_animation::pause() {

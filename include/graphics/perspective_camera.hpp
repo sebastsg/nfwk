@@ -4,7 +4,7 @@
 #include "transform.hpp"
 #include "input.hpp"
 
-namespace no {
+namespace nfwk {
 
 class perspective_camera {
 public:

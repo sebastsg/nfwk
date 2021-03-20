@@ -4,7 +4,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-namespace no {
+namespace nfwk {
 
 class bone_attachment {
 public:

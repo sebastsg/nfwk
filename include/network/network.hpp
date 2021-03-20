@@ -2,12 +2,10 @@
 
 #include "platform.hpp"
 
-#if ENABLE_NETWORK
-
 #include "network/packetizer.hpp"
 #include "event.hpp"
 
-namespace no {
+namespace nfwk {
 
 enum class socket_close_status { disconnected_gracefully, connection_reset, not_connected, unknown };
 
@@ -51,6 +49,4 @@ void broadcast(const P& packet, int except_id) {
 
 }
 
-std::ostream& operator<<(std::ostream& out, no::socket_close_status status);
-
-#endif
+std::ostream& operator<<(std::ostream& out, nfwk::socket_close_status status);

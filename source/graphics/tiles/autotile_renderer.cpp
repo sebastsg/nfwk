@@ -3,10 +3,10 @@
 #include "graphics/tiles/tile.hpp"
 #include "graphics/texture.hpp"
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
-autotile_renderer::autotile_renderer(vector2i size, int types, int tileset_texture) : tile_size{ size } {
-	tileset_size = texture_size(tileset_texture).to<float>();
+autotile_renderer::autotile_renderer(vector2i size, int types, const texture& tileset_texture) : tile_size{ size } {
+	tileset_size = tileset_texture.size().to<float>();
 	load_main_tiles(types);
 }
 

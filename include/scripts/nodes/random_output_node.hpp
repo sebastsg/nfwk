@@ -1,8 +1,9 @@
 #pragma once
 
 #include "scripts/script_node.hpp"
+#include "script_node_macro.hpp"
 
-namespace no {
+namespace nfwk {
 
 class random_output_node : public script_node {
 public:

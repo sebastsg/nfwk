@@ -4,12 +4,10 @@
 #include "scoped_context.hpp"
 #include "vector4.hpp"
 
-#if ENABLE_GRAPHICS
-
 #include <imgui/imgui.h>
 #include <imgui/imgui_internal.h>
 
-namespace no::ui {
+namespace nfwk::ui {
 
 struct popup_item {
 
@@ -83,6 +81,7 @@ void pop_window();
 bool is_hovered();
 void begin_disabled();
 void end_disabled();
+scoped_logic disable_if(bool disable);
 
 scoped_logic menu(std::string_view label, bool enabled = true);
 bool menu_item(std::string_view label);
@@ -91,5 +90,3 @@ bool menu_item(std::string_view label, bool& checked, bool enabled = true);
 bool menu_item(std::string_view label, std::string_view shortcut, bool& checked, bool enabled = true);
 
 }
-
-#endif

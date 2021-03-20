@@ -2,8 +2,9 @@
 
 #include "scripts/script_node.hpp"
 #include "scripts/variables.hpp"
+#include "script_node_macro.hpp"
 
-namespace no {
+namespace nfwk {
 
 class create_variable_node : public script_node {
 public:

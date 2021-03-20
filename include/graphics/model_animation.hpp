@@ -5,7 +5,7 @@
 
 #include <vector>
 
-namespace no {
+namespace nfwk {
 
 struct animation_channel {
 

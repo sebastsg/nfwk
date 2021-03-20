@@ -5,17 +5,15 @@
 #include <queue>
 #include <unordered_set>
 
-namespace no {
-
-namespace internal {
-
+namespace nfwk::internal {
 int add_event();
 void remove_event(int event_id);
 int add_event_listener(int event_id);
 void remove_event_listener(int event_id, int listener_id);
 bool is_event_listener(int event_id, int listener_id);
-
 }
+
+namespace nfwk {
 
 class event_listener {
 public:
@@ -50,16 +48,9 @@ public:
 
 	using handler_function = std::function<void(T...)>;
 
-	event() : id{ internal::add_event() } {
-		
-	}
-
+	event() : id{ internal::add_event() } {}
 	event(const event&) = delete;
-
-	event(event&& that) noexcept
-		: id{ std::move(that.id) }, handlers{ std::move(that.handlers) }, forward_events{ std::move(that.forward_events) } {
-	
-	}
+	event(event&& that) noexcept : id{ std::move(that.id) }, handlers{ std::move(that.handlers) }, forward_events{ std::move(that.forward_events) } {}
 
 	event& operator=(const event&) = delete;
 
@@ -91,9 +82,10 @@ public:
 
 	template<typename... Args>
 	void emit(Args... args) const {
-		for (const auto& handler : handlers) {
-			if (internal::is_event_listener(id, handler.first) && handler.second) {
-				handler.second(std::forward<T>(args)...);
+		for (int i{ total_listeners() - 1 }; i >= 0; i--) {
+			const auto& [listener_id, handler] = handlers[i];
+			if (internal::is_event_listener(id, listener_id) && handler) {
+				handler(std::forward<T>(args)...);
 			}
 		}
 		for (const auto& forward_event : forward_events) {
@@ -117,7 +109,7 @@ private:
 
 	int id{ -1 };
 	std::vector<std::pair<int, handler_function>> handlers;
-	std::unordered_set<event*> forward_events;
+	std::unordered_set<event*> forward_events; // unordered_set is 40 bytes... make into vector?
 
 };
 
@@ -127,10 +119,7 @@ public:
 
 	event_queue() = default;
 	event_queue(const event_queue&) = delete;
-
-	event_queue(event_queue&& that) noexcept : messages{ std::move(that.messages) } {
-	
-	}
+	event_queue(event_queue&& that) noexcept : messages{ std::move(that.messages) } {}
 
 	event_queue& operator=(const event_queue&) = delete;
 
@@ -162,7 +151,7 @@ public:
 		}
 	}
 
-	size_t size() const {
+	std::size_t size() const {
 		return messages.size();
 	}
 

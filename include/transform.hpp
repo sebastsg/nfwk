@@ -4,7 +4,7 @@
 
 #include "glm/gtc/matrix_transform.hpp"
 
-namespace no {
+namespace nfwk {
 
 enum class align_type {
 	none,

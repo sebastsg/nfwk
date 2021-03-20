@@ -4,13 +4,17 @@
 
 #include <array>
 
-namespace no::tiles {
+namespace nfwk {
+class texture;
+}
+
+namespace nfwk::tiles {
 
 // todo: bordered renderer still has bugs.
 class bordered_renderer : public renderer {
 public:
 
-	bordered_renderer(int types, int size, int tileset_texture);
+	bordered_renderer(int types, int size, const texture& tileset_texture);
 
 	void render_area(layer& layer, int x, int y, int width, int height) override;
 	void render_chunk(layer& layer, chunk& chunk) override;

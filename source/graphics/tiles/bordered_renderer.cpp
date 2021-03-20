@@ -4,10 +4,10 @@
 #include "graphics/tiles/tile.hpp"
 #include "graphics/texture.hpp"
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
-bordered_renderer::bordered_renderer(int types, int size, int tileset_texture) {
-	tileset_size = texture_size(tileset_texture).to<float>();
+bordered_renderer::bordered_renderer(int types, int size, const texture& tileset_texture) {
+	tileset_size = tileset_texture.size().to<float>();
 	tile_size = static_cast<float>(size);
 	x_size = { tile_size * 2.0f, tile_size };
 	y_size = { tile_size, tile_size * 2.0f };
@@ -67,7 +67,7 @@ void bordered_renderer::render_chunk(layer& layer, chunk& chunk) {
 void bordered_renderer::render_bordered_tile(layer& layer, vector2f position, int middle, int left, int right, int top, int bottom) {
 	const auto [chunk_x, chunk_y] = layer.position_to_chunk_index(position);
 	auto& chunk = *layer.get_chunk(chunk_x, chunk_y);
-	size_t parent{ render_tile({}, layer, chunk, position, tile_size, tiles[middle][static_cast<int>(location::middle)]) };
+	std::size_t parent{ render_tile({}, layer, chunk, position, tile_size, tiles[middle][static_cast<int>(location::middle)]) };
 	if (left != middle) {
 		const vector2f left_position{ position.x - tile_size, position.y };
 		render_tile(parent, layer, chunk, left_position, x_size, tiles[middle][static_cast<int>(location::left)]);

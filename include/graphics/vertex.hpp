@@ -3,7 +3,7 @@
 #include "platform.hpp"
 #include "vector4.hpp"
 
-namespace no {
+namespace nfwk {
 
 template<typename Vertex>
 vector3f find_min_vertex(const std::vector<Vertex>& vertices) {

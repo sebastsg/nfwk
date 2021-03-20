@@ -2,7 +2,7 @@
 
 #include "graphics/vertex_array.hpp"
 
-namespace no {
+namespace nfwk {
 
 class rectangle {
 public:
@@ -11,7 +11,6 @@ public:
 	rectangle();
 
 	void set_tex_coords(float x, float y, float width, float height);
-	void bind() const;
 	void draw() const;
 
 private:

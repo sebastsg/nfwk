@@ -1,6 +1,6 @@
 #include "graphics/ortho_camera.hpp"
 
-namespace no {
+namespace nfwk {
 
 void ortho_camera::update() {
 	if (target) {

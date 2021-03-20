@@ -3,13 +3,15 @@
 #include "graphics/ui.hpp"
 #include "io.hpp"
 
-namespace no {
+namespace nfwk {
 
 std::optional<int> execute_script_node::process() {
 	script_tree inner;
 	inner.context = tree->context;
-	inner.load(script);
-	inner.process_entry_point();
+	ASSERT(false);
+	error("scripts", "Not implemented");
+	//inner.load(script);
+	//inner.process_entry_point();
 	return 0;
 }
 

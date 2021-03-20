@@ -1,7 +1,7 @@
 #include "timer.hpp"
 #include "platform.hpp"
 
-namespace no {
+namespace nfwk {
 
 void timer::start() {
 	started = true;

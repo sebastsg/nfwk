@@ -1,29 +1,20 @@
 #include "editor.hpp"
 #include "graphics/ui.hpp"
 #include "graphics/window.hpp"
+#include "debug_menu.hpp"
+#include "imgui_loop_component.hpp"
 
-namespace no::internal {
+#include "objects/object_editor.hpp"
+#include "scripts/script_editor.hpp"
 
-static void add_open_editor_debug_menu_item() {
-	debug::menu::add("nfwk-open-editor", "Editor", [] {
-		if (ui::menu_item("Open")) {
-			auto state = program_state::current();
-			state->change_state<editor_state>();
-		}
-	});
-}
+#include "presets.hpp"
 
-void initialize_editor() {
-	add_open_editor_debug_menu_item();
-}
+namespace nfwk {
 
-}
+editor_state::editor_state(loop& loop) : subprogram{ loop } {
+	window = make_window(*this, "nfwk editor");
+	//imgui = std::make_unique<nfwk::imgui_instance>(get_loop(), *window, *window_manager->get_render_context());
 
-namespace no {
-
-static std::vector<std::pair<std::string, std::function<std::unique_ptr<abstract_editor>()>>> editor_makers;
-
-editor_state::editor_state() {
 	debug::menu::remove("nfwk-open-editor");
 	debug::menu::add("nfwk-editor", "Editor", [this] {
 		for (const auto& [title, make_editor] : editor_makers) {
@@ -32,15 +23,23 @@ editor_state::editor_state() {
 			}
 		}
 	});
+
+	register_editor<object_class_editor>();
+	register_editor<object_class_list_editor>();
+	register_editor<script_editor>();
 }
 
 editor_state::~editor_state() {
-	internal::add_open_editor_debug_menu_item();
 	debug::menu::remove("nfwk-editor");
+	debug::menu::add("nfwk-open-editor", "Editor", [] {
+		//if (ui::menu_item("Open")) {
+		//	loop::active_subprogram()->change<editor_state>();
+		//}
+	});
 }
 
 void editor_state::update() {
-	const auto center = window().size().to<float>() / 2.0f;
+	const auto center = window->size().to<float>() / 2.0f;
 	for (int i{ 0 }; i < static_cast<int>(editors.size()); i++) {
 		auto& editor = *editors[i];
 		ImGui::PushID(&editor);
@@ -64,21 +63,20 @@ void editor_state::update() {
 	//ImGui::Image((ImTextureID)blank_texture, { 10.0f }, { 0.0f }, { 1.0f }, status, border);
 }
 
-void editor_state::draw() {
-
-}
-
 void editor_state::open(std::unique_ptr<abstract_editor> editor) {
 	editors.emplace_back(std::move(editor));
 }
 
 void editor_state::close(abstract_editor& editor_to_close) {
-	std::erase_if(editors, [&](const auto& open_editor) {
-		return &editor_to_close == open_editor.get();
-	});
+	for (int i{ 0 }; i < static_cast<int>(editors.size()); i++) {
+		if (&editor_to_close == editors[i].get()) {
+			editors.erase(editors.begin() + i);
+			i--;
+		}
+	}
 }
 
-void register_editor(std::string_view title, std::function<std::unique_ptr<abstract_editor>()> make_editor) {
+void editor_state::register_editor(std::string_view title, std::function<std::unique_ptr<abstract_editor>()> make_editor) {
 	editor_makers.emplace_back(title, std::move(make_editor));
 }
 

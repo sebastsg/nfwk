@@ -1,6 +1,6 @@
 #pragma once
 
-namespace no::tiles {
+namespace nfwk::tiles {
 
 class tile {
 public:

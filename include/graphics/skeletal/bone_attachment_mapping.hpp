@@ -3,7 +3,7 @@
 #include "vector3.hpp"
 #include "glm/gtc/quaternion.hpp"
 
-namespace no {
+namespace nfwk {
 
 struct bone_attachment_mapping {
 

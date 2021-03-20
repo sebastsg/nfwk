@@ -1,6 +1,6 @@
 #pragma once
 
-namespace no::internal {
+namespace nfwk::internal {
 
 void initialize_scripts();
 
