@@ -1,49 +1,52 @@
 #include "debug_menu.hpp"
 #include "html_log_writer.hpp"
 #include "loop.hpp"
-#include "frame_rate_controller.hpp"
+#include "graphics/ui.hpp"
+#include "graphics/draw.hpp"
 
 namespace nfwk::debug::menu {
 
 struct menu_info {
-	std::string id;
+	std::u8string id;
 	std::function<void()> update;
 };
 
 static struct {
 	bool enabled{ false };
 	bool initialized{ false };
-	std::unordered_map<std::string, std::vector<menu_info>> menus;
+	bool limit_fps{ true };
+	bool show_fps{ true };
+	std::unordered_map<std::u8string, std::vector<menu_info>> menus;
+	loop* owning_loop{ nullptr };
+	bool imgui_demo_enabled{ false };
+	std::unordered_set<std::u8string> open_log_windows;
 } menu_state;
 
-static std::unordered_set<std::string> open_log_windows;
-static bool imgui_demo_enabled{ false };
-
-void add(std::string_view id, std::string_view name, const std::function<void()>& update) {
+void add(std::u8string_view id, std::u8string_view name, const std::function<void()>& update) {
 	auto& menu = menu_state.menus[name.data()].emplace_back();
 	menu.id = id;
 	menu.update = update;
 }
 
-void add(std::string_view id, const std::function<void()>& update) {
-	add(id, "", update);
+void add(std::u8string_view id, const std::function<void()>& update) {
+	add(id, u8"", update);
 }
 
-void enable(loop& loop) {
+void enable(loop& owning_loop) {
 	menu_state.enabled = true;
+	menu_state.owning_loop = &owning_loop;
 	if (!menu_state.initialized) {
-		add("nfwk-debug", "Options", [] {
-			bool limit_fps{ true };
-			if (ui::menu_item("Limit FPS", limit_fps)) {
-				//
-			}
-			if (auto _ = ui::menu("Debug logs")) {
+		add(u8"nfwk-debug", u8"Options", [] {
+			// todo: need to have a way to swap loops to add this functionality back.
+			//if (ui::menu_item("Limit FPS", menu_state.limit_fps)) {}
+			ui::menu_item(u8"Show FPS", menu_state.show_fps);
+			if (auto _ = ui::menu(u8"Debug logs")) {
 				for (auto& log : log::get_logs()) {
 					if (auto log_menu = ui::menu(log->name)) {
-						ui::menu_item("Show time", log->show_time);
-						ui::menu_item("Show file", log->show_file);
-						ui::menu_item("Show line", log->show_line);
-						if (ui::menu_item("Open in browser")) {
+						ui::menu_item(u8"Show time", log->show_time);
+						ui::menu_item(u8"Show file", log->show_file);
+						ui::menu_item(u8"Show line", log->show_line);
+						if (ui::menu_item(u8"Open in browser")) {
 							bool absent{ true };
 							for (auto& writer : log->get_writers()) {
 								if (typeid(*writer) == typeid(log::html_writer)) {
@@ -59,24 +62,24 @@ void enable(loop& loop) {
 								log::add_writer(std::move(writer));
 							}
 						}
-						bool is_window_open{ open_log_windows.find(log->name) != open_log_windows.end() };
-						if (ui::menu_item("Integrated view", is_window_open)) {
+						bool is_window_open{ menu_state.open_log_windows.find(log->name) != menu_state.open_log_windows.end() };
+						if (ui::menu_item(u8"Integrated view", is_window_open)) {
 							if (is_window_open) {
-								open_log_windows.insert(log->name);
+								menu_state.open_log_windows.insert(log->name);
 							} else {
-								open_log_windows.erase(log->name);
+								menu_state.open_log_windows.erase(log->name);
 							}
 						}
 						ui::separate();
 						for (const auto& entry : log->get_entries()) {
-							ui::menu_item("[" + entry.time + "] " + entry.file + ":" + std::to_string(entry.line) + ": " + entry.message);
+							ui::menu_item(u8"[" + entry.time + u8"] " + entry.file + u8":" + to_string(entry.line) + u8": " + entry.message);
 						}
 					}
 				}
 			}
 		});
-		add("nfwk-debug", "View", [] {
-			ui::menu_item("ImGui Demo", imgui_demo_enabled);
+		add(u8"nfwk-debug", u8"View", [] {
+			ui::menu_item(u8"ImGui Demo", menu_state.imgui_demo_enabled);
 		});
 		menu_state.initialized = true;
 	}
@@ -107,7 +110,9 @@ void update() {
 			}
 		}
 	}
-	///ui::colored_text({ 0.9f, 0.9f, 0.1f }, "\tFPS: %i", frame_counter().current_fps());
+	if (menu_state.show_fps) {
+		ui::colored_text({ 0.9f, 0.9f, 0.1f }, u8"\tFPS: %i", menu_state.owning_loop->current_fps());
+	}
 	ImGui::EndMainMenuBar();
 	constexpr vector3f log_color[]{
 		{ 1.0f, 1.0f, 1.0f }, // message
@@ -115,38 +120,38 @@ void update() {
 		{ 1.0f, 0.4f, 0.4f }, // error
 		{ 0.4f, 0.8f, 1.0f }  // info
 	};
-	for (const auto& name : open_log_windows) {
+	for (const auto& name : menu_state.open_log_windows) {
 		bool open{ true };
-		if (auto _ = ui::push_window(name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
+		if (auto _ = ui::window(name, std::nullopt, std::nullopt, ImGuiWindowFlags_AlwaysAutoResize, &open)) {
 			if (!open) {
-				open_log_windows.erase(name);
+				menu_state.open_log_windows.erase(name);
 				break;
 			}
 			if (auto log = log::find_log(name)) {
 				for (const auto& entry : log->get_entries()) {
 					if (log->show_time) {
-						ui::colored_text({ 0.4f, 0.35f, 0.3f }, "%s", entry.time.c_str());
+						ui::colored_text({ 0.4f, 0.35f, 0.3f }, u8"%s", entry.time.c_str());
 						ui::inline_next();
 					}
 					if (log->show_file) {
-						ui::colored_text({ 0.5f, 0.6f, 0.7f }, "%s", entry.file.c_str());
+						ui::colored_text({ 0.5f, 0.6f, 0.7f }, u8"%s", entry.file.c_str());
 						ui::inline_next();
 					}
 					if (log->show_line) {
-						ui::colored_text({ 0.3f, 0.3f, 0.3f }, "%i", entry.line);
+						ui::colored_text({ 0.3f, 0.3f, 0.3f }, u8"%i", entry.line);
 						ui::inline_next();
 					}
-					ui::colored_text(log_color[static_cast<int>(entry.type)], "%s", entry.message.c_str());
+					ui::colored_text(log_color[static_cast<int>(entry.type)], u8"%s", entry.message.c_str());
 				}
 			}
 		}
 	}
-	if (imgui_demo_enabled) {
+	if (menu_state.imgui_demo_enabled) {
 		ImGui::ShowDemoWindow();
 	}
 }
 
-void remove(std::string_view id) {
+void remove(std::u8string_view id) {
 	for (auto& [name, menus] : menu_state.menus) {
 		for (int i{ 0 }; i < static_cast<int>(menus.size()); i++) {
 			if (menus[i].id == id) {

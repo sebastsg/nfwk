@@ -14,21 +14,23 @@ surface load_png(const std::filesystem::path& path) {
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
 	if (!png) {
-		warning("graphics", "Failed to create read structure");
+		warning(graphics::log, u8"Failed to create read structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_infop info{ png_create_info_struct(png) };
 	if (!info) {
-		warning("graphics", "Failed to create info structure");
+		warning(graphics::log, u8"Failed to create info structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	if (setjmp(png_jmpbuf(png))) {
-		warning("graphics", "Failed to load image: {}", path);
+		warning(graphics::log, u8"Failed to load image: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 #if 1
 	FILE* file{ nullptr };
-	const errno_t error{ fopen_s(&file, path.u8string().c_str(), "rb") };
+	const auto& path_string = path.u8string();
+	const char* path_data = reinterpret_cast<const char*>(path_string.c_str());
+	const errno_t error{ fopen_s(&file, path_data, "rb") };
 	if (!file) {
 		return { 2, 2, pixel_format::rgba };
 	}
@@ -37,7 +39,7 @@ surface load_png(const std::filesystem::path& path) {
 	const int error{ errno };
 #endif
 	if (error == ENOENT) {
-		warning("graphics", "Image file was not found: {}", path);
+		warning(graphics::log, u8"Image file was not found: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 
@@ -81,14 +83,14 @@ surface load_png(const std::filesystem::path& path) {
 	fclose(file);
 	png_destroy_read_struct(&png, &info, nullptr);
 
-	std::uint32_t* pixels = new std::uint32_t[width * height];
+	auto pixels = new std::uint32_t[width * height];
 	for (std::uint32_t y{ 0 }; y < height; y++) {
 		auto destination = reinterpret_cast<std::uint8_t*>(pixels + y * width);
 		memcpy(destination, rows[y], row_size);
 		delete[] rows[y];
 	}
 	delete[] rows;
-	message("graphics", "Loaded PNG file {}. Size: {}, {}", path, width, height);
+	message(graphics::log, u8"Loaded PNG file {}. Size: {}, {}", path, width, height);
 	return { pixels, static_cast<int>(width), static_cast<int>(height), pixel_format::rgba, surface::construct_by::move };
 }
 

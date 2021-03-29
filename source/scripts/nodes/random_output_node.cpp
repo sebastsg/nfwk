@@ -4,9 +4,9 @@
 
 namespace nfwk {
 
-std::optional<int> random_output_node::process() {
+std::optional<int> random_output_node::process() const {
 	if (outputs.empty()) {
-		warning("scripts", "No nodes attached.");
+		warning(scripts::log, u8"No nodes attached.");
 		return std::nullopt;
 	} else {
 		return random_number_generator::global().next(static_cast<int>(outputs.size()) - 1);
@@ -19,10 +19,6 @@ void random_output_node::write(io_stream& stream) const {
 
 void random_output_node::read(io_stream& stream) {
 	script_node::read(stream);
-}
-
-bool random_output_node::update_editor() {
-	return false;
 }
 
 }

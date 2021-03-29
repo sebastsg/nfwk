@@ -5,7 +5,6 @@
 #include "timer.hpp"
 #include "event.hpp"
 
-#include <string>
 #include <functional>
 
 //void run() {
@@ -19,12 +18,12 @@
 namespace nfwk {
 
 loop::~loop() {
-	message("core", "Exiting.");
+	message(core::log, u8"Exiting.");
 }
 
 void loop::run() {
 	if (inside_run) {
-		error("core", "Already running.");
+		error(core::log, u8"Already running.");
 		return;
 	}
 	inside_run = true;

@@ -5,6 +5,7 @@
 #include "transform.hpp"
 #include "math.hpp"
 #include "log.hpp"
+#include "assert.hpp"
 #include "graphics/tiles/tiles.hpp"
 
 namespace nfwk::tiles {

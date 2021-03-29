@@ -1,6 +1,7 @@
 #include "graphics/surface.hpp"
 #include "graphics/png.hpp"
 #include "log.hpp"
+#include "assert.hpp"
 
 #include <cstring>
 

@@ -7,13 +7,13 @@ namespace nfwk {
 
 void bone_attachment_mapping_list::save(const std::string& path) {
 	io_stream stream;
-	stream.write(static_cast<std::int32_t>(mappings.size()));
+	stream.write_size(mappings.size());
 	for (auto& attachment : mappings) {
-		stream.write(attachment.root_model);
-		stream.write(attachment.root_animation);
-		stream.write(attachment.attached_model);
-		stream.write(attachment.attached_animation);
-		stream.write(static_cast<std::int32_t>(attachment.attached_to_channel));
+		stream.write_string(attachment.root_model);
+		stream.write_string(attachment.root_animation);
+		stream.write_string(attachment.attached_model);
+		stream.write_string(attachment.attached_animation);
+		stream.write<std::int32_t>(attachment.attached_to_channel);
 		stream.write(attachment.position);
 		stream.write(attachment.rotation);
 	}
@@ -26,13 +26,13 @@ void bone_attachment_mapping_list::load(const std::string& path) {
 	if (stream.write_index() == 0) {
 		return;
 	}
-	const std::int32_t count{ stream.read<std::int32_t>() };
-	for (std::int32_t i{ 0 }; i < count; i++) {
+	const auto count = stream.read_size();
+	for (std::size_t i{ 0 }; i < count; i++) {
 		bone_attachment_mapping mapping;
-		mapping.root_model = stream.read<std::string>();
-		mapping.root_animation = stream.read<std::string>();
-		mapping.attached_model = stream.read<std::string>();
-		mapping.attached_animation = stream.read<std::string>();
+		mapping.root_model = stream.read_string();
+		mapping.root_animation = stream.read_string();
+		mapping.attached_model = stream.read_string();
+		mapping.attached_animation = stream.read_string();
 		mapping.attached_to_channel = stream.read<std::int32_t>();
 		mapping.position = stream.read<vector3f>();
 		mapping.rotation = stream.read<glm::quat>();
@@ -72,7 +72,7 @@ void bone_attachment_mapping_list::add(const bone_attachment_mapping& mapping) {
 	}
 }
 
-bool bone_attachment_mapping_list::update(const model& root, int animation_index, const std::string& attachment_model, bone_attachment& attachment) const {
+bool bone_attachment_mapping_list::update(const model& root, int animation_index, const std::u8string& attachment_model, bone_attachment& attachment) const {
 	if (animation_index < 0) {
 		return false;
 	}
@@ -96,7 +96,7 @@ bool bone_attachment_mapping_list::update(const model& root, int animation_index
 	return false;
 }
 
-std::string bone_attachment_mapping_list::find_root_animation(const std::string& root_model, const std::string& attached_model, const std::string& attached_animation) const {
+std::u8string bone_attachment_mapping_list::find_root_animation(const std::u8string& root_model, const std::u8string& attached_model, const std::u8string& attached_animation) const {
 	for (const auto& mapping : mappings) {
 		if (mapping.root_model != root_model) {
 			continue;

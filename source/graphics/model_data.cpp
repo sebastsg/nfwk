@@ -293,11 +293,11 @@ void convert_model(const std::string& source, const std::string& destination, mo
 
 #endif
 
-transform3 load_model_bounding_box(const std::string& path) {
+transform3 load_model_bounding_box(const std::filesystem::path& path) {
 	io_stream stream;
 	read_file(path, stream);
 	if (stream.write_index() == 0) {
-		warning("graphics", "Failed to open file: {}", path);
+		warning(graphics::log, u8"Failed to open file: {}", path);
 		return {};
 	}
 	stream.move_read_index(sizeof(glm::mat4));

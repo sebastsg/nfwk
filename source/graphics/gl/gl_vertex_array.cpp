@@ -1,10 +1,8 @@
 #include "platform.hpp"
-
 #include "graphics/gl/gl.hpp"
 #include "graphics/vertex_array.hpp"
 #include "log.hpp"
-
-#include "glm/gtc/type_ptr.hpp"
+#include "assert.hpp"
 
 namespace nfwk::gl {
 
@@ -123,7 +121,7 @@ void set_vertex_array_indices(int id, const std::uint8_t* data, std::size_t size
 		vertex_array.index_type = GL_UNSIGNED_INT;
 		break;
 	default:
-		warning("graphics", "Invalid index element size: {}", element_size);
+		warning(draw::log, u8"Invalid index element size: {}", element_size);
 		break;
 	}
 	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));

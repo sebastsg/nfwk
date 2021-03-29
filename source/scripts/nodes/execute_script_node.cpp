@@ -5,11 +5,11 @@
 
 namespace nfwk {
 
-std::optional<int> execute_script_node::process() {
-	script_tree inner;
-	inner.context = tree->context;
+std::optional<int> execute_script_node::process() const {
 	ASSERT(false);
-	error("scripts", "Not implemented");
+	error(scripts::log, u8"Not implemented");
+	//script_tree inner;
+	//inner.context = tree->context;
 	//inner.load(script);
 	//inner.process_entry_point();
 	return 0;
@@ -17,17 +17,12 @@ std::optional<int> execute_script_node::process() {
 
 void execute_script_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write(script);
+	stream.write_string(script_id);
 }
 
 void execute_script_node::read(io_stream& stream) {
 	script_node::read(stream);
-	script = stream.read<std::string>();
-}
-
-bool execute_script_node::update_editor() {
-	bool dirty = ui::input("Script", script);
-	return dirty;
+	script_id = stream.read_string();
 }
 
 }

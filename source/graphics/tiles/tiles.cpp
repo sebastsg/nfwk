@@ -44,7 +44,7 @@ std::shared_ptr<layer> map::make_layer(int depth, int chunk_tiles_per_axis, vect
 	} else if (method == renderer::method::autotile) {
 		layer->set_renderer(std::make_unique<autotile_renderer>(grid, total_tile_types, *tileset_texture));
 	} else {
-		error("tiles", "Invalid render method.");
+		error(u8"tiles", u8"Invalid render method.");
 	}
 	std::sort(layers.begin(), layers.end(), [](const auto& a, const auto& b) {
 		return a->depth < b->depth;
@@ -55,12 +55,9 @@ std::shared_ptr<layer> map::make_layer(int depth, int chunk_tiles_per_axis, vect
 }
 
 void map::delete_layer(int depth) {
-	auto it = std::remove_if(layers.begin(), layers.end(), [depth](const auto& layer) {
+	/*std::erase_if(layers, [depth](const auto& layer) {
 		return layer->depth == depth;
-	});
-	if (it != layers.end()) {
-		layers.erase(it);
-	}
+	});*/
 }
 
 void map::change_layer(int depth) {

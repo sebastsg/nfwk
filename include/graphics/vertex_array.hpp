@@ -5,8 +5,8 @@
 namespace nfwk {
 
 int create_vertex_array(const vertex_specification& specification);
-void set_vertex_array_vertices(int id, const std::uint8_t* buffer, std::size_t size);
-void set_vertex_array_indices(int id, const std::uint8_t* buffer, std::size_t size, std::size_t element_size);
+void set_vertex_array_vertices(int id, const std::uint8_t* data, std::size_t size);
+void set_vertex_array_indices(int id, const std::uint8_t* data, std::size_t size, std::size_t element_size);
 void draw_vertex_array(int id);
 void draw_vertex_array(int id, std::size_t offset, int count);
 void delete_vertex_array(int id);
@@ -27,7 +27,7 @@ public:
 
 	vertex_array(const vertex_array&) = delete;
 
-	vertex_array(vertex_array&& that) {
+	vertex_array(vertex_array&& that) noexcept {
 		std::swap(id, that.id);
 	}
 
@@ -37,7 +37,7 @@ public:
 
 	vertex_array& operator=(const vertex_array&) = delete;
 
-	vertex_array& operator=(vertex_array&& that) {
+	vertex_array& operator=(vertex_array&& that) noexcept {
 		std::swap(id, that.id);
 		return *this;
 	}
@@ -81,4 +81,5 @@ private:
 	int id{ -1 };
 
 };
+
 }

@@ -6,8 +6,6 @@
 #include "graphics/texture.hpp"
 #include "graphics/draw.hpp"
 
-#include <optional>
-
 namespace nfwk {
 
 struct skybox_vertex {
@@ -20,7 +18,7 @@ std::unique_ptr<model> skybox;
 
 void create_skybox() {
 	model_data<skybox_vertex, unsigned short> data;
-	data.name = "skybox";
+	data.name = u8"skybox";
 	data.min = 0.0f;
 	data.max = 1.0f;
 	data.shape.vertices = {

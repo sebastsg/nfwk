@@ -29,4 +29,17 @@ struct is_pointer<T*> {
 	static constexpr bool value{ true };
 };
 
+template<typename Element, typename String = std::u8string>
+std::vector<String> vector_to_strings(const std::vector<Element>& elements) {
+	std::vector<String> values;
+	for (const auto& element : elements) {
+		if constexpr (is_pointer<Element>::value) {
+			values.push_back(element->to_string());
+		} else {
+			values.push_back(element.to_string());
+		}
+	}
+	return values;
+}
+
 }

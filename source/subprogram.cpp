@@ -4,7 +4,7 @@
 namespace nfwk {
 
 subprogram::subprogram(loop& loop) : owning_loop{ &loop } {
-	info("core", "Created subprogram: {}", typeid(*this).name());
+	info(core::log, u8"Created subprogram: {}", typeid(*this).name());
 }
 
 subprogram::~subprogram() {

@@ -1,20 +1,19 @@
 #include "audio/pcm_stream.hpp"
 #include "audio/audio_source.hpp"
 #include "log.hpp"
+#include "assert.hpp"
 
 #include <climits>
 
 namespace nfwk {
 
-pcm_stream::pcm_stream(audio_source* source) : source{ source } {
-
-}
+pcm_stream::pcm_stream(audio_source* source) : source{ source } {}
 
 bool pcm_stream::is_empty() const {
 	switch (source->format()) {
 	case pcm_format::int_16: return position + sizeof(std::int16_t) >= source->size();
 	case pcm_format::float_32: return position + sizeof(float) >= source->size();
-	default: return true;
+	case pcm_format::unknown: return true;
 	}
 }
 
@@ -27,7 +26,7 @@ float pcm_stream::read_float() {
 		position += sizeof(pcm);
 		return static_cast<float>(static_cast<double>(pcm) / static_cast<double>(SHRT_MAX));
 	}
-	warning("audio", "Unknown source format {}", source->format());
+	warning(audio::log, u8"Unknown source format {}", source->format());
 	return 0.0f;
 }
 
@@ -58,12 +57,4 @@ int pcm_stream::sample_rate() const {
 	return source->sample_rate();
 }
 
-}
-
-std::ostream& operator<<(std::ostream& out, nfwk::pcm_format format) {
-	switch (format) {
-	case nfwk::pcm_format::float_32: return out << "Float32";
-	case nfwk::pcm_format::int_16: return out << "Int16";
-	default: return out << "Unknown";
-	}
 }

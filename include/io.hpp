@@ -7,14 +7,27 @@
 #include <functional>
 #include <optional>
 #include <unordered_map> // remove when get_map_keys is moved
-#include <future> // remove when is_future_ready is moved
 
-#define STRING(X) [&]{ std::ostringstream S; S << X; return S.str(); }()
-#define CSTRING(X) STRING(X).c_str()
+namespace nfwk {
+
+inline std::u8string to_string(int value) {
+	return reinterpret_cast<const char8_t*>(std::to_string(value).c_str());
+}
+
+inline std::u8string to_string(std::string_view string) {
+	return reinterpret_cast<const char8_t*>(string.data());
+}
+
+inline std::string to_regular_string(std::u8string_view string) {
+	return { string.begin(), string.end() };
+}
+
+}
 
 namespace nfwk {
 
 enum class entry_inclusion { everything, only_files, only_directories };
+enum class size_length { one_byte, two_bytes, four_bytes, eight_bytes };
 
 std::filesystem::path _workaround_fix_windows_path(std::filesystem::path path);
 
@@ -22,11 +35,11 @@ std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path pa
 
 // todo: move these string functions
 // todo: split by string should also be possible
-std::vector<std::string> split_string(std::string string, char symbol);
+std::vector<std::u8string> split_string(const std::u8string& string, char symbol);
 // todo: allow some options like 'all occurrences' or 'last occurrence'
-std::string erase_substring(const std::string& string, const std::string& substring);
-void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with);
-std::string string_to_lowercase(std::string string);
+std::u8string erase_substring(const std::u8string& string, const std::u8string& substring);
+void replace_substring(std::u8string& string, std::u8string_view substring, std::u8string_view replace_with);
+std::u8string string_to_lowercase(std::u8string string);
 
 // todo: should be moved to a new file.
 template<typename T, typename U>
@@ -59,12 +72,11 @@ public:
 	void free();
 
 	// move everything from the read position to the beginning
-	// useful when we have extracted some data, and want to 
-	// read the rest with a read index of 0
+	// useful when we have extracted some data, and want to read the rest with a read index of 0
 	void shift_read_to_begin();
 
-	void set_read_index(size_t index);
-	void set_write_index(size_t index);
+	void set_read_index(std::size_t index);
+	void set_write_index(std::size_t index);
 
 	void move_read_index(long long size);
 	void move_write_index(long long size);
@@ -87,7 +99,7 @@ public:
 			return {};
 		}
 		T value;
-		memcpy(&value, begin + index, sizeof(T));
+		std::memcpy(&value, begin + index, sizeof(T));
 		return value;
 	}
 
@@ -103,37 +115,52 @@ public:
 
 	template<typename T>
 	T read() {
-		if (read_position + sizeof(T) > end) {
+		static_assert(!std::is_same_v<T, std::string>, "Use read_string()");
+		static_assert(!std::is_same_v<T, std::u8string>, "Use read_string()");
+		static_assert(!std::is_same_v<T, std::string_view>, "Use read_string(). What are you doing.");
+		static_assert(!std::is_same_v<T, std::u8string_view>, "Use read_string(). What are you doing.");
+		static_assert(!std::is_same_v<T, bool>, "Use read_bool()");
+		if (read_position + sizeof(T) > end) { 
 			return {};
 		}
 		T value;
-		memcpy(&value, read_position, sizeof(T));
+		std::memcpy(&value, read_position, sizeof(T));
 		read_position += sizeof(T);
 		return value;
 	}
 
-	template<>
-	std::string read() {
-		const std::size_t length{ read<std::uint32_t>() };
-		if (length == 0) {
-			return "";
+	void write_string(std::u8string_view value) {
+		const auto size = value.size();
+		write_size(size);
+		if (size == 0) {
+			return;
 		}
-		if (read_position + length > end) {
+		resize_if_needed(size);
+		std::memcpy(write_position, value.data(), size);
+		write_position += size;
+	}
+	
+	std::u8string read_string() {
+		const auto length = read_size();
+		if (length == 0 || read_position + length > end) {
 			return {};
 		}
-		std::string result;
+		std::u8string result;
 		result.insert(result.begin(), length, '\0');
 		std::memcpy(&result[0], read_position, length);
 		read_position += length;
 		return result;
 	}
 
-	template<>
-	bool read() {
+	void write_bool(bool value) {
+		write<std::uint8_t>(value ? 1 : 0);
+	}
+
+	bool read_bool() {
 		return read<std::uint8_t>() != 0;
 	}
 
-	void read(char* destination, std::size_t size) {
+	void read_raw(char* destination, std::size_t size) {
 		if (read_position + size > end) {
 			return;
 		}
@@ -141,66 +168,99 @@ public:
 		read_position += size;
 	}
 
+	template<typename T>
+	void write(T value) {
+		static_assert(!std::is_same_v<T, std::string_view>, "Use write_string()");
+		static_assert(!std::is_same_v<T, std::string>, "Use write_string()");
+		static_assert(!std::is_same_v<T, std::u8string_view>, "Use write_string()");
+		static_assert(!std::is_same_v<T, std::u8string>, "Use write_string()");
+		static_assert(!std::is_same_v<T, bool>, "Use write_bool()");
+		resize_if_needed(sizeof(T));
+		std::memcpy(write_position, &value, sizeof(T));
+		write_position += sizeof(T);
+	}
+
+	template<size_length Size = size_length::four_bytes>
+	void write_size(std::size_t value) {
+		switch (Size) {
+		case size_length::one_byte:
+			write(static_cast<std::uint8_t>(value));
+			break;
+		case size_length::two_bytes:
+			write(static_cast<std::uint16_t>(value));
+			break;
+		case size_length::four_bytes:
+			write(static_cast<std::uint32_t>(value));
+			break;
+		case size_length::eight_bytes:
+			write(static_cast<std::uint64_t>(value));
+			break;
+		}
+	}
+	
+	template<size_length Size = size_length::four_bytes>
+	std::size_t read_size() {
+		switch (Size) {
+		case size_length::one_byte: return static_cast<std::size_t>(read<std::uint8_t>());
+		case size_length::two_bytes: return static_cast<std::size_t>(read<std::uint16_t>());
+		case size_length::four_bytes: return static_cast<std::size_t>(read<std::uint32_t>());
+		case size_length::eight_bytes: return static_cast<std::size_t>(read<std::uint64_t>());
+		}
+	}
+
+	void write_raw(const char* source, std::size_t size) {
+		resize_if_needed(size);
+		std::memcpy(write_position, source, size);
+		write_position += size;
+	}
+
 	template<typename ReadType, typename ReturnType = ReadType>
 	std::optional<ReturnType> read_optional() {
-		if (read<bool>()) {
+		if (read_bool()) {
 			return static_cast<ReturnType>(read<ReadType>());
 		} else {
 			return std::nullopt;
 		}
 	}
 
-	template<typename T>
-	void write(T value) {
-		resize_if_needed(sizeof(T));
-		memcpy(write_position, &value, sizeof(T));
-		write_position += sizeof(T);
-	}
-
-	template<>
-	void write(std::string value) {
-		const auto size = value.size();
-		write(static_cast<std::uint32_t>(size));
-		if (size == 0) {
-			return;
-		}
-		resize_if_needed(size);
-		std::memcpy(write_position, value.c_str(), size);
-		write_position += size;
-	}
-
-	template<>
-	void write(bool value) {
-		write<std::uint8_t>(value ? 1 : 0);
-	}
-
-	void write(const char* source, std::size_t size) {
-		resize_if_needed(size);
-		std::memcpy(write_position, source, size);
-		write_position += size;
-	}
-
 	template<typename WriteType, typename SourceType>
 	void write_optional(std::optional<SourceType> value) {
-		write<bool>(value.has_value());
+		write_bool(value.has_value());
 		if (value.has_value()) {
 			write(static_cast<WriteType>(value.value()));
 		}
 	}
 
+	void write_string_array(const std::vector<std::u8string>& values) {
+		write_size(values.size());
+		for (auto& value : values) {
+			write_string(value);
+		}
+	}
+
+	std::vector<std::u8string> read_string_array() {
+		std::vector<std::u8string> values;
+		const auto count = read_size();
+		values.reserve(count);
+		for (std::size_t i{ 0 }; i < count; i++) {
+			values.emplace_back(read_string());
+		}
+		return values;
+	}
+
 	template<typename WriteType, typename SourceType = WriteType>
 	void write_array(const std::vector<SourceType>& values) {
-		write(static_cast<std::int32_t>(values.size()));
+		write_size(values.size());
 		for (auto& value : values) {
-			write(static_cast<WriteType>(value));
+			write(static_cast<WriteType>(*this, value));
 		}
 	}
 
 	template<typename WriteType, typename SourceType = WriteType>
 	std::vector<WriteType> read_array() {
 		std::vector<WriteType> values;
-		const auto count = read<std::int32_t>();
-		for (std::int32_t i{ 0 }; i < count; i++) {
+		const auto count = read_size();
+		for (std::size_t i{ 0 }; i < count; i++) {
 			values.push_back(static_cast<WriteType>(read<SourceType>()));
 		}
 		return std::move(values);
@@ -228,16 +288,34 @@ private:
 class io_streamable {
 public:
 
+	io_streamable() = default;
+	io_streamable(const io_streamable&) = default;
+	io_streamable(io_streamable&&) = default;
+	
+	virtual ~io_streamable() = default;
+
+	io_streamable& operator=(const io_streamable&) = default;
+	io_streamable& operator=(io_streamable&&) = default;
+
 	virtual void write(io_stream& stream) const = 0;
 	virtual void read(io_stream& stream) = 0;
 
 };
 
-void write_file(const std::filesystem::path& path, const std::string& source);
+void write_file(const std::filesystem::path& path, std::string_view source);
+#ifdef NFWK_CPP_20
+void write_file(const std::filesystem::path& path, std::u8string_view source);
+#endif
+
 void write_file(const std::filesystem::path& path, const char* source, std::size_t size);
 void write_file(const std::filesystem::path& path, io_stream& source);
-void append_file(const std::filesystem::path& path, const std::string& source);
-std::string read_file(const std::filesystem::path& path);
+
+void append_file(const std::filesystem::path& path, std::string_view source);
+#ifdef NFWK_CPP_20
+void append_file(const std::filesystem::path& path, std::u8string_view source);
+#endif
+
+std::u8string read_file(const std::filesystem::path& path);
 void read_file(const std::filesystem::path& path, io_stream& destination);
 
 }

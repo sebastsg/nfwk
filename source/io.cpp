@@ -33,8 +33,8 @@ std::filesystem::path _workaround_fix_windows_path(std::filesystem::path path) {
 	if (path.u8string().back() == ':') {
 		path /= "/";
 	} else {
-		std::string path_string = path.u8string();
-		if (const std::size_t index = path_string.find(':'); index != std::string::npos) {
+		auto path_string = path.u8string();
+		if (const auto index = path_string.find(':'); index != std::u8string::npos) {
 			if (index + 1 < path_string.size()) {
 				if (path_string[index + 1] != '/' && path_string[index + 1] != '\\') {
 					path_string.insert(path_string.begin() + index + 1, '/');
@@ -58,14 +58,14 @@ std::vector<std::filesystem::path> entries_in_directory(std::filesystem::path pa
 	}
 }
 
-std::vector<std::string> split_string(std::string string, char symbol) {
+std::vector<std::u8string> split_string(const std::u8string& string, char symbol) {
 	if (string.empty()) {
 		return {};
 	}
-	std::vector<std::string> result;
+	std::vector<std::u8string> result;
 	std::size_t start{ 0 };
 	std::size_t next{ string.find(symbol) };
-	while (next != std::string::npos) {
+	while (next != std::u8string::npos) {
 		result.push_back(string.substr(start, next - start));
 		start = next + 1;
 		next = string.find(symbol, start);
@@ -74,23 +74,23 @@ std::vector<std::string> split_string(std::string string, char symbol) {
 	return result;
 }
 
-std::string erase_substring(const std::string& string, const std::string& substring) {
+std::u8string erase_substring(const std::u8string& string, const std::u8string& substring) {
 	auto result = string;
-	if (const auto index = result.find(substring); index != std::string::npos) {
+	if (const auto index = result.find(substring); index != std::u8string::npos) {
 		result.erase(result.find(substring), substring.size());
 	}
 	return result;
 }
 
-void replace_substring(std::string& string, std::string_view substring, std::string_view replace_with) {
+void replace_substring(std::u8string& string, std::u8string_view substring, std::u8string_view replace_with) {
 	auto index = string.find(substring);
-	while (index != std::string::npos) {
+	while (index != std::u8string::npos) {
 		string.replace(index, substring.size(), replace_with);
 		index = string.find(substring, index + replace_with.size());
 	}
 }
 
-std::string string_to_lowercase(std::string string) {
+std::u8string string_to_lowercase(std::u8string string) {
 	std::transform(string.begin(), string.end(), string.begin(), [](const auto& character) {
 		return std::tolower(character);
 	});
@@ -104,7 +104,7 @@ io_stream::io_stream(std::size_t size) {
 io_stream::io_stream(char* data, std::size_t size, construct_by construction) {
 	switch (construction) {
 	case construct_by::copy:
-		write(data, size);
+		write_raw(data, size);
 		break;
 	case construct_by::move:
 		begin = data;
@@ -333,12 +333,21 @@ bool io_stream::is_owner() const {
 	return owner;
 }
 
-void write_file(const std::filesystem::path& path, const std::string& source) {
+void write_file(const std::filesystem::path& path, std::string_view source) {
 	std::filesystem::create_directories(path.parent_path());
 	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
 		file << source;
 	}
 }
+
+#ifdef NFWK_CPP_20
+void write_file(const std::filesystem::path& path, std::u8string_view source) {
+	std::filesystem::create_directories(path.parent_path());
+	if (std::ofstream file{ path, std::ios::binary }; file.is_open()) {
+		file << reinterpret_cast<const char*>(source.data());
+	}
+}
+#endif
 
 void write_file(const std::filesystem::path& path, const char* source, std::size_t size) {
 	std::filesystem::create_directories(path.parent_path());
@@ -351,28 +360,36 @@ void write_file(const std::filesystem::path& path, io_stream& source) {
 	write_file(path, source.data(), source.write_index());
 }
 
-void append_file(const std::filesystem::path& path, const std::string& source) {
+void append_file(const std::filesystem::path& path, std::string_view source) {
 	if (std::ofstream file{ path, std::ios::app }; file.is_open()) {
 		file << source;
 	}
 }
 
-std::string read_file(const std::filesystem::path& path) {
-	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
+#ifdef NFWK_CPP_20
+void append_file(const std::filesystem::path& path, std::u8string_view source) {
+	if (std::ofstream file{ path, std::ios::app }; file.is_open()) {
+		file << reinterpret_cast<const char*>(source.data());
+	}
+}
+#endif
+
+std::u8string read_file(const std::filesystem::path& path) {
+	if (const std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();
-		return result.str();
+		return reinterpret_cast<const char8_t*>(result.str().c_str());
 	} else {
-		return "";
+		return u8"";
 	}
 }
 
-void read_file(const std::filesystem::path& path, io_stream& stream) {
-	if (std::ifstream file{ path, std::ios::binary }; file.is_open()) {
+void read_file(const std::filesystem::path& path, io_stream& destination) {
+	if (const std::ifstream file{ path, std::ios::binary }; file.is_open()) {
 		std::stringstream result;
 		result << file.rdbuf();
 		const auto& string = result.str();
-		stream.write(string.c_str(), string.size());
+		destination.write_raw(string.c_str(), string.size());
 	}
 }
 

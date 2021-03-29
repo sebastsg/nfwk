@@ -8,19 +8,18 @@ namespace nfwk {
 class delete_variable_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(6, "Delete variable", "Variables");
+	NFWK_SCRIPT_CORE_NODE(6, u8"Delete variable", u8"Variables");
 
 	bool is_global{ false };
-	std::string variable_name;
+	std::u8string variable_name;
 
 	script_node_output_type output_type() const override {
 		return script_node_output_type::single;
 	}
 
-	std::optional<int> process() override;
+	std::optional<int> process() const override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
-	bool update_editor() override;
 
 };
 

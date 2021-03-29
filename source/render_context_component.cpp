@@ -2,7 +2,6 @@
 #include "graphics/gl/wgl_context.hpp"
 #include "graphics/windows_window.hpp"
 #include "audio/wasapi.hpp"
-#include "graphics/ui.hpp"
 #include "debug_menu.hpp"
 
 namespace nfwk {
@@ -18,7 +17,7 @@ window_manager::window_manager(loop& loop, bool support_imgui) : owning_loop{ lo
 	});
 }
 
-std::shared_ptr<window> window_manager::create_window(std::string_view title, std::optional<vector2i> size) {
+std::shared_ptr<window> window_manager::create_window(std::u8string_view title, std::optional<vector2i> size) {
 	auto compatibility_context = context ? nullptr : platform::windows_window::create_compatibility_render_context();
 	auto& window = windows.emplace_back(std::make_shared<platform::windows_window>(title, size));
 	if (!context) {
@@ -41,12 +40,15 @@ std::shared_ptr<window> window_manager::create_window(std::string_view title, st
 	return window;
 }
 
-std::shared_ptr<render_context> window_manager::get_render_context() {
+std::shared_ptr<render_context> window_manager::get_render_context() const {
 	return context;
 }
 
 imgui_instance::imgui_instance(loop& loop, window& window, render_context& context_) : context{ context_ } {
-	ui::create(window, "calibril.ttf", 18);
+	ui::create(window);
+	ui::add_font("calibril.ttf", 16);
+	ui::add_font("calibril.ttf", 12);
+	ui::build_fonts();
 	draw_event_listener = window.on_draw.listen([this] {
 		ui::draw(context);
 	});

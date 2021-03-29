@@ -5,26 +5,20 @@
 
 namespace nfwk {
 
-std::optional<int> variable_exists_node::process() {
-	return tree->context->find(scope_id, variable_name) ? 1 : 0;
+std::optional<int> variable_exists_node::process() const {
+	return tree->context.variables->find(scope_id, variable_name) ? 1 : 0;
 }
 
 void variable_exists_node::read(io_stream& stream) {
 	script_node::read(stream);
-	is_global = stream.read<bool>();
-	variable_name = stream.read<std::string>();
+	is_global = stream.read_bool();
+	variable_name = stream.read_string();
 }
 
 void variable_exists_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<bool>(is_global);
-	stream.write(variable_name);
-}
-
-bool variable_exists_node::update_editor() {
-	bool dirty = ui::checkbox("Global", is_global);
-	dirty |= ui::input("Name", variable_name);
-	return dirty;
+	stream.write_bool(is_global);
+	stream.write_string(variable_name);
 }
 
 }

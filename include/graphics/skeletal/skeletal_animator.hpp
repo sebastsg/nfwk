@@ -8,6 +8,7 @@
 
 namespace nfwk {
 
+class transform3;
 class model;
 class skeletal_animation;
 class synced_skeletal_animation;

@@ -18,6 +18,15 @@ public:
 		tall_autotile, // 2x wall autotile (needs to be ported from Caligo project)
 	};
 
+	renderer() = default;
+	renderer(const renderer&) = delete;
+	renderer(renderer&&) = delete;
+
+	virtual ~renderer() = default;
+
+	renderer& operator=(const renderer&) = delete;
+	renderer& operator=(renderer&&) = delete;
+
 	virtual void render_area(layer& layer, int x, int y, int width, int height) = 0;
 	virtual void render_chunk(layer& layer, chunk& chunk) = 0;
 

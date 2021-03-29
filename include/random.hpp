@@ -29,14 +29,14 @@ public:
 	// max is inclusive
 	template<typename T>
 	T next(T max) {
-		return next<T>(static_cast<T>(0), max);
+		return next<T>({}, max);
 	}
 
 	// chance must be between 0.0f and 1.0f
 	// the higher chance is, the more likely this function returns true
 	bool chance(float chance);
 
-	std::string string(int size);
+	std::u8string string(int size);
 
 	static random_number_generator& global();
 

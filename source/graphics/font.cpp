@@ -2,6 +2,7 @@
 #include "log.hpp"
 #include "platform.hpp"
 #include "unicode.hpp"
+#include "assert.hpp"
 
 #include <filesystem>
 
@@ -14,9 +15,9 @@ static FT_Library library{ nullptr };
 
 static void initialize() {
 	if (!library) {
-		message("graphics", "Initializing FreeType");
+		message(graphics::log, u8"Initializing FreeType");
 		if (const auto error = FT_Init_FreeType(&library); error != FT_Err_Ok) {
-			warning("graphics", "[Error {}] Failed to initialize FreeType", error);
+			warning(graphics::log, u8"[Error {}] Failed to initialize FreeType", error);
 		}
 	}
 }
@@ -44,7 +45,7 @@ namespace nfwk {
 class font::font_face {
 public:
 
-	FT_Face face;
+	FT_Face face{ nullptr };
 	bool has_kerning{ false };
 	bool is_scalable{ false };
 	int scale_y{ 0 };
@@ -57,10 +58,10 @@ public:
 	int glyph_overhang{ 0 };
 
 	font_face(const std::filesystem::path& path) {
-		message("graphics", "Loading font {}", path);
+		message(graphics::log, u8"Loading font {}", path);
 		// note: to check how many faces a font has, face_index should be -1, then check face->num_faces
-		if (const auto error = FT_New_Face(ft::library, path.u8string().c_str(), 0, &face); error != FT_Err_Ok) {
-			warning("graphics", "[Error {}] Failed to load font: {}", error, path);
+		if (const auto error = FT_New_Face(ft::library, reinterpret_cast<const char*>(path.u8string().c_str()), 0, &face); error != FT_Err_Ok) {
+			warning(graphics::log, u8"[Error {}] Failed to load font: {}", error, path);
 			return;
 		}
 		has_kerning = FT_HAS_KERNING(face);
@@ -80,25 +81,25 @@ public:
 
 	void set_size(int size) {
 		if (FT_Set_Char_Size(face, 0, size * 64, 0, 0) != FT_Err_Ok) {
-			warning("graphics", "Failed to set char size");
+			warning(graphics::log, u8"Failed to set char size");
 		}
 	}
 
-	std::uint32_t char_index(std::uint32_t character) {
+	std::uint32_t char_index(std::uint32_t character) const {
 		return FT_Get_Char_Index(face, character);
 	}
 
-	bool load_glyph(int index) {
+	bool load_glyph(int index) const {
 		return FT_Load_Glyph(face, index, FT_LOAD_DEFAULT) == FT_Err_Ok;
 	}
 
-	void render_glyph() {
+	void render_glyph() const {
 		if (const auto error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL); error != FT_Err_Ok) {
-			warning("graphics", "Failed to render glyph");
+			warning(graphics::log, u8"Failed to render glyph");
 		}
 	}
 
-	void blit(std::uint32_t* destination, int left, int top, int right, int bottom, std::uint32_t color) {
+	void blit(std::uint32_t* destination, int left, int top, int right, int bottom, std::uint32_t color) const {
 		ASSERT(left >= 0);
 		const auto max_size = right * bottom;
 		const auto bitmap{ face->glyph->bitmap };
@@ -122,7 +123,7 @@ font::font(const std::filesystem::path& path, int size) {
 		face = std::make_unique<font_face>(final_path.value());
 		face->set_size(size);
 	} else {
-		warning("graphics", "Did not find font: {}", path);
+		warning(graphics::log, u8"Did not find font: {}", path);
 	}
 }
 
@@ -201,20 +202,20 @@ font::text_size font::size(std::string_view text) const {
 bool font::exists(const std::filesystem::path& path) {
 	if (std::filesystem::exists(path)) {
 		return true;
+	} else {
+		return std::filesystem::exists(platform::environment_variable(u8"WINDIR") / std::filesystem::path{ u8"Fonts" } / path);
 	}
-	auto windows_font_path = std::filesystem::u8path(platform::environment_variable("WINDIR")) / "Fonts" / path;
-	return std::filesystem::exists(windows_font_path);
 }
 
 std::optional<std::filesystem::path> font::find_absolute_path(const std::filesystem::path& relative_path) {
 	if (std::filesystem::exists(relative_path)) {
 		return relative_path;
 	}
-	auto path = "fonts" / relative_path;
+	auto path = u8"fonts" / relative_path;
 	if (std::filesystem::exists(path)) {
 		return path;
 	}
-	path = std::filesystem::u8path(platform::environment_variable("WINDIR")) / "Fonts" / relative_path;
+	path = platform::environment_variable(u8"WINDIR") / std::filesystem::path{ u8"Fonts" } / relative_path;
 	return std::filesystem::exists(path) ? path : std::optional<std::filesystem::path>{};
 }
 

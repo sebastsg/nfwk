@@ -39,7 +39,7 @@ static constexpr vector4b simplex[64]{
 };
 
 simplex_noise_map::simplex_noise_map(unsigned long long seed) : seed{ seed } {
-	info("main", "Seed: {}", seed);
+	info(core::log, u8"Seed: {}", seed);
 	random_number_generator rng{ seed };
 	for (int i{ 0 }; i < 256; i++) {
 		permutation[i] = rng.next(255);

@@ -9,15 +9,13 @@ class [[nodiscard]] scoped_logic {
 public:
 
 	template<typename F>
-	scoped_logic(F&& clean) : clean{ std::move(clean) } {}
+	scoped_logic(F clean) : clean{ std::move(clean) } {}
 
 	scoped_logic() = default;
 
 	scoped_logic(const scoped_logic&) = delete;
 
-	scoped_logic(scoped_logic&& that) noexcept : clean{ std::move(that.clean) } {
-
-	}
+	scoped_logic(scoped_logic&& that) noexcept : clean{ std::move(that.clean) } {}
 
 	scoped_logic& operator=(const scoped_logic&) = delete;
 
@@ -46,17 +44,16 @@ template<typename T>
 class [[nodiscard]] scoped_context {
 public:
 
-	scoped_context(std::function<void()> clean = {}, std::optional<T> resource = std::nullopt)
-		: scope{ std::move(clean) }, resource{ std::move(resource) } {
-
-	}
+	template<typename F>
+	scoped_context(F clean = {}, std::optional<T> resource = std::nullopt)
+		: scope{ std::move(clean) }, resource{ std::move(resource) } {}
 
 	scoped_context(const scoped_context&) = delete;
 
 	scoped_context(scoped_context&& that) noexcept
-		: scope{ std::move(that.scope) }, resource{ std::move(that.resource) } {
+		: scope{ std::move(that.scope) }, resource{ std::move(that.resource) } {}
 
-	}
+	~scoped_context() = default;
 
 	scoped_context& operator=(const scoped_context&) = delete;
 

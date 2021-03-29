@@ -1,10 +1,10 @@
 #include "scripts/script_node_output.hpp"
 #include "log.hpp"
+#include "assert.hpp"
 
 namespace nfwk {
 
-script_node_output::script_node_output(int to_node_id, int slot_index)
-	: to_node_id{ to_node_id }, slot_index{ slot_index } {
+script_node_output::script_node_output(int to_node_id, int slot_index) : to_node_id{ to_node_id }, slot_index{ slot_index } {
 	ASSERT(to_node_id >= 0);
 }
 

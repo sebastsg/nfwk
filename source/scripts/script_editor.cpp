@@ -11,16 +11,16 @@
 
 namespace nfwk {
 
-script_editor::script_editor(editor_state& editor) : abstract_editor{ editor } {
+script_editor::script_editor(editor_container& container) : abstract_editor{ container } {
 	create_new_script();
 
-	debug::menu::add("nfwk-script-editor", "Script", [this] {
-		ui::menu_item("Properties", show_properties);
-		if (ui::menu_item("Save")) {
+	debug::menu::add(u8"nfwk-script-editor", u8"Script", [this] {
+		ui::menu_item(u8"Properties", show_properties);
+		if (ui::menu_item(u8"Save")) {
 			save_script();
 		}
 		ui::separate();
-		ui::text(script.tree.name + " / " + script.tree.id);
+		ui::text(script.tree->name + u8" / " + script.tree->id);
 	});
 }
 
@@ -29,16 +29,16 @@ script_editor::~script_editor() {
 }
 
 void script_editor::update() {
-	const auto window_size = editor.window->size().to<float>();
+	//const auto window_size = editor.window->size().to<float>();
 	vector2f position{ 0.0f, 24.0f };
-	vector2f size{ window_size - position };
+	//vector2f size{ window_size - position };
 	if (show_properties) {
-		size.x = 320.0f;
-		update_properties_window(position, size);
-		position.x += size.x;
-		size.x = window_size.x - position.x;
+		//size.x = 320.0f;
+		//update_properties_window(position, size);
+		//position.x += size.x;
+		//size.x = window_size.x - position.x;
 	}
-	update_nodes_window(position, size);
+	//update_nodes_window(position, size);
 }
 
 bool script_editor::is_dirty() const {
@@ -46,19 +46,19 @@ bool script_editor::is_dirty() const {
 }
 
 void script_editor::update_properties_window(vector2f position, vector2f size) {
-	if (auto end = ui::push_window("##script-properties-window", position, size, ui::background_window_flags)) {
-		ui::text("Properties");
-		ui::input("Identifier", script.tree.id);
-		ui::input("Name", script.tree.name);
+	if (auto _ = ui::window(u8"##script-properties-window", position, size, ui::background_window_flags)) {
+		ui::text(u8"Properties");
+		ui::input(u8"Identifier", script.tree->id);
+		ui::input(u8"Name", script.tree->name);
 		ui::separate();
-		if (ui::button("Close")) {
+		if (ui::button(u8"Close")) {
 			show_properties = false;
 		}
 	}
 }
 
 void script_editor::update_nodes_window(vector2f position, vector2f size) {
-	if (auto end = ui::push_window("##nodes-window", position, size, ui::background_window_flags)) {
+	if (auto _ = ui::window(u8"##nodes-window", position, size, ui::background_window_flags)) {
 		ImGui::BeginGroup();
 		ImGui::PushStyleColor(ImGuiCol_ChildBg, { 0.235f, 0.235f, 0.275f, 0.78125f });
 		ImGui::BeginChild("##node-grid", { 0, 0 }, false, ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoMove);
@@ -90,21 +90,23 @@ void script_editor::update_nodes_window(vector2f position, vector2f size) {
 
 void script_editor::create_new_script() {
 	script = {};
-	script.tree.id = random_number_generator::global().string(20);
-	script.tree.name = "New script";
+	script.tree = std::make_unique<script_tree>(*node_factory);
+	script.tree->id = random_number_generator::global().string(20);
+	script.tree->name = u8"New script";
 }
 
-void script_editor::load_script(const std::string& id) {
+void script_editor::load_script(const std::u8string& id) {
 	script = {};
+	script.tree = std::make_unique<script_tree>(*node_factory);
 	//script.tree.load(id);
-	error("scripts", "Not implemented");
+	bug(u8"Not implemented");
 	ASSERT(false);
 }
 
 void script_editor::save_script() {
-	error("scripts", "Not implemented");
+	bug(u8"Not implemented");
 	ASSERT(false);
-	//script.tree.save();
+	//script.tree->save();
 	//script.dirty = false;
 }
 
@@ -113,22 +115,22 @@ void script_editor::update_nodes(vector2f offset) {
 	if (ImGui::IsMouseClicked(0) && !is_context_menu_open) {
 		script.selected_node = std::nullopt;
 	}
-	for (auto node : script.tree.get_nodes()) {
+	for (auto node : script.tree->get_nodes()) {
 		ImGui::PushID(node->id);
 		const auto real_position = offset + node->transform.position;
 
 		ImGui::GetWindowDrawList()->ChannelsSetCurrent(1);
 		ImGui::SetCursorScreenPos(real_position + 8.0f);
 		ImGui::BeginGroup();
-		ui::text("%s", node->get_name().data());
+		ui::text(u8"%s", node->get_name().data());
 		ui::inline_next();
-		ui::colored_text({ 0.65f, 0.7f, 0.85f }, "#%i", node->id);
+		ui::colored_text({ 0.65f, 0.7f, 0.85f }, u8"#%i", node->id);
 		if (node->is_interactive()) {
 			ui::rectangle(real_position + vector2f{ node->transform.scale.x - 100.0f, 14.0f }, 6.0f, { 1.0f, 0.5f, 0.5f, 1.0f });
 			ImGui::SameLine(node->transform.scale.x - 96.0f);
-			ui::colored_text({ 1.0f, 0.5f, 0.5f, 1.0f }, "interactive");
+			ui::colored_text({ 1.0f, 0.5f, 0.5f, 1.0f }, u8"interactive");
 		}
-		script.dirty |= node->update_editor();
+		//script.dirty |= node->update_editor();
 		ImGui::EndGroup();
 		node->transform.scale = vector2f{ ImGui::GetItemRectSize() } + 16.0f;
 		ImGui::GetWindowDrawList()->ChannelsSetCurrent(0);
@@ -150,7 +152,7 @@ void script_editor::update_nodes(vector2f offset) {
 			node_background_color.xyz = { 0.16f, 0.2f, 0.28f };
 			outline_color = { 1.0f, 1.0f, 1.0f, 0.8f };
 		}
-		if (script.tree.get_start_node_id() == node->id) {
+		if (script.tree->get_start_node_id() == node->id) {
 			if (script.selected_node == node->id) {
 				node_background_color.xyz = { 0.25f, 0.45f, 0.3f };
 			} else {
@@ -171,12 +173,12 @@ void script_editor::update_context_menu(vector2f offset) {
 		return;
 	}
 	const auto scene_position = vector2f{ ImGui::GetMousePosOnOpeningCurrentPopup() } - offset;
-	auto node = script.selected_node.has_value() ? script.tree.get_node(script.selected_node.value()) : nullptr;
+	auto node = script.selected_node.has_value() ? script.tree->get_node(script.selected_node.value()) : nullptr;
 	if (node) {
 		update_node_context_menu(*node);
 	} else {
-		std::unordered_map<std::string_view, std::vector<script_node_constructor>> categories;
-		for (const auto& constructor : get_all_script_node_constructors()) {
+		std::unordered_map<std::u8string_view, std::vector<script_node_constructor>> categories;
+		for (const auto& constructor : node_factory->get_all_constructors()) {
 			categories[constructor.get_category()].push_back(constructor);
 		}
 		for (const auto& [category, constructors] : categories) {
@@ -201,7 +203,7 @@ void script_editor::update_context_menu(vector2f offset) {
 		}
 		if (node) {
 			node->transform.position = scene_position;
-			script.tree.add_node(node);
+			script.tree->add_node(node);
 			script.dirty = true;
 		}
 	}
@@ -211,7 +213,7 @@ void script_editor::update_context_menu(vector2f offset) {
 
 void script_editor::update_node_context_menu(script_node& node) {
 	if (script.output_from_node.has_value()) {
-		auto from_node = script.tree.get_node(script.output_from_node.value());
+		auto from_node = script.tree->get_node(script.output_from_node.value());
 		bool can_connect{ from_node->id != node.id };
 		if (can_connect) {
 			if (ImGui::MenuItem("Connect")) {
@@ -221,40 +223,42 @@ void script_editor::update_node_context_menu(script_node& node) {
 				script.dirty = true;
 			}
 		}
-		if (ui::menu_item("Cancel connecting")) {
+		if (ui::menu_item(u8"Cancel connecting")) {
 			script.output_from_node = std::nullopt;
 			script.output_slot = std::nullopt;
 		}
 	} else {
 		if (node.output_type() == script_node_output_type::variable) {
-			if (ui::menu_item("Add output")) {
+			if (ui::menu_item(u8"Add output")) {
 				script.output_slot = std::nullopt;
 				script.output_from_node = script.selected_node;
 			}
 		} else if (node.output_type() == script_node_output_type::boolean) {
-			if (auto end = ui::menu("Set output")) {
-				if (ui::menu_item("True")) {
+			if (auto end = ui::menu(u8"Set output")) {
+				if (ui::menu_item(u8"True")) {
 					script.output_slot = 1;
 					script.output_from_node = script.selected_node;
 				}
-				if (ui::menu_item("False")) {
+				if (ui::menu_item(u8"False")) {
 					script.output_slot = 0;
 					script.output_from_node = script.selected_node;
 				}
 			}
 		} else if (node.output_type() == script_node_output_type::single) {
-			if (ui::menu_item("Set output")) {
+			if (ui::menu_item(u8"Set output")) {
 				script.output_slot = 0;
 				script.output_from_node = script.selected_node;
 			}
 		} else {
-			warning("scripts", "Invalid output type: {}", static_cast<int>(node.output_type()));
+			warning(scripts::log, u8"Invalid output type: {}", static_cast<int>(node.output_type()));
 		}
 		if (node.used_output_slots_count() > 0) {
-			if (auto end_delete_links = ui::menu("Delete output to")) {
+			if (auto end_delete_links = ui::menu(u8"Delete output to")) {
 				for (const auto& output : node.get_outputs()) {
-					const auto name = script.tree.get_node(output.to_node())->get_name();
-					if (ui::menu_item(STRING(name) + " (" + std::to_string(output.to_node()) + ")")) {
+					const auto name = script.tree->get_node(output.to_node())->get_name();
+					std::u8string text{ name };
+					text += u8" (" + to_string(output.to_node()) + u8")";
+					if (ui::menu_item(text)) {
 						node.delete_output_slot(output.slot());
 					}
 				}
@@ -262,16 +266,16 @@ void script_editor::update_node_context_menu(script_node& node) {
 		}
 	}
 	if (node.can_be_entry_point()) {
-		if (ui::menu_item("Set as starting point")) {
-			script.tree.set_start_node(node.id);
+		if (ui::menu_item(u8"Set as starting point")) {
+			script.tree->set_start_node(node.id);
 			script.dirty = true;
 		}
 	}
-	if (ui::menu_item("Delete")) {
-		for (auto other_node : script.tree.get_nodes()) {
+	if (ui::menu_item(u8"Delete")) {
+		for (auto other_node : script.tree->get_nodes()) {
 			other_node->delete_output_node(node.id);
 		}
-		script.tree.delete_node(script.selected_node.value());
+		script.tree->delete_node(script.selected_node.value());
 		script.selected_node = std::nullopt;
 		script.output_from_node = std::nullopt;
 		script.output_slot = std::nullopt;
@@ -288,23 +292,23 @@ void script_editor::update_scrolling() {
 		script.scrolling.y -= ImGui::GetIO().MouseDelta.y;
 	}
 	const float scroll_speed{ 20.0f };
-	const auto& keyboard = editor.window->keyboard;
-	if (keyboard.is_key_down(key::up)) {
-		script.scrolling.y -= scroll_speed;
-	}
-	if (keyboard.is_key_down(key::left)) {
-		script.scrolling.x -= scroll_speed;
-	}
-	if (keyboard.is_key_down(key::down)) {
-		script.scrolling.y += scroll_speed;
-	}
-	if (keyboard.is_key_down(key::right)) {
-		script.scrolling.x += scroll_speed;
-	}
+	//const auto& keyboard = editor.window->keyboard;
+	//if (keyboard.is_key_down(key::up)) {
+	//	script.scrolling.y -= scroll_speed;
+	//}
+	//if (keyboard.is_key_down(key::left)) {
+	//	script.scrolling.x -= scroll_speed;
+	//}
+	//if (keyboard.is_key_down(key::down)) {
+	//	script.scrolling.y += scroll_speed;
+	//}
+	//if (keyboard.is_key_down(key::right)) {
+	//	script.scrolling.x += scroll_speed;
+	//}
 }
 
 void script_editor::update_node_link_output(const script_node_output& output, script_node& node, vector2f offset) {
-	const auto* out_node = script.tree.get_node(output.to_node());
+	const auto& out_node = script.tree->get_node(output.to_node());
 	const auto from_size = node.transform.scale;
 	const auto to_size = out_node->transform.scale;
 	auto from_position = node.transform.position;
@@ -451,7 +455,7 @@ void script_editor::update_node_link_output(const script_node_output& output, sc
 }
 
 void script_editor::update_node_links(vector2f offset) {
-	for (auto node : script.tree.get_nodes()) {
+	for (auto node : script.tree->get_nodes()) {
 		for (const auto& output : node->get_outputs()) {
 			ASSERT(output.to_node() != -1);
 			update_node_link_output(output, *node, offset);

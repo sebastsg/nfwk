@@ -13,7 +13,7 @@ static winsock_state winsock;
 
 static void print_winsock_error(int error_code, const std::string& funcsig, int line, const std::string& log) {
 	const auto message = platform::windows::get_error_message(error_code);
-	error("network", "WSA Error {} on line {} in {}\n{}", error_code, line, funcsig, message);
+	error(network::log, u8"WSA Error {} on line {} in {}\n{}", error_code, line, funcsig, message);
 }
 
 static void create_completion_port() {
@@ -23,7 +23,7 @@ static void create_completion_port() {
 	const int thread_count{ 1 };
 	winsock.io_port = CreateIoCompletionPort(INVALID_HANDLE_VALUE, nullptr, 0, thread_count);
 	if (!winsock.io_port) {
-		error("network", "Failed to create I/O completion port. Error: {}", GetLastError());
+		error(network::log, u8"Failed to create I/O completion port. Error: {}", GetLastError());
 		return;
 	}
 	for (int i{ 0 }; i < thread_count; i++) {
@@ -83,12 +83,12 @@ static void get_accept_sockaddrs(iocp_accept_data& data) {
 		return;
 	}
 	// todo: at the moment we aren't doing anything with the result here
-	const DWORD addr_size{ iocp_accept_data::padded_addr_size };
+	const DWORD address_size{ iocp_accept_data::padded_addr_size };
 	sockaddr* local{ nullptr };
 	sockaddr* remote{ nullptr };
 	int local_size{ sizeof(local) };
 	int remote_size{ sizeof(remote) };
-	winsock.GetAcceptExSockaddrs(data.buffer.buf, 0, addr_size, addr_size, &local, &local_size, &remote, &remote_size);
+	winsock.GetAcceptExSockaddrs(data.buffer.buf, 0, address_size, address_size, &local, &local_size, &remote, &remote_size);
 }
 
 static void destroy_socket(int id) {
@@ -141,8 +141,8 @@ static bool connect_socket(int id) {
 static bool connect_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
-	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		warning("network", "Failed to get address info for {}:{}\nStatus: {}", address, port, status);
+	if (const int status{ getaddrinfo(address.c_str(), std::to_string(port).c_str(), &socket.hints, &result) }; status != 0) {
+		warning(network::log, u8"Failed to get address info for {}:{}\nStatus: {}", address, port, status);
 		return false;
 	}
 	while (result) {
@@ -184,7 +184,7 @@ static bool socket_send(int id, const io_stream& packet) {
 	auto& socket = winsock.sockets[id];
 	auto data = new iocp_send_data{};
 	socket.io.send.emplace(data);
-	data->buffer = { (ULONG)packet.write_index(), packet.data() };
+	data->buffer = { static_cast<ULONG>(packet.write_index()), packet.data() };
 	// unlike regular non-blocking send(), WSASend() will complete the operation asynchronously,
 	// and this might happen before it returns. the data can immediately be discarded on return.
 	const int result{ WSASend(socket.handle, &data->buffer, 1, &data->bytes, 0, &data->overlapped, nullptr) };
@@ -251,7 +251,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 		// reference for the macro: https://msdn.microsoft.com/en-us/library/aa447688.aspx
 		auto data = CONTAINING_RECORD(overlapped, iocp_data<iocp_operation::invalid>, overlapped);
 		if (data->operation == iocp_operation::close) {
-			nfwk::info("network", "Leaving thread");
+			info(network::log, u8"Leaving thread");
 			return 0;
 		}
 		const int socket_id{ static_cast<int>(completion_key) };
@@ -295,7 +295,7 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 			get_accept_sockaddrs(*accept_data);
 			auto& accepted = winsock.sockets[accept_data->accepted_id];
 			if (const int status{ update_accept_context(accepted.handle, socket.handle) }; status != NO_ERROR) {
-				warning("network", "Failed to update context for accepted socket {}", accept_data->accepted_id);
+				warning(network::log, u8"Failed to update context for accepted socket {}", accept_data->accepted_id);
 				WS_PRINT_LAST_ERROR();
 				// todo: should the socket be closed here?
 			}
@@ -310,10 +310,10 @@ DWORD io_port_thread(HANDLE io_port, int thread_num) {
 }
 
 void start_network() {
-	message("network", "Initializing WinSock");
+	message(network::log, u8"Initializing WinSock");
 	constexpr auto version = MAKEWORD(2, 2);
 	if (const int status{ WSAStartup(version, &winsock.wsa_data) }; status != 0) {
-		error("network", "WinSock failed to start. Error: {}", status);
+		error(network::log, u8"WinSock failed to start. Error: {}", status);
 		WS_PRINT_LAST_ERROR();
 	} else {
 		create_completion_port();
@@ -326,10 +326,10 @@ void stop_network() {
 		destroy_socket(i);
 	}
 	if (WSACleanup() != 0) {
-		warning("network", "Failed to stop WinSock. Some operations may still be ongoing.");
+		warning(network::log, u8"Failed to stop WinSock. Some operations may still be ongoing.");
 		WS_PRINT_LAST_ERROR();
 	} else {
-		message("network", "WinSock has been stopped.");
+		message(network::log, u8"WinSock has been stopped.");
 	}
 }
 
@@ -400,8 +400,8 @@ void synchronize_sockets() {
 bool bind_socket(int id, const std::string& address, int port) {
 	auto& socket = winsock.sockets[id];
 	addrinfo* result{ nullptr };
-	if (const int status{ getaddrinfo(address.c_str(), CSTRING(port), &socket.hints, &result) }; status != 0) {
-		warning("network", "Failed to get address info for {}:{}\nStatus: {}", status, address, port);
+	if (const int status{ getaddrinfo(address.c_str(), std::to_string(port).c_str(), &socket.hints, &result) }; status != 0) {
+		warning(network::log, u8"Failed to get address info for {}:{}\nStatus: {}", status, address, port);
 		return false;
 	}
 	while (result) {

@@ -12,7 +12,7 @@ std::unique_ptr<asset_manager> make_asset_manager(const std::filesystem::path& d
 	return assets;
 }
 
-std::shared_ptr<window> make_window(subprogram& subprogram, std::string_view title, std::optional<vector2i> size) {
+std::shared_ptr<window> make_window(subprogram& subprogram, std::u8string_view title, std::optional<vector2i> size) {
 	if (!windows) {
 		windows = std::make_unique<window_manager>(subprogram.get_loop(), true);
 	}

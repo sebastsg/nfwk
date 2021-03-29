@@ -1,11 +1,9 @@
 #pragma once
 
 #include "vector4.hpp"
-#include "transform.hpp"
 #include "glm/gtc/matrix_transform.hpp"
 
 #include <vector>
-#include <string>
 #include <optional>
 
 namespace nfwk {
@@ -15,7 +13,7 @@ public:
 
 	std::optional<int> location;
 
-	shader_variable(int shader_id, std::string_view name);
+	shader_variable(int shader_id, std::u8string_view name);
 
 	void set(int value) const;
 	void set(float value) const;

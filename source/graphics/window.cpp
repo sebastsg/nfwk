@@ -8,10 +8,8 @@ std::ostream& operator<<(std::ostream& out, nfwk::window::display_mode mode) {
 	case nfwk::window::display_mode::windowed: return out << "Windowed";
 	case nfwk::window::display_mode::fullscreen: return out << "Fullscreen";
 	case nfwk::window::display_mode::fullscreen_desktop: return out << "Fullscreen Desktop";
-	default: return out << "Unknown";
 	}
 }
-
 
 namespace nfwk {
 
@@ -28,7 +26,7 @@ window* render_context::get_current_window() {
 
 window::window() {
 	close_event_listener = on_close.listen([this] {
-		info("draw", "About to close window: {}.", title());
+		info(draw::log, u8"About to close window: {}.", title());
 		for (auto& subprogram : attached_subprograms) {
 			subprogram->stop();
 		}

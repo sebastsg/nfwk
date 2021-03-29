@@ -25,8 +25,8 @@
 
 namespace nfwk::ui {
 
-static constexpr std::string_view vertex_glsl{
-	"#version 330\n"
+static constexpr std::u8string_view vertex_glsl{
+	u8"#version 330\n"
 	"uniform mat4 model_view_projection;"
 	"in vec2 in_Position;"
 	"in vec2 in_TexCoords;"
@@ -40,8 +40,8 @@ static constexpr std::string_view vertex_glsl{
 	"}"
 };
 
-static constexpr std::string_view fragment_glsl{
-	"#version 330\n"
+static constexpr std::u8string_view fragment_glsl{
+	u8"#version 330\n"
 	"uniform sampler2D active_texture;"
 	"in vec4 v_Color;"
 	"in vec2 v_TexCoords;"
@@ -216,13 +216,42 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 	}
 }
 
-void create(window& window, std::optional<std::string> font_name, int font_size) {
+void add_font(const std::filesystem::path& name, int size) {
+	message(log, u8"Adding UI font: {}", name);
+	if (const auto path = font::find_absolute_path(name)) {
+		static const ImWchar glyph_ranges[]{
+			1, 256,
+			8592, 8592,
+			0
+		};
+		auto& io = ImGui::GetIO();
+		//data.font_config.MergeMode = true;
+		const auto& name_string = path->u8string();
+		const auto* name_data = reinterpret_cast<const char*>(name_string.c_str());
+		io.Fonts->AddFontFromFileTTF(name_data, static_cast<float>(size), &data->font_config, glyph_ranges);
+	} else {
+		warning(log, u8"Did not find the font.");
+	}
+}
+
+void build_fonts() {
+	auto& io = ImGui::GetIO();
+	ImGuiFreeType::BuildFontAtlas(io.Fonts);
+	unsigned char* pixels{ nullptr };
+	int width{ 0 };
+	int height{ 0 };
+	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+	data->font_texture = std::make_unique<texture>(surface{ reinterpret_cast<std::uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
+	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data->font_texture.get());
+}
+
+void create(window& window) {
 	if (is_initialized()) {
-		warning("ui", "UI is already initialized.");
+		warning(log, u8"UI is already initialized.");
 		ASSERT(false);
 		return;
 	}
-	message("ui", "Initializing UI");
+	message(log, u8"Initializing UI");
 	ImGui::CreateContext();
 	data = std::make_unique<imgui_data>();
 	data->window = &window;
@@ -297,39 +326,13 @@ void create(window& window, std::optional<std::string> font_name, int font_size)
 			ReleaseCapture();
 		}
 	});
-
 	data->ui_shader = std::make_unique<shader>(vertex_glsl, fragment_glsl);
-
-	if (font_name.has_value()) {
-		message("ui", "Using specified font for UI: {}", font_name.value());
-		if (const auto font_path = font::find_absolute_path(font_name.value())) {
-			static constexpr ImWchar glyph_ranges[]{
-				1, 256,
-				8592, 8592,
-				0
-			};
-			//data.font_config.MergeMode = true;
-			io.Fonts->AddFontFromFileTTF(font_path->u8string().c_str(), static_cast<float>(font_size), &data->font_config, glyph_ranges);
-			ImGuiFreeType::BuildFontAtlas(io.Fonts);
-		} else {
-			warning("ui", "Did not find the font.");
-		}
-	} else {
-		message("ui", "Using default font for UI.");
-	}
-
-	unsigned char* pixels{ nullptr };
-	int width{ 0 };
-	int height{ 0 };
-	io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-	data->font_texture = std::make_unique<texture>(surface{ reinterpret_cast<std::uint32_t*>(pixels), width, height, pixel_format::rgba, surface::construct_by::copy });
-	io.Fonts->TexID = reinterpret_cast<ImTextureID>(data->font_texture.get());
 	initialize_style();
 }
 
 void destroy() {
 	if (is_initialized()) {
-		message("ui", "Destroying UI state");
+		message(log, u8"Destroying UI state");
 		data = nullptr;
 		ImGui::GetIO().Fonts->TexID = 0;
 	}
@@ -367,7 +370,7 @@ void draw(render_context& context) {
 	}
 	auto draw_data = ImGui::GetDrawData();
 	if (!draw_data) {
-		warning("ui", "Invalid draw data.");
+		warning(log, u8"Invalid draw data.");
 		ASSERT(false);
 	}
 	const auto& io = ImGui::GetIO();
@@ -394,7 +397,7 @@ void draw(render_context& context) {
 			offset += buffer.ElemCount;
 			if (buffer.UserCallback) {
 				if (buffer.UserCallback == ImDrawCallback_ResetRenderState) {
-					warning("ui", "Not supported.");
+					warning(log, u8"Not supported.");
 					ASSERT(false);
 				} else {
 					buffer.UserCallback(draw_list, &buffer);
@@ -409,7 +412,7 @@ void draw(render_context& context) {
 				if (display_size.x > clip.x && display_size.y > clip.y && clip.z >= 0.0f && clip.w >= 0.0f) {
 					const auto [sx, sy, sw, sh] = vector4f{ clip.x, display_size.y - clip.w, clip.z - clip.x, clip.w - clip.y }.to<int>();
 					context.set_scissor(sx, sy, sw, sh);
-					reinterpret_cast<texture*>(buffer.TextureId)->bind();
+					static_cast<texture*>(buffer.TextureId)->bind();
 					vertex_array.draw(current_offset, buffer.ElemCount);
 				}
 			}

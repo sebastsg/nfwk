@@ -31,7 +31,7 @@ public:
 	text_size size(std::string_view text) const;
 
 	static bool exists(const std::filesystem::path& path);
-	static std::optional<std::filesystem::path> find_absolute_path(const std::filesystem::path& path);
+	static std::optional<std::filesystem::path> find_absolute_path(const std::filesystem::path& relative_path);
 
 private:
 

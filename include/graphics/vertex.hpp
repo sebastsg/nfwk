@@ -32,20 +32,26 @@ enum class attribute_component { is_float, is_integer, is_byte };
 
 struct vertex_attribute_specification {
 
-	attribute_component type{ attribute_component::is_float };
-	int components{ 0 };
-	bool normalized{ false };
+	const attribute_component type;
+	const int components;
+	const bool normalized;
 
-	constexpr vertex_attribute_specification(int components) : components(components) {
-	}
+	constexpr vertex_attribute_specification(int components)
+		: type{ attribute_component::is_float }, components(components), normalized{ false } {}
 
 	constexpr vertex_attribute_specification(attribute_component type, int components)
-		: type(type), components(components) {
-	}
+		: type(type), components(components), normalized{ false } {}
 
 	constexpr vertex_attribute_specification(attribute_component type, int components, bool normalized)
-		: type(type), components(components), normalized(normalized) {
-	}
+		: type(type), components(components), normalized(normalized) {}
+
+	vertex_attribute_specification(const vertex_attribute_specification&) = default;
+	vertex_attribute_specification(vertex_attribute_specification&&) = delete;
+
+	~vertex_attribute_specification() = default;
+	
+	vertex_attribute_specification& operator=(const vertex_attribute_specification&) = delete;
+	vertex_attribute_specification& operator=(vertex_attribute_specification&&) = delete;
 
 };
 

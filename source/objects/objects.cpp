@@ -1,43 +1,61 @@
 #include "objects/objects.hpp"
-#include "object_editor.hpp"
 #include "graphics/ui.hpp"
-#include "graphics/window.hpp"
 #include "random.hpp"
 #include "log.hpp"
 
 namespace nfwk {
 
-static object_manager objects;
-
-object_manager& get_object_manager() {
-	return objects;
+std::u8string normalized_identifier(std::u8string_view id) {
+	std::u8string normalized_id{ id };
+	for (auto& character : normalized_id) {
+		if (!std::isalnum(character)) {
+			character = '-';
+		}
+	}
+	return normalized_id;
 }
 
-void object_class::attach_script(const std::string& script_id) {
+bool is_identifier_normalized(std::u8string_view id) {
+	return normalized_identifier(id) == id;
+}
+
+script_event::script_event(script_event_container& container, io_stream& stream) : container{ &container } {
+	read(stream);
+}
+
+script_event::script_event(script_event_container& container, std::u8string_view id) : container{ &container }, id{ id } {
+	ASSERT(is_identifier_normalized(id));
+}
+
+std::u8string script_event::get_id() const {
+	return container ? container->get_id() + u8":" + id : id;
+}
+
+void object_class::attach_script(const std::u8string& script_id) {
 	scripts.push_back(script_id);
 }
 
-void object_class::detach_script(const std::string& script_id) {
-	if (auto it = std::find(scripts.begin(), scripts.end(), script_id); it != scripts.end()) {
+void object_class::detach_script(const std::u8string& script_id) {
+	if (const auto it = std::find(scripts.begin(), scripts.end(), script_id); it != scripts.end()) {
 		scripts.erase(it);
 	}
 }
 
-bool object_class::supports_event(const std::string& event_id) const {
+bool object_class::supports_event(const std::u8string& event_id) const {
 	return std::find(supported_events.begin(), supported_events.end(), event_id) != supported_events.end();
 }
 
-void object_class::attach_event(const std::string& event_id) {
+void object_class::attach_event(const std::u8string& event_id) {
 	supported_events.push_back(event_id);
 }
 
-void object_class::detach_event(const std::string& event_id) {
+void object_class::detach_event(const std::u8string& event_id) {
 	if (auto it = std::find(supported_events.begin(), supported_events.end(), event_id); it != supported_events.end()) {
 		supported_events.erase(it);
 	}
 }
 
-const std::vector<std::string>& object_class::get_supported_events() const {
+const std::vector<std::u8string>& object_class::get_supported_events() const {
 	return supported_events;
 }
 
@@ -67,7 +85,7 @@ std::vector<std::shared_ptr<object_class>> object_manager::get_classes() {
 	return definitions;
 }
 
-std::shared_ptr<object_class> object_manager::find_class(const std::string& class_id) {
+std::shared_ptr<object_class> object_manager::find_class(const std::u8string& class_id) {
 	for (auto& definition : definitions) {
 		if (definition->id == class_id) {
 			return definition;
@@ -76,7 +94,7 @@ std::shared_ptr<object_class> object_manager::find_class(const std::string& clas
 	return nullptr;
 }
 
-std::shared_ptr<object_class> object_manager::register_class(const std::string& class_id) {
+std::shared_ptr<object_class> object_manager::register_class(const std::u8string& class_id) {
 	auto definition = std::make_shared<object_class>();
 	definition->id = class_id;
 	return definitions.emplace_back(definition);

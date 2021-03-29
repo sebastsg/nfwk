@@ -6,12 +6,12 @@ namespace nfwk {
 
 void choice_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write(text);
+	stream.write_string(text);
 }
 
 void choice_node::read(io_stream& stream) {
 	script_node::read(stream);
-	text = stream.read<std::string>();
+	text = stream.read_string();
 }
 
 bool choice_node::can_be_entry_point() const {
@@ -20,10 +20,6 @@ bool choice_node::can_be_entry_point() const {
 
 bool choice_node::is_interactive() const {
 	return true;
-}
-
-bool choice_node::update_editor() {
-	return ui::input("##choice", text, { 350.0f, ImGui::GetTextLineHeight() * 3.0f });
 }
 
 }

@@ -3,7 +3,6 @@
 #include "subprogram.hpp"
 #include "imgui_platform.hpp"
 #include "graphics/window.hpp"
-#include "log.hpp"
 #include "network/network.hpp"
 #include "audio/audio_endpoint.hpp"
 
@@ -13,7 +12,13 @@ class imgui_instance {
 public:
 
 	imgui_instance(loop& loop, window& window, render_context& context);
+	imgui_instance(const imgui_instance&) = delete;
+	imgui_instance(imgui_instance&&) = delete;
+	
 	~imgui_instance();
+
+	imgui_instance& operator=(const imgui_instance&) = delete;
+	imgui_instance& operator=(imgui_instance&&) = delete;
 
 private:
 
@@ -29,8 +34,8 @@ public:
 
 	window_manager(loop& loop, bool support_imgui);
 
-	std::shared_ptr<window> create_window(std::string_view title, std::optional<vector2i> size = std::nullopt);
-	std::shared_ptr<render_context> get_render_context();
+	std::shared_ptr<window> create_window(std::u8string_view title, std::optional<vector2i> size = std::nullopt);
+	std::shared_ptr<render_context> get_render_context() const;
 
 private:
 

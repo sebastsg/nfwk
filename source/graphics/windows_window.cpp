@@ -7,6 +7,8 @@
 #include "input.hpp"
 #include "vector4.hpp"
 #include "log.hpp"
+#include "assert.hpp"
+#include "gl/wgl_context.hpp"
 
 static nfwk::vector2i current_mouse_position;
 
@@ -127,7 +129,7 @@ LRESULT WINAPI process_window_messages(HWND window_handle, UINT message, WPARAM 
 namespace nfwk::platform {
 
 static bool create_window_class(WNDPROC procedure, std::string_view name) {
-	message("draw", "Registering window class: {}", name);
+	message(draw::log, u8"Registering window class: {}", name);
 	WNDCLASS window{};
 	window.style = CS_OWNDC | CS_DBLCLKS;
 	window.lpfnWndProc = procedure;
@@ -142,7 +144,7 @@ static bool create_window_class(WNDPROC procedure, std::string_view name) {
 	if (RegisterClass(&window)) {
 		return true;
 	} else {
-		error("draw", "Failed to register window class");
+		error(draw::log, u8"Failed to register window class");
 		return false;
 	}
 }
@@ -161,7 +163,7 @@ static vector4i calculate_maximized_window_rectangle() {
 
 static void destroy_window(HWND window_handle, HDC device_context) {
 	if (window_handle) {
-		message("draw", "Destroying window");
+		message(draw::log, u8"Destroying window");
 		ReleaseDC(window_handle, device_context);
 		DestroyWindow(window_handle);
 	}
@@ -172,29 +174,31 @@ void windows_window::create_classes() {
 	create_window_class(process_window_messages, "main");
 }
 
-HWND windows_window::create_window(std::string_view name, std::string_view type, int width, int height, bool maximized) {
-	message("draw", "Creating \"{}\" window \"{}\"", type, name);
+HWND windows_window::create_window(std::u8string_view name, std::u8string_view type, int width, int height, bool maximized) {
+	message(draw::log, u8"Creating \"{}\" window \"{}\"", type, name);
 	const DWORD style{ WS_OVERLAPPEDWINDOW | WS_CLIPSIBLINGS | WS_CLIPCHILDREN };
+	const char* type_chars = reinterpret_cast<const char*>(type.data());
+	const char* name_chars = reinterpret_cast<const char*>(name.data());
 	if (maximized) {
 		const auto [x, y, w, h] = calculate_maximized_window_rectangle();
-		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
+		return CreateWindowExA(0, type_chars, name_chars, style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
 	} else {
 		const int x{ CW_USEDEFAULT };
 		const int y{ CW_USEDEFAULT };
 		const auto [w, h] = calculate_actual_window_size(width, height, style);
-		return CreateWindow(type.data(), name.data(), style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
+		return CreateWindowExA(0, type_chars, name_chars, style, x, y, w, h, nullptr, nullptr, windows::current_instance(), nullptr);
 	}
 }
 
-windows_window::windows_window(std::string_view title, std::optional<vector2i> size) {
+windows_window::windows_window(std::u8string_view title, std::optional<vector2i> size) {
 	const bool maximized{ !size.has_value() };
-	window_handle = create_window(title, "main", size.value_or(0).x, size.value_or(0).y, maximized);
+	window_handle = create_window(title, u8"main", size.value_or(0).x, size.value_or(0).y, maximized);
 	if (window_handle) {
 		device_context = GetDC(window_handle);
 		set_data();
 		show(maximized);
 	} else {
-		error("draw", "Failed to create window");
+		error(draw::log, u8"Failed to create window");
 	}
 }
 
@@ -203,13 +207,13 @@ windows_window::~windows_window() {
 }
 
 std::shared_ptr<render_context> windows_window::create_compatibility_render_context() {
-	if (const auto default_window_handle = create_window("Compatibility", "compatibility", 0, 0, false)) {
+	if (const auto default_window_handle = create_window(u8"Compatibility", u8"compatibility", 0, 0, false)) {
 		const auto default_device_context = GetDC(default_window_handle);
 		auto compatibility_context = std::make_shared<wgl_compatibility_context>(default_device_context);
 		destroy_window(default_window_handle, default_device_context);
 		return compatibility_context;
 	} else {
-		error("draw", "Failed to create compatibility window");
+		error(draw::log, u8"Failed to create compatibility window");
 		return nullptr;
 	}
 }
@@ -254,11 +258,11 @@ vector2i windows_window::size() const {
 	return { static_cast<int>(rectangle.right), static_cast<int>(rectangle.bottom) };
 }
 
-std::string windows_window::title() const {
+std::u8string windows_window::title() const {
 	// int size = GetWindowTextLength(windowHandle);
-	CHAR buffer[128]{};
-	GetWindowText(window_handle, buffer, 127);
-	return buffer;
+	char buffer[128]{};
+	GetWindowTextA(window_handle, buffer, 127);
+	return reinterpret_cast<const char8_t*>(buffer);
 }
 
 void windows_window::set_size(vector2i size) {
@@ -272,17 +276,7 @@ void windows_window::set_size(vector2i size) {
 
 void windows_window::set_display_mode(display_mode mode) {
 	// todo: change mode
-	switch (mode) {
-	case display_mode::windowed:
-		break;
-	case display_mode::fullscreen:
-		break;
-	case display_mode::fullscreen_desktop:
-		break;
-	default:
-		warning("bugs", "Window mode not found: {}", mode);
-		return;
-	}
+	bug(u8"Not implemented.");
 	last_set_display_mode = mode;
 }
 
@@ -291,12 +285,11 @@ window::display_mode windows_window::current_display_mode() const {
 }
 
 void windows_window::maximize() {
-	error("bugs", "Not implemented.");
-	ASSERT(false);
+	bug(u8"Not implemented.");
 }
 
-void windows_window::set_title(std::string_view title) {
-	SetWindowText(window_handle, title.data());
+void windows_window::set_title(std::u8string_view title) {
+	SetWindowTextA(window_handle, reinterpret_cast<const char*>(title.data()));
 }
 
 void windows_window::set_icon_from_resource(int resource_id) {
@@ -305,14 +298,14 @@ void windows_window::set_icon_from_resource(int resource_id) {
 		SendMessage(window_handle, WM_SETICON, ICON_BIG, reinterpret_cast<LPARAM>(icon));
 		// no need to destroy icon, since it's shared
 	} else {
-		warning("draw", "Failed to load icon resource {}", resource_id);
+		warning(draw::log, u8"Failed to load icon resource {}", resource_id);
 	}
 }
 
 void windows_window::swap() {
 	if (!SwapBuffers(device_context)) {
-		const auto message = platform::windows::get_error_message(GetLastError());
-		warning("draw", "Error: {}\nHDC: {}\nHWND: {}", message, (void*)device_context, (void*)window_handle);
+		const auto message = windows::get_error_message(GetLastError());
+		warning(draw::log, u8"Error: {}\nHDC: {}\nHWND: {}", message, reinterpret_cast<void*>(device_context), reinterpret_cast<void*>(window_handle));
 	}
 }
 

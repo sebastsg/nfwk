@@ -9,6 +9,8 @@
 
 #include "windows_platform.hpp"
 
+#include "timer.hpp"
+
 // these are defined by Windows when using vc++ runtime
 extern int __argc;
 extern char** __argv;
@@ -26,18 +28,31 @@ int show_command() {
 	return show_command_arg;
 }
 
-std::string get_error_message(int error_code) {
+std::u8string get_error_message(int error_code) {
 	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
-	char* buffer{ nullptr };
+	char8_t* buffer{ nullptr };
 	const auto flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER;
-	FormatMessage(flags, nullptr, error_code, language, reinterpret_cast<char*>(&buffer), 0, nullptr);
+	FormatMessageA(flags, nullptr, error_code, language, reinterpret_cast<char*>(&buffer), 0, nullptr);
 	if (buffer) {
-		const std::string message{ buffer };
+		const std::u8string message{ buffer };
 		LocalFree(buffer);
-		return std::to_string(error_code) + ": " + message;
+		return to_string(error_code) + u8": " + message;
 	} else {
-		return std::to_string(error_code);
+		return to_string(error_code);
 	}
+}
+
+bool initialize_com() {
+	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
+		nfwk::warning(nfwk::core::log, u8"Failed to initialize COM library.");
+		return false;
+	} else {
+		return true;
+	}
+}
+
+void uninitialize_com() {
+	CoUninitialize();
 }
 
 }
@@ -82,31 +97,31 @@ void sleep(int ms) {
 	Sleep(ms);
 }
 
-std::string environment_variable(const std::string& name) {
-	char buffer[2048];
-	GetEnvironmentVariableA(name.c_str(), buffer, 2048);
+std::u8string environment_variable(std::u8string_view name) {
+	char8_t buffer[2048];
+	GetEnvironmentVariableA(reinterpret_cast<const char*>(name.data()), reinterpret_cast<char*>(buffer), sizeof(buffer));
 	return buffer;
 }
 
 bool is_system_file(std::filesystem::path path) {
 	path.make_preferred();
-	auto string = std::wstring{ L"\\\\?\\" } + path.wstring();
+	const auto string = std::wstring{ L"\\\\?\\" } + path.wstring();
 	return GetFileAttributesW(string.c_str()) & FILE_ATTRIBUTE_SYSTEM;
 }
 
 std::vector<std::filesystem::path> get_root_directories() {
 	std::vector<std::filesystem::path> paths;
 	const DWORD drives{ GetLogicalDrives() };
-	char drive_letter = 'A';
+	char8_t drive_letter{ 'A' };
 	for (DWORD drive{ 1 }; drive_letter <= 'Z'; drive <<= 1, drive_letter++) {
 		if (drives & drive) {
-			paths.emplace_back(std::string{ drive_letter } + ":/");
+			paths.emplace_back(std::u8string{ drive_letter } + u8":/");
 		}
 	}
 	return paths;
 }
 
-std::string open_file_browse_window() {
+std::u8string open_file_browse_window() {
 	char file[MAX_PATH]{};
 	char file_title[MAX_PATH]{};
 	char template_name[MAX_PATH]{};
@@ -118,17 +133,17 @@ std::string open_file_browse_window() {
 	data.lpTemplateName = template_name;
 	data.lpstrFilter = "All\0*.*\0";
 	data.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
-	GetOpenFileName(&data);
-	return file;
+	GetOpenFileNameA(&data);
+	return reinterpret_cast<const char8_t*>(file);
 }
 
 bool open_file_browser_and_select(std::filesystem::path path) {
 	path.make_preferred();
-	auto items = ILCreateFromPathW(path.wstring().c_str());
-	auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
+	const auto items = ILCreateFromPathW(path.wstring().c_str());
+	const auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
 	ILFree(items);
 	if (result != S_OK) {
-		warning("main", "Failed to open and select file: {}", path);
+		warning(core::log, u8"Failed to open and select file: {}", path);
 	}
 	return result == S_OK;
 }
@@ -151,15 +166,14 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 	IShellItemImageFactory* factory{ nullptr };
 	auto result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
 	if (result != S_OK) {
-		warning("main", "Failed to create shell item: {}", path);
+		warning(core::log, u8"Failed to create shell item: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	HBITMAP bitmap_handle{ nullptr };
-	do {
-		result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT | SIIGBF_BIGGERSIZEOK, &bitmap_handle);
-	} while (result == E_PENDING);
+	// todo: does E_PENDING work here? I tested it, but it seems useless.
+	result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT | SIIGBF_BIGGERSIZEOK, &bitmap_handle);
 	if (result != S_OK) {
-		warning("main", "Failed to load thumbnail: {}", path);
+		warning(core::log, u8"Failed to load thumbnail: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	surface thumbnail{ bitmap_as_surface(bitmap_handle) };
@@ -172,20 +186,20 @@ void open_file(std::filesystem::path path, bool minimized) {
 	const auto show = minimized ? SW_HIDE : SW_SHOW;
 	const auto status = reinterpret_cast<int>(ShellExecuteW(nullptr, nullptr, path.wstring().c_str(), nullptr, nullptr, show));
 	if (status <= 32) {
-		warning("main", "Failed to open {}. Error: {}", path, status);
+		warning(core::log, u8"Failed to open {}. Error: {}", path, status);
 	}
 }
 
-std::vector<std::string> command_line_arguments() {
-	std::vector<std::string> args;
+std::vector<std::u8string> command_line_arguments() {
+	std::vector<std::u8string> args;
 	for (int i{ 0 }; i < __argc; i++) {
-		args.push_back(__argv[i]);
+		args.emplace_back(reinterpret_cast<const char8_t*>(__argv[i]));
 	}
 	return args;
 }
 
 void relaunch() {
-	info("core", "Relaunching program.");
+	info(core::log, u8"Relaunching program.");
 	STARTUPINFO startup{};
 	startup.cb = sizeof(startup);
 	PROCESS_INFORMATION process{};
@@ -195,7 +209,7 @@ void relaunch() {
 		CloseHandle(process.hProcess);
 		CloseHandle(process.hThread);
 	} else {
-		warning("main", "Failed to start {}. Error: {}", __argv[0], GetLastError());
+		warning(core::log, u8"Failed to start {}. Error: {}", __argv[0], GetLastError());
 	}
 	// todo: exit event?
 	std::exit(0);
@@ -204,12 +218,11 @@ void relaunch() {
 }
 
 int main() {
-	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
-		nfwk::warning("platform", "Failed to initialize COM library.");
+	if (!nfwk::platform::windows::initialize_com()) {
 		return nfwk::return_code::windows_com_initialize_failed;
 	}
 	start();
-	CoUninitialize();
+	nfwk::platform::windows::uninitialize_com();
 	return nfwk::return_code::success;
 }
 
@@ -234,6 +247,5 @@ std::ostream& operator<<(std::ostream& out, nfwk::platform::system_cursor cursor
 	case nfwk::platform::system_cursor::help: return out << "Help";
 	case nfwk::platform::system_cursor::cross: return out << "Cross";
 	case nfwk::platform::system_cursor::wait: return out << "Wait";
-	default: return out << "Invalid";
 	}
 }

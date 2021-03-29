@@ -3,7 +3,8 @@
 #define ASSERT(EXPRESSION) \
 	do { \
 		if (!(EXPRESSION)) { \
-			nfwk::error("main", #EXPRESSION); \
+			const char* expression = #EXPRESSION;\
+			nfwk::error(u8"main", reinterpret_cast<const char8_t*>(expression)); \
 			abort(); \
 		} \
 	} while (0)

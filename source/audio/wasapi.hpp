@@ -68,10 +68,11 @@ private:
 
 };
 
-class audio_device : public audio_endpoint {
+class audio_device final : public audio_endpoint {
 public:
 
 	audio_device();
+	
 	~audio_device() override;
 
 	audio_player* add_player() override;

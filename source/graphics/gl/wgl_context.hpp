@@ -1,9 +1,6 @@
 #pragma once
 
-#include "platform.hpp"
-
 #include "windows_platform.hpp"
-#include "graphics/draw.hpp"
 #include "graphics/window.hpp"
 
 #include <optional>

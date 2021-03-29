@@ -9,7 +9,7 @@ namespace nfwk {
 class create_variable_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(4, "Create variable", "Variables");
+	NFWK_SCRIPT_CORE_NODE(4, u8"Create variable", u8"Variables");
 
 	variable new_variable;
 	bool is_global{ false };
@@ -19,10 +19,9 @@ public:
 		return script_node_output_type::single;
 	}
 
-	std::optional<int> process() override;
+	std::optional<int> process() const override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
-	bool update_editor() override;
 
 };
 

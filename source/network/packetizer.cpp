@@ -32,7 +32,7 @@ std::size_t packetizer::write_index() const {
 }
 
 void packetizer::write(char* data, std::size_t size) {
-	stream.write(data, size);
+	stream.write_raw(data, size);
 }
 
 io_stream packetizer::next() {
@@ -44,7 +44,7 @@ io_stream packetizer::next() {
 		return {};
 	}
 	if (stream.peek<magic_type>() != magic) {
-		warning("network", "Skipping magic... {} != {}", stream.peek<magic_type>(), magic);
+		warning(network::log, u8"Skipping magic... {} != {}", stream.peek<magic_type>(), magic);
 		stream.move_read_index(1); // no point in reading the same magic again
 		return {};
 	}

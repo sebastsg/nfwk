@@ -8,18 +8,17 @@ namespace nfwk {
 class trigger_event_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(10, "Trigger event", "");
+	NFWK_SCRIPT_CORE_NODE(10, u8"Trigger event", u8"");
 
-	std::string event_name;
+	std::u8string event_id;
 
 	script_node_output_type output_type() const override {
 		return script_node_output_type::single;
 	}
 
-	std::optional<int> process() override;
+	std::optional<int> process() const override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
-	bool update_editor() override;
 
 };
 

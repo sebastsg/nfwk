@@ -2,6 +2,7 @@
 #include "graphics/gl/gl.hpp"
 #include "graphics/texture.hpp"
 #include "log.hpp"
+#include "assert.hpp"
 
 #include <array>
 

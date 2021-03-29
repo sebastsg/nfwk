@@ -1,12 +1,11 @@
 #pragma once
 
 #include "io.hpp"
-
-#include "graphics/draw.hpp"
 #include "graphics/surface.hpp"
 #include "graphics/font.hpp"
 #include "graphics/texture.hpp"
 #include "graphics/shader.hpp"
+#include "log.hpp"
 
 #include <any>
 
@@ -19,7 +18,7 @@ public:
 
 	const asset_manager& manager;
 	const std::filesystem::path path;
-	const std::string name;
+	const std::u8string name;
 
 	asset_wrapper_base(const asset_manager& manager, const std::filesystem::path& path_)
 		: manager{ manager }, path { path_ }, name{ get_name(path_) } {}
@@ -32,12 +31,12 @@ public:
 	asset_wrapper_base& operator=(const asset_wrapper_base&) = delete;
 	asset_wrapper_base& operator=(asset_wrapper_base&&) = delete;
 
-	virtual std::any get() = 0;
+	[[nodiscard]] virtual std::any get() = 0;
 
 	virtual void load() = 0;
 	virtual void unload() {}
 
-	virtual const std::type_info& get_type_info() const = 0;
+	[[nodiscard]] virtual const std::type_info& get_type_info() const = 0;
 
 	static std::vector<std::filesystem::path> get_paths(const std::filesystem::path& path) {
 		return entries_in_directory(path, entry_inclusion::only_files, true);
@@ -45,15 +44,15 @@ public:
 
 private:
 	
-	virtual std::string get_name(std::filesystem::path path) const;
+	[[nodiscard]] virtual std::u8string get_name(std::filesystem::path path) const;
 
 };
 
 class asset_manager {
 public:
 
-	asset_manager() = default;
 	asset_manager(const std::filesystem::path& directory_path);
+	asset_manager() = default;
 	asset_manager(const asset_manager&) = delete;
 	asset_manager(asset_manager&&) = delete;
 
@@ -62,10 +61,10 @@ public:
 	asset_manager& operator=(const asset_manager&) = delete;
 	asset_manager& operator=(asset_manager&&) = delete;
 
-	std::any find(const std::type_info& type_info, std::string_view name);
+	std::any find(const std::type_info& type_info, std::u8string_view name);
 
 	template<typename Asset>
-	std::shared_ptr<Asset> find(std::string_view name) {
+	std::shared_ptr<Asset> find(std::u8string_view name) {
 		try {
 			return std::any_cast<std::shared_ptr<Asset>>(find(typeid(Asset), name));
 		} catch (std::bad_any_cast e) {
@@ -86,10 +85,10 @@ public:
 		}
 	}
 
-	void remove(const std::type_info& type_info, const std::string& name);
+	void remove(const std::type_info& type_info, const std::u8string& name);
 
-	std::filesystem::path get_directory() const;
-	std::filesystem::path path(std::string_view asset) const;
+	[[nodiscard]] std::filesystem::path get_directory() const;
+	[[nodiscard]] std::filesystem::path path(std::u8string_view asset) const;
 
 private:
 
@@ -149,7 +148,7 @@ protected:
 class texture_asset : public asset_wrapper<texture> {
 public:
 
-	static constexpr std::string_view directory{ "textures" };
+	static constexpr std::u8string_view directory{ u8"textures" };
 
 	using asset_wrapper::asset_wrapper;
 
@@ -162,7 +161,7 @@ public:
 class font_asset : public asset_wrapper<font> {
 public:
 
-	static constexpr std::string_view directory{ "fonts" };
+	static constexpr std::u8string_view directory{ u8"fonts" };
 
 	using asset_wrapper::asset_wrapper;
 
@@ -177,7 +176,7 @@ public:
 class shader_asset : public asset_wrapper<shader> {
 public:
 
-	static constexpr std::string_view directory{ "shaders" };
+	static constexpr std::u8string_view directory{ u8"shaders" };
 
 	using asset_wrapper::asset_wrapper;
 

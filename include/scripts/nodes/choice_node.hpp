@@ -8,9 +8,9 @@ namespace nfwk {
 class choice_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(1, "Choice", "");
+	NFWK_SCRIPT_CORE_NODE(1, u8"Choice", u8"");
 
-	std::string text{ "Example text" };
+	std::u8string text{ u8"Example text" };
 
 	script_node_output_type output_type() const override {
 		return script_node_output_type::single;
@@ -20,7 +20,6 @@ public:
 	void read(io_stream& stream) override;
 	bool can_be_entry_point() const override;
 	bool is_interactive() const override;
-	bool update_editor() override;
 
 };
 

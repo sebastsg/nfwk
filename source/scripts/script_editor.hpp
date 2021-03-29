@@ -10,7 +10,8 @@ namespace nfwk {
 
 class script_node_output;
 
-struct link_circle {
+class link_circle {
+public:
 
 	vector2f position;
 	int bezier_index{ 0 };
@@ -19,14 +20,14 @@ struct link_circle {
 	link_circle() = default;
 
 	link_circle(vector2f position, int bezier_index, float pulse)
-		: position{ position }, bezier_index{ bezier_index }, pulse{ pulse } {
-	}
+		: position{ position }, bezier_index{ bezier_index }, pulse{ pulse } {}
 
 };
 
-struct script_edit_state {
+class script_edit_state {
+public:
 
-	script_tree tree;
+	std::unique_ptr<script_tree> tree;
 	std::optional<int> output_from_node;
 	std::optional<int> output_slot;
 	std::optional<int> selected_node;
@@ -39,15 +40,17 @@ struct script_edit_state {
 class script_editor : public abstract_editor {
 public:
 
-	static constexpr std::string_view title{ "Script editor" };
+	static constexpr std::u8string_view title{ u8"Script editor" };
 
-	script_editor(editor_state& editor);
+	script_node_factory* node_factory{ nullptr };
+
+	script_editor(editor_container& container);
 	~script_editor() override;
 
 	void update() override;
 	bool is_dirty() const override;
 
-	std::string_view get_title() const override {
+	std::u8string_view get_title() const override {
 		return title;
 	}
 
@@ -65,7 +68,7 @@ private:
 	void update_properties_window(vector2f position, vector2f size);
 
 	void create_new_script();
-	void load_script(const std::string& id);
+	void load_script(const std::u8string& id);
 	void save_script();
 
 	void update_nodes(vector2f offset);

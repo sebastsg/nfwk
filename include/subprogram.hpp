@@ -1,9 +1,6 @@
 #pragma once
 
-#include "log.hpp"
-
 #include <functional>
-#include <vector>
 #include <memory>
 
 namespace nfwk {

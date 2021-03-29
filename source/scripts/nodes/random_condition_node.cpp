@@ -6,7 +6,7 @@
 
 namespace nfwk {
 
-std::optional<int> random_condition_node::process() {
+std::optional<int> random_condition_node::process() const {
 	return random_number_generator::global().chance(0.5f);
 }
 
@@ -18,12 +18,6 @@ void random_condition_node::write(io_stream& stream) const {
 void random_condition_node::read(io_stream& stream) {
 	script_node::read(stream);
 	percent = stream.read<std::int32_t>();
-}
-
-bool random_condition_node::update_editor() {
-	bool dirty = ui::input("% Chance of success", percent);
-	percent = clamp(percent, 0, 100);
-	return dirty;
 }
 
 }
