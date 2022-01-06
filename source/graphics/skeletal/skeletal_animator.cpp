@@ -147,7 +147,7 @@ void skeletal_animator::play(int id, int animation_index, int loops) {
 	}
 }
 
-void skeletal_animator::play(int id, const std::string& animation_name, int loops) {
+void skeletal_animator::play(int id, std::string_view animation_name, int loops) {
 	play(id, skeleton.index_of_animation(animation_name), loops);
 }
 

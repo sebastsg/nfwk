@@ -13,7 +13,7 @@ public:
 
 	std::optional<int> location;
 
-	shader_variable(int shader_id, std::u8string_view name);
+	shader_variable(int shader_id, std::string_view name);
 
 	void set(int value) const;
 	void set(float value) const;

@@ -7,17 +7,13 @@
 
 #include "scripts/nodes/message_node.hpp"
 #include "scripts/nodes/choice_node.hpp"
-#include "scripts/nodes/compare_variable_node.hpp"
-#include "scripts/nodes/modify_variable_node.hpp"
-#include "scripts/nodes/create_variable_node.hpp"
-#include "scripts/nodes/variable_exists_node.hpp"
-#include "scripts/nodes/delete_variable_node.hpp"
+#include "scripts/nodes/variable_nodes.hpp"
 #include "scripts/nodes/random_output_node.hpp"
 #include "scripts/nodes/random_condition_node.hpp"
 #include "scripts/nodes/execute_script_node.hpp"
 #include "scripts/nodes/trigger_event_node.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
 // todo: move to own file
 script_node_factory::script_node_factory() {
@@ -54,7 +50,7 @@ std::shared_ptr<script_node> script_node_factory::create_node(int type) const {
 	return find_constructor(type)->construct();
 }
 
-void script_node_factory::register_node(int type, std::u8string_view name, std::u8string_view category, const std::function<std::shared_ptr<script_node>()>& constructor) {
+void script_node_factory::register_node(int type, std::string_view name, std::string_view category, const std::function<std::shared_ptr<script_node>()>& constructor) {
 	ASSERT(!find_constructor(type));
 	if (type >= 0xffff) {
 		user_nodes.resize(type + 1);
@@ -84,10 +80,8 @@ std::vector<script_node_constructor> script_node_factory::get_all_constructors()
 	return constructors;
 }
 
-script_node_constructor::script_node_constructor(int type, std::u8string_view name, std::u8string_view category, const std::function<std::shared_ptr<script_node>()>& constructor)
-	: type{ type }, name{ name }, category{ category }, constructor{ constructor } {
-
-}
+script_node_constructor::script_node_constructor(int type, std::string_view name, std::string_view category, std::function<std::shared_ptr<script_node>()> constructor)
+	: type{ type }, name{ name }, category{ category }, constructor{ std::move(constructor) } {}
 
 std::shared_ptr<script_node> script_node_constructor::construct() const {
 	return constructor ? constructor() : nullptr;
@@ -97,11 +91,11 @@ std::optional<int> script_node_constructor::get_type() const {
 	return type;
 }
 
-std::u8string_view script_node_constructor::get_name() const {
+std::string_view script_node_constructor::get_name() const {
 	return name;
 }
 
-std::u8string_view script_node_constructor::get_category() const {
+std::string_view script_node_constructor::get_category() const {
 	return category;
 }
 
@@ -109,29 +103,23 @@ bool script_node_constructor::is_valid() const {
 	return type.has_value() && constructor;
 }
 
-std::optional<int> script_node::process() const {
-	return std::nullopt;
-}
-
 void script_node::write(io_stream& stream) const {
-	stream.write<std::int32_t>(id);
-	stream.write_optional<std::int32_t>(scope_id);
-	stream.write(transform);
+	stream.write_optional<std::int32_t>(id);
+	stream.write_struct(transform);
 	stream.write_size(outputs.size());
 	for (const auto& output : outputs) {
-		stream.write<std::int32_t>(output.to_node());
-		stream.write<std::int32_t>(output.slot());
+		stream.write_int32(output.to_node());
+		stream.write_int32(output.slot());
 	}
 }
 
 void script_node::read(io_stream& stream) {
-	id = stream.read<std::int32_t>();
-	scope_id = stream.read_optional<std::int32_t>();
-	transform = stream.read<transform2>();
+	id = stream.read_optional<std::int32_t>();
+	transform = stream.read_struct<transform2>();
 	const auto out_count = stream.read_size();
-	for (int j{ 0 }; j < out_count; j++) {
-		const auto node_id = stream.read<std::int32_t>();
-		const auto out_id = stream.read<std::int32_t>();
+	for (std::size_t j{ 0 }; j < out_count; j++) {
+		const auto node_id = stream.read_int32();
+		const auto out_id = stream.read_int32();
 		outputs.emplace_back(node_id, out_id);
 	}
 }
@@ -183,8 +171,8 @@ std::optional<int> script_node::get_output_node(int slot) const {
 	return std::nullopt;
 }
 
-std::optional<script_node_output> script_node::get_first_output() const {
-	return outputs.empty() ? std::optional<script_node_output>{} : outputs[0];
+std::optional<node_output> script_node::get_first_output() const {
+	return outputs.empty() ? std::optional<node_output>{} : outputs[0];
 }
 
 std::optional<int> script_node::get_first_output_node() const {
@@ -211,15 +199,7 @@ void script_node::add_output(std::optional<int> slot, int to_node_id) {
 	outputs.emplace_back(to_node_id, slot.value());
 }
 
-#if 0
-bool script_node::has_interactive_output_nodes() const {
-	return std::any_of(outputs.begin(), outputs.end(), [this](const auto& output) {
-		return tree->get_node(output.to_node())->is_interactive();
-	});
-}
-#endif
-
-const std::vector<script_node_output>& script_node::get_outputs() const {
+const std::vector<node_output>& script_node::get_outputs() const {
 	return outputs;
 }
 

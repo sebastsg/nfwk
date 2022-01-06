@@ -23,7 +23,7 @@ static void create() {
 	}
 	const HRESULT result{ CoCreateInstance(__uuidof(MMDeviceEnumerator), nullptr, CLSCTX_ALL, __uuidof(IMMDeviceEnumerator), (void**)&device_enumerator) };
 	if (result != S_OK) {
-		warning(audio::log, u8"Failed to create device enumerator. Error: {0:x}", result);
+		warning(audio::log, "Failed to create device enumerator. Error: {0:x}", result);
 	}
 }
 
@@ -56,49 +56,49 @@ static pcm_format wave_format_to_audio_data_format(const WAVEFORMATEX* wave_form
 			return pcm_format::unknown;
 		}
 	default:
-		warning(audio::log, u8"Unknown wave format: {}", wave_format->wFormatTag);
+		warning(audio::log, "Unknown wave format: {}", wave_format->wFormatTag);
 		return pcm_format::unknown;
 	}
 }
 
 audio_client::audio_client(IMMDevice* device) : playing_audio_stream{ nullptr } {
 	if (const auto result = device->Activate(__uuidof(IAudioClient), CLSCTX_ALL, nullptr, (void**)&client); result != S_OK) {
-		warning(audio::log, u8"Failed to activate audio client. Error: {}", result);
+		warning(audio::log, "Failed to activate audio client. Error: {}", result);
 		return;
 	}
 	if (const auto result = device->Activate(__uuidof(IAudioSessionManager), CLSCTX_ALL, nullptr, (void**)&session_manager); result != S_OK) {
-		warning(audio::log, u8"Failed to activate session manager. Error: {}", result);
+		warning(audio::log, "Failed to activate session manager. Error: {}", result);
 		return;
 	}
 	if (const auto result = session_manager->GetSimpleAudioVolume(nullptr, FALSE, &audio_volume); result != S_OK || !audio_volume) {
-		warning(audio::log, u8"Failed to get simple audio volume interface. Error: {}", result);
+		warning(audio::log, "Failed to get simple audio volume interface. Error: {}", result);
 		return;
 	}
 	if (const auto result = client->GetMixFormat(&wave_format); result != S_OK) {
-		warning(audio::log, u8"Failed to get mix format. Error: {}", result);
+		warning(audio::log, "Failed to get mix format. Error: {}", result);
 		return;
 	}
 	if (const auto result = client->GetDevicePeriod(&default_device_period, nullptr); result != S_OK) {
-		warning(audio::log, u8"Failed to get device period. Error: {}", result);
+		warning(audio::log, "Failed to get device period. Error: {}", result);
 		return;
 	}
 	const DWORD stream_flags{ AUDCLNT_STREAMFLAGS_RATEADJUST /*| AUDCLNT_STREAMFLAGS_EVENTCALLBACK*/ };
 	if (const auto result = client->Initialize(AUDCLNT_SHAREMODE_SHARED, stream_flags, default_device_period, 0, wave_format, nullptr); result != S_OK) {
-		warning(audio::log, u8"Failed to initialize the audio client. Error: {}", result);
+		warning(audio::log, "Failed to initialize the audio client. Error: {}", result);
 		return;
 	}
 	if (const auto result = client->GetBufferSize(&buffer_frame_count); result != S_OK) {
-		warning(audio::log, u8"Failed to get buffer size. Error: {}", result);
+		warning(audio::log, "Failed to get buffer size. Error: {}", result);
 		return;
 	}
 	if (const auto result = client->GetService(__uuidof(IAudioRenderClient), (void**)&render_client); result != S_OK) {
-		warning(audio::log, u8"Failed to get audio render client. Error: {}", result);
+		warning(audio::log, "Failed to get audio render client. Error: {}", result);
 		return;
 	}
 	if (const auto result = client->GetService(__uuidof(IAudioClockAdjustment), (void**)&clock_adjustment); result != S_OK) {
-		warning(audio::log, u8"Failed to get audio clock adjustment. Audio might play at wrong rate. Error: {}", result);
+		warning(audio::log, "Failed to get audio clock adjustment. Audio might play at wrong rate. Error: {}", result);
 	}
-	info(audio::log, u8"[b]WASAPI Audio Client[/b]\n[b]Device Period:[/b] {}\n[b]Buffer Frame Count:[/b] {}", default_device_period, buffer_frame_count);
+	info(audio::log, "[b]WASAPI Audio Client[/b]\n[b]Device Period:[/b] {}\n[b]Buffer Frame Count:[/b] {}", default_device_period, buffer_frame_count);
 }
 
 audio_client::~audio_client() {
@@ -120,12 +120,12 @@ audio_client::~audio_client() {
 
 void audio_client::stream() {
 	if (playing_audio_stream.is_empty()) {
-		warning(audio::log, u8"Audio source is empty.");
+		warning(audio::log, "Audio source is empty.");
 		return;
 	}
 	upload(buffer_frame_count);
 	if (const HRESULT result{ client->Start() }; result != S_OK) {
-		warning(audio::log, u8"Failed to play audio. Error: {}", result);
+		warning(audio::log, "Failed to play audio. Error: {}", result);
 		return;
 	}
 	SetThreadPriority(GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
@@ -162,7 +162,7 @@ void audio_client::stream() {
 		}
 		UINT32 padding_frames{ 0 };
 		if (const HRESULT result{ client->GetCurrentPadding(&padding_frames) }; result != S_OK) {
-			warning(audio::log, u8"Failed to get padding. Error: {}", result);
+			warning(audio::log, "Failed to get padding. Error: {}", result);
 			break;
 		}
 		const int frames_available{ static_cast<int>(buffer_frame_count) - static_cast<int>(padding_frames) };
@@ -225,7 +225,7 @@ void audio_client::stop() {
 	}
 	playing_audio_stream.reset();
 	if (const auto result = client->Reset(); result != S_OK) {
-		warning(audio::log, u8"Failed to reset the audio client. Error: {}", result);
+		warning(audio::log, "Failed to reset the audio client. Error: {}", result);
 	}
 	paused = false;
 }
@@ -233,7 +233,7 @@ void audio_client::stop() {
 void audio_client::upload(unsigned int frames) {
 	BYTE* buffer{ nullptr };
 	if (const HRESULT result{ render_client->GetBuffer(frames, &buffer) }; result != S_OK) {
-		warning(audio::log, u8"Failed to get buffer. Error: {}", result);
+		warning(audio::log, "Failed to get buffer. Error: {}", result);
 		return;
 	}
 	const auto format = wave_format_to_audio_data_format(wave_format);
@@ -241,15 +241,15 @@ void audio_client::upload(unsigned int frames) {
 	const std::size_t channels{ wave_format->nChannels };
 	playing_audio_stream.stream(format, buffer, size, channels);
 	if (const HRESULT result{ render_client->ReleaseBuffer(frames, 0) }; result != S_OK) {
-		warning(audio::log, u8"Failed to release buffer. Error: {}", result);
+		warning(audio::log, "Failed to release buffer. Error: {}", result);
 	}
 }
 
 audio_device::audio_device() {
-	message(audio::log, u8"Initializing audio device");
+	message(audio::log, "Initializing audio device");
 	device_enumerator::create();
 	if (const HRESULT result{ device_enumerator::get()->GetDefaultAudioEndpoint(eRender, eConsole, &device) }; result != S_OK) {
-		warning(audio::log, u8"Failed to get default audio endpoint. Error: {}", result);
+		warning(audio::log, "Failed to get default audio endpoint. Error: {}", result);
 	}
 }
 
@@ -262,19 +262,19 @@ audio_device::~audio_device() {
 }
 
 audio_player* audio_device::add_player() {
-	message(audio::log, u8"Adding audio player");
+	message(audio::log, "Adding audio player");
 	return players.emplace_back(new audio_client{ device });
 }
 
 void audio_device::stop_all_players() {
-	message(audio::log, u8"Stopping all audio players");
+	message(audio::log, "Stopping all audio players");
 	for (auto& player : players) {
 		player->stop();
 	}
 }
 
 void audio_device::clear_players() {
-	message(audio::log, u8"Clearing all audio players");
+	message(audio::log, "Clearing all audio players");
 	for (auto& player : players) {
 		delete player;
 	}

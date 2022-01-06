@@ -33,6 +33,19 @@ std::size_t renderer::render_tile(std::optional<std::size_t> parent, layer& laye
 	}
 }
 
+void renderer::append_tile(chunk::rendered_chunk& chunk, const chunk::rendered_tile& tile) {
+	const auto [x1, y1] = tile.position;
+	const auto [x2, y2] = tile.position + tile.size;
+	const auto [u1, v1] = tile.tex_coords.xy();
+	const auto [u2, v2] = tile.tex_coords.zw();
+	chunk.quads.append(
+		{ { x1, y1 }, { u1, v1 } },
+		{ { x2, y1 }, { u2, v1 } },
+		{ { x2, y2 }, { u2, v2 } },
+		{ { x1, y2 }, { u1, v2 } }
+	);
+}
+
 void renderer::clear_tile(layer& layer, vector2f position) {
 	const auto [chunk_x, chunk_y] = layer.position_to_chunk_index(position);
 	auto chunk = layer.get_chunk(chunk_x, chunk_y);
@@ -45,19 +58,6 @@ void renderer::clear_tile(layer& layer, vector2f position) {
 	if (it != chunk->rendered->tiles.end()) {
 		chunk->rendered->tiles.erase(it);
 	}
-}
-
-void renderer::append_tile(chunk::rendered_chunk& chunk, const chunk::rendered_tile& tile) {
-	const auto [x1, y1] = tile.position;
-	const auto [x2, y2] = tile.position + tile.size;
-	const auto [u1, v1] = tile.tex_coords.xy;
-	const auto [u2, v2] = tile.tex_coords.zw;
-	chunk.quads.append(
-		{ { x1, y1 }, { u1, v1 } },
-		{ { x2, y1 }, { u2, v1 } },
-		{ { x2, y2 }, { u2, v2 } },
-		{ { x1, y2 }, { u1, v2 } }
-	);
 }
 
 }

@@ -14,7 +14,9 @@ public:
 
 	bool is_paused() const;
 	bool has_started() const;
+	bool is_running() const;
 
+	long long nanoseconds() const;
 	long long microseconds() const;
 	long long milliseconds() const;
 	long long seconds() const;

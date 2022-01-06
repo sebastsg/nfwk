@@ -16,7 +16,7 @@ int gl_pixel_format(pixel_format format) {
 
 int gl_scale_option(scale_option scaling, bool mipmap) {
 	switch (scaling) {
-	case scale_option::nearest_neighbour: return mipmap ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
+	case scale_option::nearest_neighbor: return mipmap ? GL_NEAREST_MIPMAP_NEAREST : GL_NEAREST;
 	case scale_option::linear: return mipmap ? GL_LINEAR_MIPMAP_LINEAR : GL_LINEAR;
 	default: return GL_NEAREST;
 	}
@@ -121,7 +121,7 @@ void set_vertex_array_indices(int id, const std::uint8_t* data, std::size_t size
 		vertex_array.index_type = GL_UNSIGNED_INT;
 		break;
 	default:
-		warning(draw::log, u8"Invalid index element size: {}", element_size);
+		warning(draw::log, "Invalid index element size: {}", element_size);
 		break;
 	}
 	CHECK_GL_ERROR(glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, vertex_array.index_buffer.id));

@@ -15,9 +15,9 @@ static FT_Library library{ nullptr };
 
 static void initialize() {
 	if (!library) {
-		message(graphics::log, u8"Initializing FreeType");
+		message(graphics::log, "Initializing FreeType");
 		if (const auto error = FT_Init_FreeType(&library); error != FT_Err_Ok) {
-			warning(graphics::log, u8"[Error {}] Failed to initialize FreeType", error);
+			warning(graphics::log, "[Error {}] Failed to initialize FreeType", error);
 		}
 	}
 }
@@ -58,10 +58,10 @@ public:
 	int glyph_overhang{ 0 };
 
 	font_face(const std::filesystem::path& path) {
-		message(graphics::log, u8"Loading font {}", path);
+		message(graphics::log, "Loading font {}", path);
 		// note: to check how many faces a font has, face_index should be -1, then check face->num_faces
 		if (const auto error = FT_New_Face(ft::library, reinterpret_cast<const char*>(path.u8string().c_str()), 0, &face); error != FT_Err_Ok) {
-			warning(graphics::log, u8"[Error {}] Failed to load font: {}", error, path);
+			warning(graphics::log, "[Error {}] Failed to load font: {}", error, path);
 			return;
 		}
 		has_kerning = FT_HAS_KERNING(face);
@@ -81,7 +81,7 @@ public:
 
 	void set_size(int size) {
 		if (FT_Set_Char_Size(face, 0, size * 64, 0, 0) != FT_Err_Ok) {
-			warning(graphics::log, u8"Failed to set char size");
+			warning(graphics::log, "Failed to set char size");
 		}
 	}
 
@@ -95,7 +95,7 @@ public:
 
 	void render_glyph() const {
 		if (const auto error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL); error != FT_Err_Ok) {
-			warning(graphics::log, u8"Failed to render glyph");
+			warning(graphics::log, "Failed to render glyph");
 		}
 	}
 
@@ -123,7 +123,7 @@ font::font(const std::filesystem::path& path, int size) {
 		face = std::make_unique<font_face>(final_path.value());
 		face->set_size(size);
 	} else {
-		warning(graphics::log, u8"Did not find font: {}", path);
+		warning(graphics::log, "Did not find font: {}", path);
 	}
 }
 
@@ -203,7 +203,7 @@ bool font::exists(const std::filesystem::path& path) {
 	if (std::filesystem::exists(path)) {
 		return true;
 	} else {
-		return std::filesystem::exists(platform::environment_variable(u8"WINDIR") / std::filesystem::path{ u8"Fonts" } / path);
+		return std::filesystem::exists(platform::environment_variable("WINDIR") / std::filesystem::path{ "Fonts" } / path);
 	}
 }
 
@@ -211,11 +211,11 @@ std::optional<std::filesystem::path> font::find_absolute_path(const std::filesys
 	if (std::filesystem::exists(relative_path)) {
 		return relative_path;
 	}
-	auto path = u8"fonts" / relative_path;
+	auto path = "fonts" / relative_path;
 	if (std::filesystem::exists(path)) {
 		return path;
 	}
-	path = platform::environment_variable(u8"WINDIR") / std::filesystem::path{ u8"Fonts" } / relative_path;
+	path = platform::environment_variable("WINDIR") / std::filesystem::path{ "Fonts" } / relative_path;
 	return std::filesystem::exists(path) ? path : std::optional<std::filesystem::path>{};
 }
 

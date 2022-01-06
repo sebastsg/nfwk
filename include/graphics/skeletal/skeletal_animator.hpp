@@ -49,7 +49,7 @@ public:
 
 	void draw(shader& shader) const;
 	void play(int id, int animation_index, int loops);
-	void play(int id, const std::string& animation_name, int loops);
+	void play(int id, std::string_view animation_name, int loops);
 
 private:
 

@@ -8,18 +8,23 @@
 
 namespace nfwk {
 
+// todo: move to core file
+[[nodiscard]] std::string to_normalized_identifier(std::string_view id);
+[[nodiscard]] bool is_identifier_normalized(std::string_view id);
+
+}
+
+namespace nfwk::script {
+
 enum class object_collision { none, extents, radius, precise };
 
 class script_event_container;
-
-[[nodiscard]] std::u8string normalized_identifier(std::u8string_view id);
-[[nodiscard]] bool is_identifier_normalized(std::u8string_view id);
 
 class script_event {
 public:
 
 	script_event(script_event_container& container, io_stream& stream);
-	script_event(script_event_container& container, std::u8string_view id);
+	script_event(script_event_container& container, std::string_view id);
 	script_event(const script_event&) = delete;
 	script_event(script_event&&) = default;
 
@@ -28,208 +33,88 @@ public:
 	script_event& operator=(const script_event&) = delete;
 	script_event& operator=(script_event&&) = default;
 
-	std::u8string to_string() const {
+	[[nodiscard]] std::string to_string() const {
 		return get_id();
 	}
 
-	std::u8string get_id() const;
+	[[nodiscard]] std::string get_id() const;
 
-	void trigger() const {
-		on_event.emit();
-		for (const auto& script_id : scripts) {
-			//run_script(script_id);
-		}
-	}
+	void attach_script(std::string_view script_id);
+	void detach_script(std::string_view script_id);
+	bool has_script(std::string_view script_id) const;
+	[[nodiscard]] const std::vector<std::string>& get_scripts() const;
 
-	void attach_script(const std::u8string& script_id) {
-		ASSERT(!has_script(script_id));
-		scripts.push_back(script_id);
-	}
-
-	void detach_script(const std::u8string& script_id) {
-#ifdef NFWK_CPP_20
-		std::erase(scripts, script_id);
-#else
-		for (std::size_t i{0}; i < scripts.size(); i++) {
-			if (scripts[i] == script_id) {
-				scripts.erase(scripts.begin() + i);
-				break;
-			}
-		}
-#endif
-	}
-
-	bool has_script(std::u8string_view script_id) const {
-		return std::find(scripts.begin(), scripts.end(), script_id) != scripts.end();
-	}
-
-	void write(io_stream& stream) const {
-		ASSERT(is_identifier_normalized(id));
-		stream.write_string(id);
-		stream.write_string_array(scripts);
-	}
-
-	void read(io_stream& stream) {
-		id = stream.read_string();
-		scripts = stream.read_string_array();
-		ASSERT(is_identifier_normalized(id));
-	}
+	void write(io_stream& stream) const;
+	void read(io_stream& stream);
 
 private:
 	
 	script_event_container* container{ nullptr };
-	std::u8string id;
-	std::vector<std::u8string> scripts;
-	event<> on_event;
+	std::string id;
+	std::vector<std::string> script_ids;
 
 };
 
 class script_event_container {
 public:
 
-	script_event_container(io_stream& stream) {
-		read(stream);
-	}
+	event<std::string_view> on_event;
 
+	script_event_container(io_stream& stream);
 	script_event_container() = default;
+	script_event_container(const script_event_container&) = delete;
+	script_event_container(script_event_container&&) = delete;
 
-	std::u8string get_id() const {
-		return id;
-	}
+	~script_event_container() = default;
+	
+	script_event_container& operator=(const script_event_container&) = delete;
+	script_event_container& operator=(script_event_container&&) = delete;
+	
+	std::string_view get_id() const;
+	void set_id(std::string_view new_id);
 
-	void set_id(std::u8string_view new_id) {
-		id = new_id;
-		ASSERT(is_identifier_normalized(id));
-	}
+	[[nodiscard]] const std::vector<std::shared_ptr<script_event>>& get() const;
+	[[nodiscard]] std::vector<std::shared_ptr<script_event>> with_script(std::string_view script_id);
 
-	[[nodiscard]] std::vector<script_event*> get() {
-		std::vector<script_event*> result;
-		for (auto& event : events) {
-			result.push_back(&event);
-		}
-		return result;
-	}
+	std::shared_ptr<script_event> add(std::string_view event_id);
+	void remove(std::string_view event_id);
+	[[nodiscard]] std::shared_ptr<script_event> find(std::string_view event_id);
 
-	[[nodiscard]] std::vector<script_event*> with_script(std::u8string_view script_id) {
-		std::vector<script_event*> result;
-		for (auto& event : events) {
-			if (event.has_script(script_id)) {
-				result.push_back(&event);
-			}
-		}
-		return result;
-	}
+	void trigger(std::string_view event_id);
+	[[nodiscard]] bool exists(std::string_view event_id) const;
 
-	script_event* add(std::u8string_view event_id) {
-		if (exists(event_id)) {
-			return nullptr;
-		} else {
-			return &events.emplace_back(*this, event_id);
-		}
-	}
+	void write(io_stream& stream) const;
+	void read(io_stream& stream);
 
-	void remove(std::u8string_view event_id) {
-#ifdef NFWK_CPP_20
-		std::erase_if(events, [&event_id](const auto& event) {
-			return event.get_id() == event_id;
-		});
-#else
-		for (int i{ 0 }; i < static_cast<int>(events.size()); i++) {
-			if (events[i].get_id() == event_id) {
-				events.erase(events.begin() + i);
-				i--;
-			}
-		}
-#endif
-	}
-
-	script_event* find(std::u8string_view event_id) {
-		auto event = std::find_if(events.begin(), events.end(), [&event_id](const auto& event) {
-			return event.get_id() == event_id;
-		});
-		if (event == events.end()) {
-			event = std::find_if(events.begin(), events.end(), [this, &event_id](const auto& event) {
-				return event.get_id() == id + u8":" + std::u8string{ event_id };
-			});
-		}
-		return event != events.end() ? &*event : nullptr;
-	}
-
-	void trigger(std::u8string_view event_id) {
-		if (const auto* event = find(event_id)) {
-			event->trigger();
-		} else {
-			info(scripts::log, u8"{} does not exist.", event_id);
-		}
-	}
-
-	bool exists(std::u8string_view event_id) const {
-		return events.end() != std::find_if(events.begin(), events.end(), [&event_id](const auto& event) {
-			return event.get_id() == event_id;
-		});
-	}
-
-	void write(io_stream& stream) const {
-		ASSERT(is_identifier_normalized(id));
-		stream.write_string(id);
-		stream.write_size<size_length::four_bytes>(events.size());
-		for (const auto& event : events) {
-			event.write(stream);
-		}
-	}
-
-	void read(io_stream& stream) {
-		events.clear();
-		id = stream.read_string();
-		const auto count = stream.read_size();
-		for (std::size_t i{ 0 }; i < count; i++) {
-			events.emplace_back(*this, stream);
-		}
-		ASSERT(is_identifier_normalized(id));
-	}
-
-	[[nodiscard]] std::vector<script_event*> search(const std::u8string& search_term, int limit) {
-		std::vector<script_event*> results;
-		const auto& search = string_to_lowercase(search_term);
-		for (auto& event : events) {
-			const auto& event_id = string_to_lowercase(event.get_id());
-			if (event_id.find(search) != std::u8string::npos) {
-				results.push_back(&event);
-			}
-			if (static_cast<int>(results.size()) >= limit) {
-				break;
-			}
-		}
-		return results;
-	}
+	[[nodiscard]] std::vector<std::shared_ptr<script_event>> search(std::string search_term, int limit);
 
 private:
 
-	std::vector<script_event> events;
-	std::u8string id;
+	std::vector<std::shared_ptr<script_event>> events;
+	std::string id;
 
 };
 
 class object_class {
 public:
 
-	std::u8string id;
-	std::u8string name;
+	std::string id;
+	std::string name;
 	object_collision collision{ object_collision::none };
 	variable_scope variables;
 
-	void attach_script(const std::u8string& script_id);
-	void detach_script(const std::u8string& script_id);
+	void attach_script(const std::string& script_id);
+	void detach_script(const std::string& script_id);
 
-	bool supports_event(const std::u8string& event_id) const;
-	void attach_event(const std::u8string& event_id);
-	void detach_event(const std::u8string& event_id);
-	const std::vector<std::u8string>& get_supported_events() const;
+	[[nodiscard]] const std::vector<std::string>& get_supported_events() const;
+	[[nodiscard]] bool supports_event(const std::string& event_id) const;
+	void attach_event(const std::string& event_id);
+	void detach_event(const std::string& event_id);
 
 private:
 
-	std::vector<std::u8string> scripts;
-	std::vector<std::u8string> supported_events;
+	std::vector<std::string> scripts;
+	std::vector<std::string> supported_events;
 
 };
 
@@ -249,6 +134,10 @@ public:
 
 	void create_instance();
 
+	std::string_view get_class_id() const {
+		return definition->id;
+	}
+
 private:
 
 	void replace_instance(object_instance& instance);
@@ -262,13 +151,16 @@ class object_manager {
 public:
 
 	std::vector<std::shared_ptr<object_class>> get_classes();
-	std::shared_ptr<object_class> find_class(const std::u8string& class_id);
-	std::shared_ptr<object_class> register_class(const std::u8string& class_id);
+	std::shared_ptr<object_class> find_class(std::string_view class_id);
+	std::shared_ptr<object_class> register_class(std::string_view class_id);
+
+	std::vector<std::shared_ptr<object_class_instance>> get_class_instances();
+	std::shared_ptr<object_class_instance> find_class_instance(std::string_view class_id);
 
 private:
 
 	std::vector<std::shared_ptr<object_class>> definitions;
-	std::vector<object_class_instance> instances;
+	std::vector<std::shared_ptr<object_class_instance>> instances;
 
 };
 

@@ -1,35 +1,48 @@
 #include "graphics/surface.hpp"
 #include "graphics/png.hpp"
+#include "graphics/jpeg.hpp"
+#include "graphics/color.hpp"
 #include "log.hpp"
 #include "assert.hpp"
-
-#include <cstring>
+#include "math.hpp"
 
 namespace nfwk {
-
-void surface::flip_vertically(std::uint32_t* pixels, vector2i size) {
-	const int half_height{ size.y / 2 };
-	std::uint32_t* temporary_rows{ new std::uint32_t[size.x * sizeof(std::uint32_t)] };
-	for (int y{ 0 }; y < half_height; y++) {
-		std::memcpy(temporary_rows, pixels + y * size.x, size.x * sizeof(std::uint32_t));
-		std::memcpy(pixels + y * size.x, pixels + (size.y - y - 1) * size.x, size.x * sizeof(std::uint32_t));
-		std::memcpy(pixels + (size.y - y - 1) * size.x, temporary_rows, size.x * sizeof(std::uint32_t));
-	}
-	delete[] temporary_rows;
-}
 
 surface::surface(surface&& that) noexcept {
 	std::swap(pixels, that.pixels);
 	std::swap(size, that.size);
 	std::swap(format_, that.format_);
+	std::swap(error_flag, that.error_flag);
+	//std::swap(on_changed, that.on_changed);
 }
 
 surface::surface(const std::filesystem::path& path) {
-	surface result{ load_png(path) };
-	pixels = result.pixels;
-	size = result.size;
-	format_ = result.format_;
-	result.pixels = nullptr;
+	const auto type = detect_file_type_from_extension(path_to_string(path.extension()));
+	if (!type.has_value()) {
+		warning("graphics", "Unknown image file type: {}", path);
+		error_flag = true;
+		return;
+	}
+	const auto initialize_from = [this](surface that) {
+		pixels = that.pixels;
+		size = that.size;
+		format_ = that.format_;
+		that.pixels = nullptr;
+	};
+	switch (type.value()) {
+	case file_type::png:
+		initialize_from(load_png(path));
+		break;
+	case file_type::jpg:
+		initialize_from(load_jpeg(path));
+		break;
+	default:
+		warning("graphics", "No decoder for file: {} (type: {})", path, enum_string(type));
+		size = { 2, 2 };
+		pixels = new std::uint32_t[4]{};
+		error_flag = true;
+		break;
+	}
 }
 
 surface::surface(std::uint32_t* source_pixels, int width, int height, pixel_format format, construct_by construction) : size{ width, height }, format_{ format } {
@@ -37,12 +50,10 @@ surface::surface(std::uint32_t* source_pixels, int width, int height, pixel_form
 	switch (construction) {
 	case construct_by::copy:
 		pixels = new std::uint32_t[width * height];
-		memcpy(pixels, source_pixels, width * height * sizeof(std::uint32_t));
+		std::memcpy(pixels, source_pixels, width * height * sizeof(std::uint32_t));
 		break;
 	case construct_by::move:
 		pixels = source_pixels;
-		break;
-	default:
 		break;
 	}
 }
@@ -63,6 +74,8 @@ surface& surface::operator=(surface&& that) noexcept {
 	std::swap(pixels, that.pixels);
 	std::swap(size, that.size);
 	std::swap(format_, that.format_);
+	std::swap(error_flag, that.error_flag);
+	//std::swap(on_changed, that.on_changed);
 	return *this;
 }
 
@@ -71,6 +84,7 @@ void surface::resize(int width, int height) {
 		size = { width, height };
 		return;
 	}
+	ASSERT(pixels);
 	std::uint32_t* old_pixels{ pixels };
 	const int count{ width * height };
 	pixels = new std::uint32_t[count];
@@ -83,16 +97,17 @@ void surface::resize(int width, int height) {
 }
 
 void surface::flip_frames_horizontally(int frames) {
-	const int frame_width{ size.x / frames };
-	const int frame_half_width{ frame_width / 2 - frame_width % 2 };
+	ASSERT(pixels);
+	const auto frame_width = size.x / frames;
+	const auto frame_half_width = frame_width / 2 - frame_width % 2;
 	int frame_begin_x{ 0 };
 	for (int frame{ 0 }; frame < frames; frame++) {
-		const int frame_middle_x{ frame_begin_x + frame_half_width };
+		const auto frame_middle_x = frame_begin_x + frame_half_width;
 		for (int x{ frame_begin_x }; x < frame_middle_x; x++) {
 			for (int y{ 0 }; y < size.y; y++) {
-				const int row{ y * size.x };
-				const int right_column{ frame_begin_x + frame_width - (x - frame_begin_x) - 1 };
-				const std::uint32_t left{ pixels[row + x] };
+				const auto row = y * size.x;
+				const auto right_column = frame_begin_x + frame_width - (x - frame_begin_x) - 1;
+				const auto left = pixels[row + x];
 				pixels[row + x] = pixels[row + right_column];
 				pixels[row + right_column] = left;
 			}
@@ -102,11 +117,12 @@ void surface::flip_frames_horizontally(int frames) {
 }
 
 void surface::flip_horizontally() {
-	const int half_width{ size.x / 2 - size.x % 2 };
+	ASSERT(pixels);
+	const auto half_width = size.x / 2 - size.x % 2;
 	for (int x{ 0 }; x < half_width; x++) {
 		for (int y{ 0 }; y < size.y; y++) {
-			const int row{ y * size.x };
-			const std::uint32_t left{ pixels[row + x] };
+			const auto row = y * size.x;
+			const auto left = pixels[row + x];
 			pixels[row + x] = pixels[row + size.x - x - 1];
 			pixels[row + size.x - x - 1] = left;
 		}
@@ -138,6 +154,7 @@ void surface::set(int index, std::uint32_t color) {
 }
 
 void surface::clear(std::uint32_t color) {
+	ASSERT(pixels);
 	std::fill_n(pixels, size.x * size.y, color);
 }
 
@@ -155,10 +172,12 @@ void surface::render(std::uint32_t* source_pixels, int width, int height) {
 }
 
 void surface::render_horizontal_line(std::uint32_t color, int x, int y, int width) {
+	ASSERT(pixels);
 	std::fill_n(pixels + y * size.x + x, width, color);
 }
 
 void surface::render_vertical_line(std::uint32_t color, int x, int y, int height) {
+	ASSERT(pixels);
 	const int y1{ y * size.x + x };
 	const int y2{ (y + height) * size.x + x };
 	for (int i{ y1 }; i < y2; i += size.x) {
@@ -167,6 +186,7 @@ void surface::render_vertical_line(std::uint32_t color, int x, int y, int height
 }
 
 void surface::render_rectangle(std::uint32_t color, int x, int y, int width, int height) {
+	ASSERT(pixels);
 	const int y1{ y * size.x + x };
 	const int y2{ (y + height) * size.x + x };
 	for (int i{ y1 }; i < y2; i += size.x) {
@@ -221,6 +241,53 @@ int surface::count() const {
 
 pixel_format surface::format() const {
 	return format_;
+}
+
+bool surface::has_error() const {
+	return error_flag;
+}
+
+void surface::clear_error() {
+	error_flag = false;
+}
+
+void surface::flip_vertically(std::uint32_t* pixels, vector2i size) {
+	ASSERT(pixels);
+	const int half_height{ size.y / 2 };
+	std::uint32_t* temporary_rows{ new std::uint32_t[size.x * sizeof(std::uint32_t)] };
+	for (int y{ 0 }; y < half_height; y++) {
+		std::memcpy(temporary_rows, pixels + y * size.x, size.x * sizeof(std::uint32_t));
+		std::memcpy(pixels + y * size.x, pixels + (size.y - y - 1) * size.x, size.x * sizeof(std::uint32_t));
+		std::memcpy(pixels + (size.y - y - 1) * size.x, temporary_rows, size.x * sizeof(std::uint32_t));
+	}
+	delete[] temporary_rows;
+}
+
+float detect_grayscale(const surface& surface, float coverage, float flexibility) {
+	ASSERT(coverage > 0.0f && coverage <= 1.0f);
+	ASSERT(flexibility >= 0.0f && flexibility < 1.0f);
+	const auto flexibility_distance = static_cast<int>(flexibility * 255.0f);
+	const auto count = surface.count();
+	const auto pixels_covered = static_cast<float>(count) * coverage;
+	const auto skip = count / static_cast<int>(pixels_covered);
+	const auto confidence_delta = 1.0f / static_cast<float>(pixels_covered);
+	float confidence{ 0.0f };
+	for (int i{ 0 }; i < count; i += skip) {
+		const auto pixel = from_rgba(surface.at(i));
+		if (pixel.x == pixel.y && pixel.y == pixel.z) {
+			confidence += confidence_delta;
+		} else {
+			const auto xy_half = (pixel.x + pixel.y) / 2;
+			const auto xz_half = (pixel.x + pixel.z) / 2;
+			const auto yz_half = (pixel.y + pixel.z) / 2;
+			if (std::abs(pixel.x - yz_half) < flexibility_distance && std::abs(pixel.y - xz_half) < flexibility_distance && std::abs(pixel.z - xy_half) < flexibility_distance) {
+				confidence += confidence_delta * 0.5f;
+			} else {
+				confidence -= confidence_delta * 2.0f;
+			}
+		}
+	}
+	return clamp(confidence, 0.0f, 1.0f);
 }
 
 }

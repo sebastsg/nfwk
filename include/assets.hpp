@@ -18,7 +18,7 @@ public:
 
 	const asset_manager& manager;
 	const std::filesystem::path path;
-	const std::u8string name;
+	const std::string name;
 
 	asset_wrapper_base(const asset_manager& manager, const std::filesystem::path& path_)
 		: manager{ manager }, path { path_ }, name{ get_name(path_) } {}
@@ -44,7 +44,7 @@ public:
 
 private:
 	
-	[[nodiscard]] virtual std::u8string get_name(std::filesystem::path path) const;
+	[[nodiscard]] virtual std::string get_name(std::filesystem::path path) const;
 
 };
 
@@ -61,10 +61,10 @@ public:
 	asset_manager& operator=(const asset_manager&) = delete;
 	asset_manager& operator=(asset_manager&&) = delete;
 
-	std::any find(const std::type_info& type_info, std::u8string_view name);
+	std::any find(const std::type_info& type_info, std::string_view name);
 
 	template<typename Asset>
-	std::shared_ptr<Asset> find(std::u8string_view name) {
+	std::shared_ptr<Asset> find(std::string_view name) {
 		try {
 			return std::any_cast<std::shared_ptr<Asset>>(find(typeid(Asset), name));
 		} catch (std::bad_any_cast e) {
@@ -85,10 +85,10 @@ public:
 		}
 	}
 
-	void remove(const std::type_info& type_info, const std::u8string& name);
+	void remove(const std::type_info& type_info, const std::string& name);
 
 	[[nodiscard]] std::filesystem::path get_directory() const;
-	[[nodiscard]] std::filesystem::path path(std::u8string_view asset) const;
+	[[nodiscard]] std::filesystem::path path(std::string_view asset) const;
 
 private:
 
@@ -148,7 +148,7 @@ protected:
 class texture_asset : public asset_wrapper<texture> {
 public:
 
-	static constexpr std::u8string_view directory{ u8"textures" };
+	static constexpr std::string_view directory{ "textures" };
 
 	using asset_wrapper::asset_wrapper;
 
@@ -161,7 +161,7 @@ public:
 class font_asset : public asset_wrapper<font> {
 public:
 
-	static constexpr std::u8string_view directory{ u8"fonts" };
+	static constexpr std::string_view directory{ "fonts" };
 
 	using asset_wrapper::asset_wrapper;
 
@@ -176,7 +176,7 @@ public:
 class shader_asset : public asset_wrapper<shader> {
 public:
 
-	static constexpr std::u8string_view directory{ u8"shaders" };
+	static constexpr std::string_view directory{ "shaders" };
 
 	using asset_wrapper::asset_wrapper;
 

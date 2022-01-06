@@ -39,7 +39,7 @@ static constexpr vector4b simplex[64]{
 };
 
 simplex_noise_map::simplex_noise_map(unsigned long long seed) : seed{ seed } {
-	info(core::log, u8"Seed: {}", seed);
+	info(core::log, "Seed: {}", seed);
 	random_number_generator rng{ seed };
 	for (int i{ 0 }; i < 256; i++) {
 		permutation[i] = rng.next(255);
@@ -81,15 +81,15 @@ float simplex_noise_map::get(float x, float y) const {
 	float n{ 0.0f };
 	if (float t{ 0.5f - origin_offset.x * origin_offset.x - origin_offset.y * origin_offset.y }; t >= 0.0f) {
 		t *= t;
-		n += t * t * gradients_3[gi0].xy.dot(origin_offset);
+		n += t * t * gradients_3[gi0].xy().dot(origin_offset);
 	}
 	if (float t{ 0.5f - middle_offset.x * middle_offset.x - middle_offset.y * middle_offset.y }; t >= 0.0f) {
 		t *= t;
-		n += t * t * gradients_3[gi1].xy.dot(middle_offset);
+		n += t * t * gradients_3[gi1].xy().dot(middle_offset);
 	}
 	if (float t{ 0.5f - last_offset.x * last_offset.x - last_offset.y * last_offset.y }; t >= 0.0f) {
 		t *= t;
-		n += t * t * gradients_3[gi2].xy.dot(last_offset);
+		n += t * t * gradients_3[gi2].xy().dot(last_offset);
 	}
 	return 70.0f * n;
 }

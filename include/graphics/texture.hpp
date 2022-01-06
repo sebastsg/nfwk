@@ -6,7 +6,7 @@ namespace nfwk {
 
 class surface;
 
-enum class scale_option { nearest_neighbour, linear };
+enum class scale_option { nearest_neighbor, linear };
 
 class texture {
 public:
@@ -40,3 +40,7 @@ private:
 };
 
 }
+
+std::ostream& operator<<(std::ostream& out, nfwk::scale_option option);
+
+NFWK_STDSPEC_FORMATTER(nfwk::scale_option);

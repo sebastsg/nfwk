@@ -4,44 +4,24 @@
 #include "io.hpp"
 #include "event.hpp"
 #include "datetime.hpp"
-#include <fmt/format.h>
-#include <fmt/ostream.h>
-#include <fmt/ranges.h>
+#include "ansi_escape.hpp"
 
 #include <mutex>
 #include <filesystem>
+#include <source_location>
 
 namespace nfwk::log {
 enum class entry_type { message, warning, error, info };
 }
 
-// temporary until supported
-namespace std {
-class source_location {
-public:
-	std::u8string file_name() const {
-		return u8"File";
-	}
-	std::u8string function_name() const {
-		return u8"Function";
-	}
-	int line() const {
-		return 1;
-	}
-	static source_location current() {
-		return {};
-	}
-};
-}
-
 std::ostream& operator<<(std::ostream& out, nfwk::log::entry_type message);
-std::ostream& operator<<(std::ostream& out, const std::vector<std::u8string>& strings);
+std::ostream& operator<<(std::ostream& out, const std::vector<std::string>& strings);
 
 namespace nfwk::log {
 
-std::u8string current_local_time_string();
-std::u8string current_local_date_string();
-std::u8string current_time_string_for_log();
+std::string current_local_time_string();
+std::string current_local_date_string();
+std::string current_time_string_for_log();
 
 class debug_log;
 
@@ -74,21 +54,21 @@ class log_entry {
 public:
 
 	entry_type type;
-	std::u8string message;
-	std::u8string file;
-	std::u8string function;
+	std::string message;
+	std::string file;
+	std::string function;
 	int line;
-	std::u8string time;
+	std::string time;
 	long long timestamp;
 
-	log_entry(entry_type type, std::u8string_view message, std::u8string_view path, std::u8string_view function, int line)
+	log_entry(entry_type type, std::string_view message, std::string_view path, std::string_view function, int line)
 		: type{ type }, message{ message }, file{ file_in_path(path) }, function{ function }, line{ line }, 
 		time{ current_time_string_for_log() }, timestamp{ current_time<std::chrono::nanoseconds>() } {}
 
 private:
 
-	static std::u8string_view file_in_path(std::u8string_view path) {
-		if (const auto slash = path.rfind(std::filesystem::path::preferred_separator); slash != std::u8string::npos) {
+	static std::string_view file_in_path(std::string_view path) {
+		if (const auto slash = path.rfind(std::filesystem::path::preferred_separator); slash != std::string::npos) {
 			return path.substr(slash + 1);
 		} else {
 			return path;
@@ -100,16 +80,11 @@ private:
 class log_entry_identifier {
 public:
 
-	const char8_t* const id;
+	const char* const id;
 	const std::source_location source;
 
-	log_entry_identifier(const char* id, const std::source_location& source = std::source_location::current())
-		: id{ reinterpret_cast<const char8_t*>(id) }, source{ source } {}
-
-#ifdef NFWK_CPP_20
-	log_entry_identifier(const char8_t* id, const std::source_location& source = std::source_location::current())
+	consteval log_entry_identifier(const char* id, const std::source_location& source = std::source_location::current())
 		: id{ id }, source{ source } {}
-#endif
 
 };
 
@@ -118,14 +93,14 @@ public:
 
 	event<const log_entry&> on_new_entry;
 
-	const std::u8string name;
+	const std::string name;
 
 	bool show_time{ true };
 	bool show_file{ true };
 	bool show_line{ true };
 
-	debug_log(std::u8string_view name) : name{ name } {}
-	debug_log(std::u8string_view name, const std::vector<std::shared_ptr<debug_log>>& logs);
+	debug_log(std::string_view name) : name{ name } {}
+	debug_log(std::string_view name, const std::vector<std::shared_ptr<debug_log>>& logs);
 
 	int count() const {
 		return static_cast<int>(entries.size());
@@ -151,66 +126,85 @@ private:
 
 };
 
+enum class text_graphics_formatting { none, ansi };
+
+void format_text_graphics(std::string& string, text_graphics_formatting formatting);
 void add_writer(const std::shared_ptr<log_writer>& new_writer);
-void add_entry(const log_entry_identifier& identifier, entry_type type, std::u8string_view message);
-std::shared_ptr<debug_log> find_log(const std::u8string& name);
+void add_entry(const log_entry_identifier& identifier, entry_type type, std::string message);
+std::shared_ptr<debug_log> find_log(std::string_view name);
 std::vector<std::shared_ptr<debug_log>>& get_logs();
+
+void add_writer_type(const std::function<std::shared_ptr<log_writer>(std::shared_ptr<debug_log>)>& make_writer);
+
+template<typename Writer>
+void add_writer_type() {
+	add_writer_type([](std::shared_ptr<debug_log> log) {
+		return std::make_shared<Writer>(log);
+	});
+}
 
 }
 
 namespace nfwk {
 
 namespace core {
-constexpr const auto* log = u8"core";
+constexpr const auto* log = "core";
 }
 
 namespace draw {
-constexpr const auto* log = u8"draw";
+constexpr const auto* log = "draw";
 }
 
 namespace audio {
-constexpr const auto* log = u8"audio";
+constexpr const auto* log = "audio";
 }
 
 namespace scripts {
-constexpr const auto* log = u8"scripts";
+constexpr const auto* log = "scripts";
 }
 
 namespace network {
-constexpr const auto* log = u8"network";
+constexpr const auto* log = "network";
 }
 
 namespace graphics {
-constexpr const auto* log = u8"graphics";
+constexpr const auto* log = "graphics";
 }
 
 namespace ui {
-constexpr const auto* log = u8"ui";
+constexpr const auto* log = "ui";
 }
 
 template<typename... Args>
-void message(log::log_entry_identifier id, std::u8string_view format, Args&&... args) {
-	log::add_entry(id, log::entry_type::message, fmt::format(format, args...));
+void message(log::log_entry_identifier id, std::string_view format, Args&&... args) {
+	log::add_entry(id, log::entry_type::message, "%white" + std::format(format, args...));
 }
 
 template<typename... Args>
-void info(log::log_entry_identifier id, std::u8string_view format, Args&&... args) {
-	log::add_entry(id, log::entry_type::info, fmt::format(format, args...));
+void info(log::log_entry_identifier id, std::string_view format, Args&&... args) {
+	log::add_entry(id, log::entry_type::info, "%light-blue" + std::format(format, args...));
 }
 
 template<typename... Args>
-void warning(log::log_entry_identifier id, std::u8string_view format, Args&&... args) {
-	log::add_entry(id, log::entry_type::warning, fmt::format(format, args...));
+void warning(log::log_entry_identifier id, std::string_view format, Args&&... args) {
+	log::add_entry(id, log::entry_type::warning, "%yellow" + std::format(format, args...));
 }
 
 template<typename... Args>
-void error(log::log_entry_identifier id, std::u8string_view format, Args&&... args) {
-	log::add_entry(id, log::entry_type::error, fmt::format(format, args...));
+void error(log::log_entry_identifier id, std::string_view format, Args&&... args) {
+	log::add_entry(id, log::entry_type::error, "%red" + std::format(format, args...));
 }
 
 template<typename... Args>
-void bug(std::u8string_view format, Args&&... args) {
-	log::add_entry(u8"bugs", log::entry_type::warning, fmt::format(format, args...));
+void bug(std::string_view format, Args&&... args) {
+	log::add_entry("bugs", log::entry_type::warning, "%light-red" + std::format(format, args...));
+}
+
+template<typename... Args>
+void log_errno(log::log_entry_identifier id, std::string_view format, Args&&... args) {
+	char error_string[128]{};
+	strerror_s(error_string, errno);
+	log::add_entry(id, log::entry_type::error, "%red" + std::format(format, args...) + ". %redError: " + error_string);
 }
 
 }

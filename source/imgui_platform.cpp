@@ -25,8 +25,8 @@
 
 namespace nfwk::ui {
 
-static constexpr std::u8string_view vertex_glsl{
-	u8"#version 330\n"
+static constexpr std::string_view vertex_glsl{
+	"#version 330\n"
 	"uniform mat4 model_view_projection;"
 	"in vec2 in_Position;"
 	"in vec2 in_TexCoords;"
@@ -40,8 +40,8 @@ static constexpr std::u8string_view vertex_glsl{
 	"}"
 };
 
-static constexpr std::u8string_view fragment_glsl{
-	u8"#version 330\n"
+static constexpr std::string_view fragment_glsl{
+	"#version 330\n"
 	"uniform sampler2D active_texture;"
 	"in vec4 v_Color;"
 	"in vec2 v_TexCoords;"
@@ -67,7 +67,7 @@ struct imgui_data {
 	std::unique_ptr<texture> font_texture;
 	event_listener keyboard_repeated_press;
 	event_listener keyboard_release;
-	event_listener keybord_input;
+	event_listener keyboard_input;
 	event_listener mouse_scroll;
 	event_listener mouse_cursor;
 	event_listener mouse_press;
@@ -100,6 +100,7 @@ static void initialize_style() {
 	vector4f button_active{ 0.2f, 0.5f, 0.95f, 1.0f };
 	vector4f border{ 0.3f, 0.6f, 0.9f, 1.0f };
 	vector4f background{ 0.12f, 0.16f, 0.24f, 1.0f };
+	vector4f child_background{ 0.13f, 0.17f, 0.26f, 1.0f };
 	vector4f frame{ 0.1f, 0.1f, 0.1f, 1.0f };
 	vector4f frame_hover{ 0.2f, 0.35f, 0.55f, 1.0f };
 	vector4f checkmark{ 0.2f, 0.5f, 0.95f, 1.0f };
@@ -112,7 +113,7 @@ static void initialize_style() {
 	style.Colors[ImGuiCol_Text] = text;
 	style.Colors[ImGuiCol_TextDisabled] = with_alpha(text, 0.6f);
 	style.Colors[ImGuiCol_WindowBg] = background;
-	style.Colors[ImGuiCol_ChildBg] = frame;
+	style.Colors[ImGuiCol_ChildBg] = child_background;
 	style.Colors[ImGuiCol_PopupBg] = background;
 	style.Colors[ImGuiCol_Border] = border;
 	style.Colors[ImGuiCol_BorderShadow] = with_alpha(border, 0.2f);
@@ -217,20 +218,19 @@ static void set_mouse_down(mouse::button button, bool is_down) {
 }
 
 void add_font(const std::filesystem::path& name, int size) {
-	message(log, u8"Adding UI font: {}", name);
-	if (const auto path = font::find_absolute_path(name)) {
-		static const ImWchar glyph_ranges[]{
+	message(log, "Adding UI font: {}", name);
+	if (const auto& path = font::find_absolute_path(name)) {
+		constexpr ImWchar glyph_ranges[]{
 			1, 256,
 			8592, 8592,
 			0
 		};
 		auto& io = ImGui::GetIO();
 		//data.font_config.MergeMode = true;
-		const auto& name_string = path->u8string();
-		const auto* name_data = reinterpret_cast<const char*>(name_string.c_str());
-		io.Fonts->AddFontFromFileTTF(name_data, static_cast<float>(size), &data->font_config, glyph_ranges);
+		const auto name_string = path_to_string(path.value());
+		io.Fonts->AddFontFromFileTTF(name_string.c_str(), static_cast<float>(size), &data->font_config, glyph_ranges);
 	} else {
-		warning(log, u8"Did not find the font.");
+		warning(log, "Did not find the font.");
 	}
 }
 
@@ -247,17 +247,18 @@ void build_fonts() {
 
 void create(window& window) {
 	if (is_initialized()) {
-		warning(log, u8"UI is already initialized.");
+		warning(log, "UI is already initialized.");
 		ASSERT(false);
 		return;
 	}
-	message(log, u8"Initializing UI");
+	message(log, "Initializing UI");
 	ImGui::CreateContext();
 	data = std::make_unique<imgui_data>();
 	data->window = &window;
 	data->ticks_per_second = platform::performance_frequency();
 	data->time = platform::performance_counter();
 	auto& io = ImGui::GetIO();
+	io.ConfigFlags = ImGuiConfigFlags_DockingEnable;
 	io.BackendFlags = ImGuiBackendFlags_HasMouseCursors | ImGuiBackendFlags_HasSetMousePos;
 	io.BackendPlatformName = "nfwk-windows";
 	io.BackendRendererName = "nfwk-opengl";
@@ -294,7 +295,7 @@ void create(window& window) {
 			io.KeysDown[static_cast<int>(released_key)] = false;
 		}
 	});
-	data->keybord_input = window.keyboard.input.listen([&](unsigned int character) {
+	data->keyboard_input = window.keyboard.input.listen([&](unsigned int character) {
 		if (character > 0 && character < 0x10000) {
 			io.AddInputCharacter(character);
 		}
@@ -305,25 +306,28 @@ void create(window& window) {
 	data->mouse_cursor = window.mouse.icon.listen([] {
 		update_cursor_icon();
 	});
-	data->mouse_press = window.mouse.press.listen([&](mouse::button pressed_button) {
+	data->mouse_press = window.mouse.press.listen([](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
-			SetCapture(window->handle());
+			if (const auto* window = dynamic_cast<const platform::windows_window*>(data->window)) {
+				SetCapture(window->handle());
+			}
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data->mouse_double_click = window.mouse.double_click.listen([&](mouse::button pressed_button) {
+	data->mouse_double_click = window.mouse.double_click.listen([](mouse::button pressed_button) {
 		if (!ImGui::IsAnyMouseDown() && !GetCapture()) {
-			const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
-			SetCapture(window->handle());
+			if (const auto* window = dynamic_cast<const platform::windows_window*>(data->window)) {
+				SetCapture(window->handle());
+			}
 		}
 		set_mouse_down(pressed_button, true);
 	});
-	data->mouse_release = window.mouse.release.listen([&](mouse::button released_button) {
+	data->mouse_release = window.mouse.release.listen([](mouse::button released_button) {
 		set_mouse_down(released_button, false);
-		const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
-		if (!ImGui::IsAnyMouseDown() && GetCapture() == window->handle()) {
-			ReleaseCapture();
+		if (const auto* window = dynamic_cast<const platform::windows_window*>(data->window)) {
+			if (!ImGui::IsAnyMouseDown() && GetCapture() == window->handle()) {
+				ReleaseCapture();
+			}
 		}
 	});
 	data->ui_shader = std::make_unique<shader>(vertex_glsl, fragment_glsl);
@@ -332,9 +336,9 @@ void create(window& window) {
 
 void destroy() {
 	if (is_initialized()) {
-		message(log, u8"Destroying UI state");
+		message(log, "Destroying UI state");
 		data = nullptr;
-		ImGui::GetIO().Fonts->TexID = 0;
+		ImGui::GetIO().Fonts->TexID = {};
 	}
 }
 
@@ -345,7 +349,7 @@ void start_frame() {
 		const auto* window = dynamic_cast<const platform::windows_window*>(data->window);
 		GetClientRect(window->handle(), &rect);
 		io.DisplaySize = { static_cast<float>(rect.right - rect.left), static_cast<float>(rect.bottom - rect.top) };
-		const long long current_time{ platform::performance_counter() };
+		const auto current_time = platform::performance_counter();
 		io.DeltaTime = static_cast<float>(current_time - data->time) / static_cast<float>(data->ticks_per_second);
 		data->time = current_time;
 		io.KeyCtrl = (GetKeyState(VK_CONTROL) & 0x8000) != 0;
@@ -370,10 +374,9 @@ void draw(render_context& context) {
 	}
 	auto draw_data = ImGui::GetDrawData();
 	if (!draw_data) {
-		warning(log, u8"Invalid draw data.");
+		warning(log, "Invalid draw data.");
 		ASSERT(false);
 	}
-	const auto& io = ImGui::GetIO();
 	const vector2f display_position{ draw_data->DisplayPos };
 	const vector2f display_size{ draw_data->DisplaySize };
 
@@ -384,7 +387,7 @@ void draw(render_context& context) {
 
 	auto window = dynamic_cast<platform::windows_window*>(data->window);
 
-	vertex_array<imgui_vertex, unsigned short> vertex_array;
+	vertex_array<imgui_vertex, std::uint32_t> vertex_array;
 	for (int list_index{ 0 }; list_index < draw_data->CmdListsCount; list_index++) {
 		const auto draw_list = draw_data->CmdLists[list_index];
 		const auto vertex_data = reinterpret_cast<const std::uint8_t*>(draw_list->VtxBuffer.Data);
@@ -397,8 +400,8 @@ void draw(render_context& context) {
 			offset += buffer.ElemCount;
 			if (buffer.UserCallback) {
 				if (buffer.UserCallback == ImDrawCallback_ResetRenderState) {
-					warning(log, u8"Not supported.");
-					ASSERT(false);
+					warning(log, "Not supported.");
+					abort();
 				} else {
 					buffer.UserCallback(draw_list, &buffer);
 				}

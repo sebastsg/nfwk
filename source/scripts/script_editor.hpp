@@ -6,9 +6,13 @@
 
 struct ImDrawList;
 
-namespace nfwk {
+namespace nfwk::ui {
+class main_menu_bar;
+}
 
-class script_node_output;
+namespace nfwk::script {
+
+class node_output;
 
 class link_circle {
 public:
@@ -27,7 +31,11 @@ public:
 class script_edit_state {
 public:
 
-	std::unique_ptr<script_tree> tree;
+	std::string id;
+	std::string name;
+	std::optional<int> start_node_id;
+	std::vector<std::shared_ptr<script_node>> nodes;
+	
 	std::optional<int> output_from_node;
 	std::optional<int> output_slot;
 	std::optional<int> selected_node;
@@ -37,46 +45,54 @@ public:
 
 };
 
-class script_editor : public abstract_editor {
+class script_editor : public ui::window_wrapper {
 public:
-
-	static constexpr std::u8string_view title{ u8"Script editor" };
 
 	script_node_factory* node_factory{ nullptr };
 
-	script_editor(editor_container& container);
+	script_editor(std::optional<std::filesystem::path> path, std::shared_ptr<ui::main_menu_bar> menu_bar);
+	script_editor(const script_editor&) = delete;
+	script_editor(script_editor&&) = delete;
+	
 	~script_editor() override;
 
-	void update() override;
-	bool is_dirty() const override;
+	script_editor& operator=(const script_editor&) = delete;
+	script_editor& operator=(script_editor&&) = delete;
+	
+	void update(ui::window_container& container) override;
+	bool has_unsaved_changes() const override;
 
-	std::u8string_view get_title() const override {
-		return title;
+	template<typename Node>
+	void add_node_ui(const std::function<bool(Node&)>& edit_node_ui) {
+		node_ui_functions[Node::full_type].emplace_back([edit_node_ui](script_node& node) {
+			return edit_node_ui(static_cast<Node&>(node));
+		});
 	}
 
 private:
 
-	bool show_properties{ false };
-
-	std::unordered_map<script_node*, std::vector<link_circle>> node_circles;
-
+	std::optional<std::filesystem::path> path;
+	std::shared_ptr<ui::main_menu_bar> menu_bar;
+	
 	script_edit_state script;
 
+	bool show_properties{ false };
 	bool is_context_menu_open{ false };
 
+	std::unordered_map<const script_node*, std::vector<link_circle>> node_circles;
+	std::unordered_map<int, std::vector<std::function<bool(script_node&)>>> node_ui_functions;
+	
 	void update_nodes_window(vector2f position, vector2f size);
 	void update_properties_window(vector2f position, vector2f size);
-
-	void create_new_script();
-	void load_script(const std::u8string& id);
-	void save_script();
 
 	void update_nodes(vector2f offset);
 	void update_context_menu(vector2f offset);
 	void update_node_context_menu(script_node& node);
 	void update_scrolling();
-	void update_node_link_output(const script_node_output& output, script_node& node, vector2f offset);
+	void update_node_link_output(const node_output& output, script_node& node, vector2f offset);
 	void update_node_links(vector2f offset);
+
+	void add_core_node_ui();
 
 };
 

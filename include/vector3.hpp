@@ -7,20 +7,20 @@ namespace nfwk {
 template<typename T>
 struct vector3 {
 
-	union {
-		struct {
-			T x, y, z;
-		};
-		struct {
-			vector2<T> xy;
-			T _placeholder_z;
-		};
-	};
+	static constexpr int components{ 3 };
 
-	constexpr vector3() : x{}, y{}, z{} {}
+	T x{};
+	T y{};
+	T z{};
+
+	constexpr vector2<T> xy() const {
+		return { x, y };
+	}
+
+	constexpr vector3() = default;
 	constexpr vector3(T i) : x{ i }, y{ i }, z{ i } {}
 	constexpr vector3(T x, T y, T z) : x{ x }, y{ y }, z{ z } {}
-
+	
 	constexpr vector3<T> operator-() const {
 		return { -x, -y, -z };
 	}

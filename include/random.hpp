@@ -7,38 +7,34 @@ namespace nfwk {
 class random_number_generator {
 public:
 
-	random_number_generator();
-	random_number_generator(unsigned long long seed);
+	random_number_generator(unsigned long long seed = std::random_device{}());
 
-	void seed(unsigned long long seed);
+	void reseed(unsigned long long seed);
 	unsigned long long seed() const;
 
-	// min and max are inclusive
 	template<typename T>
-	T next(T min, T max) {
+	T next(T min_inclusive, T max_inclusive) {
+		static_assert(std::is_integral_v<T> || std::is_floating_point_v<T>, "T must be integral or floating point");
 		if constexpr (std::is_integral<T>::value) {
-			std::uniform_int_distribution<T> distribution{ min, max };
-			return distribution(mersenne_twister_engine);
+			return std::uniform_int_distribution<T>{ min_inclusive, max_inclusive }(mersenne_twister_engine);
 		} else if constexpr (std::is_floating_point<T>::value) {
-			std::uniform_real_distribution<T> distribution{ min, max };
-			return distribution(mersenne_twister_engine);
+			return std::uniform_real_distribution<T>{ min_inclusive, max_inclusive }(mersenne_twister_engine);
 		}
-		static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "T is not an integral or floating point type");
 	}
 
-	// max is inclusive
 	template<typename T>
-	T next(T max) {
-		return next<T>({}, max);
+	T next(T max_inclusive) {
+		return next<T>({}, max_inclusive);
 	}
 
 	// chance must be between 0.0f and 1.0f
 	// the higher chance is, the more likely this function returns true
 	bool chance(float chance);
 
-	std::u8string string(int size);
+	std::string characters(int size, std::string_view reference_characters);
+	std::string string(int size);
 
-	static random_number_generator& global();
+	static random_number_generator& any();
 
 private:
 

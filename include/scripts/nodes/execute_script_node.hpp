@@ -3,20 +3,20 @@
 #include "scripts/script_node.hpp"
 #include "script_node_macro.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
 class execute_script_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(9, u8"Execute script", u8"");
+	NFWK_SCRIPT_CORE_NODE(9, "Execute script", "");
 
-	std::u8string script_id;
+	std::string script_id;
 
-	script_node_output_type output_type() const override {
-		return script_node_output_type::single;
+	output_type get_output_type() const override {
+		return output_type::single;
 	}
 
-	std::optional<int> process() const override;
+	std::optional<int> process(script_context& context) const override;
 	void write(io_stream& stream) const override;
 	void read(io_stream& stream) override;
 

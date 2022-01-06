@@ -22,7 +22,7 @@ public:
 	model& operator=(const model&) = delete;
 	model& operator=(model&&) noexcept;
 
-	int index_of_animation(const std::u8string& name) const;
+	int index_of_animation(std::string_view name) const;
 	int total_animations() const;
 	model_animation& animation(int index);
 	const model_animation& animation(int index) const;
@@ -33,7 +33,7 @@ public:
 	template<typename Vertex, typename Index>
 	void load(const model_data<Vertex, Index>& model) {
 		if (model.shape.vertices.empty()) {
-			warning(graphics::log, u8"Failed to load model");
+			warning(graphics::log, "Failed to load model");
 			return;
 		}
 		mesh = { std::move(vertex_array<Vertex, Index>{model.shape.vertices, model.shape.indices }) };
@@ -51,11 +51,11 @@ public:
 	}
 
 	template<typename Vertex, typename Index>
-	void load(const std::u8string& path) {
+	void load(const std::string& path) {
 		model_data<Vertex, Index> model;
 		import_model(path, model);
 		if (model.shape.vertices.empty()) {
-			warning(graphics::log, u8"Failed to load model: {}", path);
+			warning(graphics::log, "Failed to load model: {}", path);
 			return;
 		}
 		load(model);
@@ -69,8 +69,8 @@ public:
 	vector3f max() const;
 	vector3f size() const;
 
-	std::u8string texture_name() const;
-	std::u8string name() const;
+	std::string texture_name() const;
+	std::string name() const;
 
 private:
 
@@ -82,8 +82,8 @@ private:
 	vector3f min_vertex;
 	vector3f max_vertex;
 	bool drawable{ false };
-	std::u8string texture;
-	std::u8string model_name;
+	std::string texture;
+	std::string model_name;
 
 };
 

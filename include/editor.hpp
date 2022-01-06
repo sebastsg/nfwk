@@ -1,87 +1,100 @@
 #pragma once
 
 #include "subprogram.hpp"
-#include "imgui_loop_component.hpp"
 #include "graphics/ui.hpp"
 
-namespace nfwk {
+namespace nfwk::ui {
 
-class editor_container;
+class window_container;
 class texture;
 
-class abstract_editor {
+enum class docking_direction { left, right, up, down, none };
+
+class window_wrapper {
 public:
 
-	abstract_editor(editor_container& container);
-	abstract_editor(const abstract_editor&) = delete;
-	abstract_editor(abstract_editor&&) = default;
+	friend class window_container;
+	
+	bool open{ false };
 
-	virtual ~abstract_editor() = default;
+	window_wrapper() = default;
+	window_wrapper(const window_wrapper&) = delete;
+	window_wrapper(window_wrapper&&) = default;
 
-	abstract_editor& operator=(const abstract_editor&) = delete;
-	abstract_editor& operator=(abstract_editor&&) = delete;
+	virtual ~window_wrapper() = default;
 
-	virtual void update() = 0;
-	virtual std::u8string_view get_title() const = 0;
-	virtual bool is_dirty() const = 0;
+	window_wrapper& operator=(const window_wrapper&) = delete;
+	window_wrapper& operator=(window_wrapper&&) = delete;
 
+	virtual void update(window_container& container) = 0;
+	virtual void after_update() {}
+
+	virtual std::string get_name() const = 0;
+
+	virtual std::string get_unique_id() const {
+		return {};
+	}
+	
+	virtual int get_flags() const {
+		return default_window_flags;
+	}
+	
+	virtual bool has_unsaved_changes() const {
+		return false;
+	}
+
+	virtual void save() {}
+	
 	bool is_open() const {
 		return open;
 	}
 
-protected:
-
-	bool open{ true };
-	editor_container& container;
-
-};
-
-class add_script_event_editor : public abstract_editor {
-public:
-
-	using abstract_editor::abstract_editor;
-
-	void update() override;
-	std::u8string_view get_title() const override;
-	bool is_dirty() const override;
-
-};
-
-class editor_container {
-public:
-
-	editor_container();
-	editor_container(const editor_container&) = delete;
-	editor_container(editor_container&&) = delete;
-	
-	~editor_container();
-
-	editor_container& operator=(const editor_container&) = delete;
-	editor_container& operator=(editor_container&&) = delete;
-	
-	void update();
-	void dock(int direction, float ratio);
-
-	void open(std::unique_ptr<abstract_editor> editor);
-	void close(abstract_editor& editor);
-
-	void register_editor(std::u8string_view title, std::function<std::unique_ptr<abstract_editor>()> make_editor);
-
-	template<typename Editor>
-	void register_editor() {
-		register_editor(Editor::title, [this] {
-			return std::make_unique<Editor>(*this);
-		});
-	}
+	void dock(docking_direction direction, float ratio);
 
 private:
 
+	scoped_logic begin_update();
+
+	docking_direction direction{ docking_direction::none };
+	float ratio{ 0.0f };
+	bool needs_to_dock{ false };
+	
+};
+
+class window_container {
+public:
+
+	window_container();
+	window_container(const window_container&) = delete;
+	window_container(window_container&&) = delete;
+	
+	~window_container();
+
+	window_container& operator=(const window_container&) = delete;
+	window_container& operator=(window_container&&) = delete;
+	
+	void update();
+	void dock(docking_direction direction, float ratio);
+
+	void open(std::shared_ptr<window_wrapper> window);
+	void close(window_wrapper& window);
+	
+private:
+
 	std::shared_ptr<texture> blank_texture;
-	std::vector<std::unique_ptr<abstract_editor>> editors;
-	std::vector<std::pair<std::u8string, std::function<std::unique_ptr<abstract_editor>()>>> editor_makers;
+	std::vector<std::shared_ptr<window_wrapper>> windows;
 	ImGuiWindow* root_window{ nullptr };
 	ImGuiDockNode* dock_node{ nullptr };
 
 };
+
+/*class add_script_event_editor : public window_wrapper {
+public:
+
+	void update(window_container& container) override;
+	std::string_view get_title() const override;
+	bool has_unsaved_changes() const override;
+
+};*/
 
 }

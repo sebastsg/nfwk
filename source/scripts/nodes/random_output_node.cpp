@@ -2,14 +2,14 @@
 #include "random.hpp"
 #include "log.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
-std::optional<int> random_output_node::process() const {
+std::optional<int> random_output_node::process(script_context& context) const {
 	if (outputs.empty()) {
-		warning(scripts::log, u8"No nodes attached.");
+		warning(scripts::log, "No nodes attached.");
 		return std::nullopt;
 	} else {
-		return random_number_generator::global().next(static_cast<int>(outputs.size()) - 1);
+		return random_number_generator::any().next(static_cast<int>(outputs.size()) - 1);
 	}
 }
 

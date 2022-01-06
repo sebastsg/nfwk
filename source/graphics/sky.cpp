@@ -18,7 +18,7 @@ std::unique_ptr<model> skybox;
 
 void create_skybox() {
 	model_data<skybox_vertex, unsigned short> data;
-	data.name = u8"skybox";
+	data.name = "skybox";
 	data.min = 0.0f;
 	data.max = 1.0f;
 	data.shape.vertices = {

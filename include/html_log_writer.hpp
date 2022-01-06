@@ -14,11 +14,11 @@ public:
 
 private:
 
-	static std::string field_html(const std::u8string& message, int col_span = 1);
-	static std::u8string entry_html(const log_entry& entry);
-	static std::u8string html_compatible_string(std::u8string string);
+	static std::string field_html(const std::string& message, int col_span = 1);
+	static std::string entry_html(const log_entry& entry);
+	static std::string html_compatible_string(std::string string);
 
-	std::u8string buffer;
+	std::string buffer;
 	std::filesystem::path path;
 	bool first_flush{ true };
 	event_listener new_entry_event;

@@ -18,12 +18,12 @@
 namespace nfwk {
 
 loop::~loop() {
-	message(core::log, u8"Exiting.");
+	message(core::log, "Exiting.");
 }
 
 void loop::run() {
 	if (inside_run) {
-		error(core::log, u8"Already running.");
+		error(core::log, "Already running.");
 		return;
 	}
 	inside_run = true;
@@ -54,6 +54,9 @@ void loop::remove(const subprogram& subprogram) {
 }
 
 void loop::destroy_stopped_subprograms() {
+	if (subprograms_to_stop.empty()) {
+		return;
+	}
 	for (int i{ 0 }; i < static_cast<int>(subprograms.size()); i++) {
 		for (const auto* subprogram_to_stop : subprograms_to_stop) {
 			if (subprograms[i].get() == subprogram_to_stop) {
@@ -67,6 +70,9 @@ void loop::destroy_stopped_subprograms() {
 }
 
 void loop::move_new_subprograms() {
+	if (new_subprograms.empty()) {
+		return;
+	}
 	for (auto& new_subprogram : new_subprograms) {
 		subprograms.emplace_back(std::move(new_subprogram));
 	}

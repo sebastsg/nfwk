@@ -30,7 +30,7 @@ void sprite_animation::draw(shader& shader, vector2f position, vector2f size) co
 	shader.draw(rectangle, transform2{ position, size });
 }
 
-void sprite_animation::draw(shader& shader, vector2f position, std::shared_ptr<texture> texture) const {
+void sprite_animation::draw(shader& shader, vector2f position, const std::shared_ptr<texture>& texture) const {
 	shader.draw(rectangle, transform2{ position, texture->size().to<float>() });
 }
 
@@ -67,7 +67,7 @@ void sprite_animation::set_tex_coords(vector2f position, vector2f size) {
 }
 
 void sprite_animation::set_tex_coords(vector4f tex_coords) {
-	set_tex_coords(tex_coords.xy, tex_coords.zw);
+	set_tex_coords(tex_coords.xy(), tex_coords.zw());
 }
 
 void sprite_animation::start_looping() {

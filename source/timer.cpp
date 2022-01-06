@@ -22,8 +22,7 @@ void timer::stop() {
 void timer::pause() {
 	if (started && !paused) {
 		paused = true;
-		const long long now{ platform::performance_counter() };
-		paused_time = ticks_to_microseconds(now - start_time);
+		paused_time = ticks_to_microseconds(platform::performance_counter() - start_time);
 	}
 }
 
@@ -34,7 +33,7 @@ void timer::resume() {
 
 void timer::go_back_in_time(long long milliseconds) {
 	if (started) {
-		return;
+		return; // todo: why can't this be done when the timer has started? I don't remember.
 	}
 	if (paused) {
 		paused_time -= microseconds_to_ticks(milliseconds * 1000);
@@ -49,6 +48,14 @@ bool timer::is_paused() const {
 
 bool timer::has_started() const {
 	return started;
+}
+
+bool timer::is_running() const {
+	return started && !paused;
+}
+
+long long timer::nanoseconds() const {
+	return microseconds() * 1000;
 }
 
 long long timer::microseconds() const {

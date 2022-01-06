@@ -34,9 +34,10 @@ public:
 
 protected:
 
-	std::size_t render_tile(std::optional<std::size_t> parent, layer& layer, chunk& chunk, vector2f position, vector2f size, const vector4f& tex_coords);
+	static void append_tile(chunk::rendered_chunk& chunk, const chunk::rendered_tile& tile);
+	static std::size_t render_tile(std::optional<std::size_t> parent, layer& layer, chunk& chunk, vector2f position, vector2f size, const vector4f& tex_coords);
+
 	void clear_tile(layer& layer, vector2f position);
-	void append_tile(chunk::rendered_chunk& chunk, const chunk::rendered_tile& tile);
 
 };
 

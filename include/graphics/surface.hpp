@@ -1,19 +1,21 @@
 #pragma once
 
 #include "vector2.hpp"
+#include "event.hpp"
 
 #include <filesystem>
 
 namespace nfwk {
 
-enum class pixel_format { rgba, bgra };
+enum class pixel_format : std::uint8_t { rgba, bgra };
 
 class surface {
 public:
 
 	enum class construct_by { copy, move };
-
-	static void flip_vertically(std::uint32_t* pixels, vector2i size);
+	
+	// note: this event must be emitted manually for performance reasons.
+	//event<> on_changed;
 
 	surface(const std::filesystem::path& path);
 	surface(std::uint32_t* pixels, int width, int height, pixel_format format, construct_by construction);
@@ -52,12 +54,20 @@ public:
 	int count() const;
 	pixel_format format() const;
 
+	bool has_error() const;
+	void clear_error();
+	
+	static void flip_vertically(std::uint32_t* pixels, vector2i size);
+
 private:
 
 	std::uint32_t* pixels{ nullptr };
 	vector2i size;
 	pixel_format format_{ pixel_format::rgba };
+	bool error_flag{ false };
 
 };
+
+float detect_grayscale(const surface& surface, float coverage = 0.2f, float flexibility = 0.035f);
 
 }

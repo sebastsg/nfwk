@@ -16,7 +16,7 @@ public:
 
 	void update(float delta);
 	void draw(shader& shader, vector2f position, vector2f size) const;
-	void draw(shader& shader, vector2f position, std::shared_ptr<texture> texture) const;
+	void draw(shader& shader, vector2f position, const std::shared_ptr<texture>& texture) const;
 	void draw(shader& shader, const transform2& transform) const;
 
 	void pause();

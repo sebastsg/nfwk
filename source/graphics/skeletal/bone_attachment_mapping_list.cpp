@@ -13,9 +13,12 @@ void bone_attachment_mapping_list::save(const std::string& path) {
 		stream.write_string(attachment.root_animation);
 		stream.write_string(attachment.attached_model);
 		stream.write_string(attachment.attached_animation);
-		stream.write<std::int32_t>(attachment.attached_to_channel);
-		stream.write(attachment.position);
-		stream.write(attachment.rotation);
+		stream.write_int32(attachment.attached_to_channel);
+		stream.write_struct(attachment.position);
+		stream.write_float32(attachment.rotation.x);
+		stream.write_float32(attachment.rotation.y);
+		stream.write_float32(attachment.rotation.z);
+		stream.write_float32(attachment.rotation.w);
 	}
 	write_file(path, stream);
 }
@@ -33,9 +36,12 @@ void bone_attachment_mapping_list::load(const std::string& path) {
 		mapping.root_animation = stream.read_string();
 		mapping.attached_model = stream.read_string();
 		mapping.attached_animation = stream.read_string();
-		mapping.attached_to_channel = stream.read<std::int32_t>();
-		mapping.position = stream.read<vector3f>();
-		mapping.rotation = stream.read<glm::quat>();
+		mapping.attached_to_channel = stream.read_int32();
+		mapping.position = stream.read_struct<vector3f>();
+		mapping.rotation.x = stream.read_float32();
+		mapping.rotation.y = stream.read_float32();
+		mapping.rotation.z = stream.read_float32();
+		mapping.rotation.w = stream.read_float32();
 		mappings.push_back(mapping);
 	}
 }
@@ -58,12 +64,9 @@ void bone_attachment_mapping_list::remove_if(const std::function<bool(bone_attac
 }
 
 bool bone_attachment_mapping_list::exists(const bone_attachment_mapping& other) const {
-	for (const auto& mapping : mappings) {
-		if (mapping.is_same_mapping(other) && mapping.root_animation == other.root_animation) {
-			return true;
-		}
-	}
-	return false;
+	return std::any_of(mappings.begin(), mappings.end(), [&](const bone_attachment_mapping& mapping) {
+		return mapping.is_same_mapping(other) && mapping.root_animation == other.root_animation;
+	});
 }
 
 void bone_attachment_mapping_list::add(const bone_attachment_mapping& mapping) {
@@ -72,7 +75,7 @@ void bone_attachment_mapping_list::add(const bone_attachment_mapping& mapping) {
 	}
 }
 
-bool bone_attachment_mapping_list::update(const model& root, int animation_index, const std::u8string& attachment_model, bone_attachment& attachment) const {
+bool bone_attachment_mapping_list::update(const model& root, int animation_index, const std::string& attachment_model, bone_attachment& attachment) const {
 	if (animation_index < 0) {
 		return false;
 	}
@@ -96,7 +99,7 @@ bool bone_attachment_mapping_list::update(const model& root, int animation_index
 	return false;
 }
 
-std::u8string bone_attachment_mapping_list::find_root_animation(const std::u8string& root_model, const std::u8string& attached_model, const std::u8string& attached_animation) const {
+std::string bone_attachment_mapping_list::find_root_animation(const std::string& root_model, const std::string& attached_model, const std::string& attached_animation) const {
 	for (const auto& mapping : mappings) {
 		if (mapping.root_model != root_model) {
 			continue;
@@ -109,7 +112,7 @@ std::u8string bone_attachment_mapping_list::find_root_animation(const std::u8str
 		}
 		return mapping.root_animation;
 	}
-	return "";
+	return {};
 }
 
 }

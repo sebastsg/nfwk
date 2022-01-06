@@ -10,14 +10,6 @@ class audio_source;
 
 enum class pcm_format { float_32, int_16, unknown };
 
-inline std::u8string to_string(pcm_format format) {
-	switch (format) {
-	case pcm_format::float_32: return u8"Float32";
-	case pcm_format::int_16: return u8"Int16";
-	case pcm_format::unknown: return u8"Unknown";
-	}
-}
-
 class pcm_stream {
 public:
 
@@ -39,6 +31,7 @@ private:
 
 }
 
-inline std::ostream& operator<<(std::ostream& out, nfwk::pcm_format value) {
-	return out << nfwk::to_regular_string(nfwk::to_string(value));
-}
+std::ostream& operator<<(std::ostream& out, nfwk::pcm_format value);
+
+NFWK_STDSPEC_FORMATTER(nfwk::pcm_format);
+

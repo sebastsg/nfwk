@@ -4,6 +4,8 @@
 #include <vector>
 #include <queue>
 #include <unordered_set>
+#include <optional>
+#include <limits>
 
 namespace nfwk::internal {
 int add_event();
@@ -42,6 +44,64 @@ private:
 
 };
 
+namespace priority {
+
+static_assert(sizeof(int) >= 4, "The sections constant is made with >= 32 bits in mind.");
+
+constexpr int lowest{ std::numeric_limits<int>::min() };
+constexpr int highest{ std::numeric_limits<int>::max() };
+constexpr int sections{ 16384 };
+constexpr int per_section{ highest / sections };
+constexpr int normal{ 0 };
+
+}
+
+class priority_manager {
+public:
+
+	priority_manager(int max_sections, int per_section) {
+		sections_used.resize(max_sections);
+	}
+
+	bool create_section(int section, std::string_view name) {
+		if (sections_used[section]) {
+			return false;
+		} else {
+			sections_used[section] = true;
+			sections[section] = name;
+			return true;
+		}
+	}
+
+	bool delete_section(int section) {
+		if (!sections_used[section]) {
+			return false;
+		} else {
+			sections_used[section] = false;
+			sections.erase(section);
+			return true;
+		}
+	}
+
+private:
+
+	std::vector<bool> sections_used;
+	std::unordered_map<int, std::string> sections;
+
+};
+
+[[nodiscard]] inline bool create_priority_section(int section, std::string_view name) {
+	return false;
+}
+
+[[nodiscard]] inline bool delete_priority_section(int section) {
+	return false;
+}
+
+[[nodiscard]] constexpr int make_priority(int section, int priority) {
+	return section * priority::per_section + priority;
+}
+
 template<typename... T>
 class event {
 public:
@@ -65,27 +125,27 @@ public:
 		internal::remove_event(id);
 	}
 
-	[[nodiscard]] event_listener listen(const handler_function& handler) {
+	[[nodiscard]] event_listener listen(const handler_function& handler, int priority = priority::normal) {
 		if (!handler) {
 			return {};
 		}
-		const int listener_id{ internal::add_event_listener(id) };
-		for (auto& existing_handler : handlers) {
-			if (existing_handler.first == -1) {
-				existing_handler = { listener_id, handler };
-				return { id, listener_id };
-			}
+		const auto listener_id = internal::add_event_listener(id);
+		if (auto unused_handler = find_unused_handler()) {
+			*unused_handler = { listener_id, priority, handler };
+			sort_listeners_by_priority();
+			return { id, listener_id };
+		} else {
+			handlers.emplace_back(listener_id, priority, handler);
+			sort_listeners_by_priority();
+			return { id, listener_id };
 		}
-		handlers.emplace_back(listener_id, handler);
-		return { id, listener_id };
 	}
 
 	template<typename... Args>
 	void emit(Args... args) const {
-		for (int i{ total_listeners() - 1 }; i >= 0; i--) {
-			const auto& [listener_id, handler] = handlers[i];
-			if (internal::is_event_listener(id, listener_id) && handler) {
-				handler(std::forward<T>(args)...);
+		for (auto& handler : handlers) {
+			if (handler.is_listening_to(id)) {
+				handler.handler(std::forward<T>(args)...);
 			}
 		}
 		for (const auto& forward_event : forward_events) {
@@ -107,8 +167,39 @@ public:
 
 private:
 
+	class event_handler {
+	public:
+
+		std::optional<int> listener_id;
+		int priority{ 0 };
+		handler_function handler;
+
+		event_handler(int listener_id, int priority, handler_function handler)
+			: listener_id{ listener_id }, priority{ priority }, handler{ std::move(handler) } {}
+
+		bool is_listening_to(int event_id) const {
+			return listener_id.has_value() && internal::is_event_listener(event_id, listener_id.value()) && handler;
+		}
+
+	};
+
+	void sort_listeners_by_priority() {
+		std::sort(handlers.begin(), handlers.end(), [](const event_handler& a, const event_handler& b) {
+			return a.priority > b.priority;
+		});
+	}
+
+	event_handler* find_unused_handler() {
+		for (auto& handler : handlers) {
+			if (!handler.listener_id.has_value()) {
+				return &handler;
+			}
+		}
+		return nullptr;
+	}
+
 	int id{ -1 };
-	std::vector<std::pair<int, handler_function>> handlers;
+	std::vector<event_handler> handlers;
 	std::unordered_set<event*> forward_events; // unordered_set is 40 bytes... make into vector?
 
 };
@@ -120,6 +211,8 @@ public:
 	event_queue() = default;
 	event_queue(const event_queue&) = delete;
 	event_queue(event_queue&& that) noexcept : messages{ std::move(that.messages) } {}
+
+	~event_queue() = default;
 
 	event_queue& operator=(const event_queue&) = delete;
 

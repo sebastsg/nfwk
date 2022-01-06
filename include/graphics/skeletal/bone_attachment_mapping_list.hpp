@@ -20,9 +20,9 @@ public:
 
 	bool exists(const bone_attachment_mapping& mapping) const;
 	void add(const bone_attachment_mapping& mapping);
-	bool update(const model& root, int animation_index, const std::u8string& attachment_model, bone_attachment& attachment) const;
+	bool update(const model& root, int animation_index, const std::string& attachment_model, bone_attachment& attachment) const;
 
-	std::u8string find_root_animation(const std::u8string& root_model, const std::u8string& attached_model, const std::u8string& attached_animation) const;
+	std::string find_root_animation(const std::string& root_model, const std::string& attached_model, const std::string& attached_animation) const;
 
 private:
 

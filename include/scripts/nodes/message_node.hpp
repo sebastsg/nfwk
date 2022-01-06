@@ -3,17 +3,17 @@
 #include "scripts/script_node.hpp"
 #include "script_node_macro.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
 class message_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(0, u8"Message", u8"");
+	NFWK_SCRIPT_CORE_NODE(0, "Message", "");
 
-	std::u8string text{ u8"Example text" };
+	std::string text{ "Example text" };
 
-	script_node_output_type output_type() const override {
-		return script_node_output_type::variable;
+	output_type get_output_type() const override {
+		return output_type::variable;
 	}
 
 	void write(io_stream& stream) const override;

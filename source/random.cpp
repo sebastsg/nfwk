@@ -3,17 +3,12 @@
 
 namespace nfwk {
 
-random_number_generator::random_number_generator() {
-	seed(std::random_device{}());
-}
+random_number_generator::random_number_generator(unsigned long long seed)
+	: mersenne_twister_engine{ seed }, current_seed{ seed } {}
 
-random_number_generator::random_number_generator(unsigned long long seed) {
+void random_number_generator::reseed(unsigned long long seed) {
 	mersenne_twister_engine.seed(seed);
-}
-
-void random_number_generator::seed(unsigned long long seed) {
 	current_seed = seed;
-	mersenne_twister_engine.seed(seed);
 }
 
 unsigned long long random_number_generator::seed() const {
@@ -24,21 +19,24 @@ bool random_number_generator::chance(float chance) {
 	return chance >= next<float>(0.0f, 1.0f);
 }
 
-std::u8string random_number_generator::string(int size) {
+std::string random_number_generator::characters(int size, std::string_view reference_characters) {
 	std::string string;
 	string.resize(size);
-	std::generate_n(std::begin(string), size, [this] {
-		constexpr std::u8string_view characters{ u8"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_abcdefghijklmnopqrstuvwxyz" };
-		return characters[next(characters.size() - 1)];
+	std::generate_n(std::begin(string), size, [this, reference_characters] {
+		return reference_characters[next(reference_characters.size() - 1)];
 	});
 	return string;
 }
 
-random_number_generator& random_number_generator::global() {
-	static thread_local random_number_generator rng;
-	static thread_local bool print_seed{ true };
+std::string random_number_generator::string(int size) {
+	return characters(size, "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ-_abcdefghijklmnopqrstuvwxyz");
+}
+
+random_number_generator& random_number_generator::any() {
+	thread_local random_number_generator rng;
+	thread_local bool print_seed{ true };
 	if (print_seed) {
-		info(core::log, u8"Global random seed for this thread: {}", rng.seed());
+		info(core::log, "Random seed for this thread: {}", rng.seed());
 		print_seed = false;
 	}
 	return rng;

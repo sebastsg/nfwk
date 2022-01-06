@@ -14,7 +14,7 @@ class shader {
 public:
 
 	shader(const std::filesystem::path& path);
-	shader(std::u8string_view vertex, std::u8string_view fragment);
+	shader(std::string_view vertex, std::string_view fragment);
 	shader(const shader&) = delete;
 	shader(shader&&) = delete;
 
@@ -23,7 +23,7 @@ public:
 	shader& operator=(const shader&) = delete;
 	shader& operator=(shader&&) = delete;
 
-	shader_variable get_variable(std::u8string_view name) const;
+	shader_variable get_variable(std::string_view name) const;
 
 	void set_model(const glm::mat4& transform);
 	void set_view_projection(const glm::mat4& view, const glm::mat4& projection);
@@ -47,7 +47,7 @@ public:
 private:
 
 	void bind() const;
-	void load_from_source(std::u8string_view vertex_source, std::u8string_view fragment_source);
+	void load_from_source(std::string_view vertex_source, std::string_view fragment_source);
 
 	int id{ -1 };
 

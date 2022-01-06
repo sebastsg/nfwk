@@ -8,6 +8,8 @@ namespace nfwk {
 template<typename T>
 struct vector2 {
 
+	static constexpr int components{ 2 };
+
 	T x{};
 	T y{};
 
@@ -198,6 +200,16 @@ constexpr vector2i expand_index(int index, int width, int height) {
 	return { index / width, index % height };
 }
 
+}
+
+template<typename T>
+nfwk::vector2<T> operator+(T scalar, const nfwk::vector2<T>& vector) {
+	return vector + scalar;
+}
+
+template<typename T>
+nfwk::vector2<T> operator-(T scalar, const nfwk::vector2<T>& vector) {
+	return nfwk::vector2<T>{ scalar } - vector;
 }
 
 template<typename T>

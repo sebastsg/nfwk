@@ -2,7 +2,7 @@
 #include "graphics/ui.hpp"
 #include "io.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
 void message_node::write(io_stream& stream) const {
 	script_node::write(stream);

@@ -81,10 +81,10 @@ public:
 	virtual void swap() = 0;
 	virtual void maximize() = 0;
 
-	virtual void set_title(std::u8string_view title) = 0;
+	virtual void set_title(std::string_view title) = 0;
 	virtual void set_size(vector2i size) = 0;
 
-	virtual std::u8string title() const = 0;
+	virtual std::string title() const = 0;
 	virtual vector2i size() const = 0;
 	virtual vector2i position() const = 0;
 	virtual bool is_open() const = 0;

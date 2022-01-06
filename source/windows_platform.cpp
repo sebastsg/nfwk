@@ -1,15 +1,18 @@
 #include "platform.hpp"
-#include "io.hpp"
 #include "log.hpp"
 #include "nfwk.hpp"
+#include "test.hpp"
+#include "assert.hpp"
 
 #include <Windows.h>
 #include <ShObjIdl.h>
-#include <Shlobj.h>
+#include <ShlObj.h>
 
 #include "windows_platform.hpp"
 
-#include "timer.hpp"
+#include <codecvt>
+
+#include "stdout_log_writer.hpp"
 
 // these are defined by Windows when using vc++ runtime
 extern int __argc;
@@ -28,23 +31,9 @@ int show_command() {
 	return show_command_arg;
 }
 
-std::u8string get_error_message(int error_code) {
-	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
-	char8_t* buffer{ nullptr };
-	const auto flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER;
-	FormatMessageA(flags, nullptr, error_code, language, reinterpret_cast<char*>(&buffer), 0, nullptr);
-	if (buffer) {
-		const std::u8string message{ buffer };
-		LocalFree(buffer);
-		return to_string(error_code) + u8": " + message;
-	} else {
-		return to_string(error_code);
-	}
-}
-
 bool initialize_com() {
 	if (const auto result = CoInitializeEx(nullptr, COINIT_MULTITHREADED); result != S_OK && result != S_FALSE) {
-		nfwk::warning(nfwk::core::log, u8"Failed to initialize COM library.");
+		warning(core::log, "Failed to initialize COM library.");
 		return false;
 	} else {
 		return true;
@@ -55,9 +44,94 @@ void uninitialize_com() {
 	CoUninitialize();
 }
 
+void initialize_console() {
+	const auto stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
+	DWORD console_mode{ 0 };
+	GetConsoleMode(stdout_handle, &console_mode);
+	SetConsoleMode(stdout_handle, console_mode | ENABLE_VIRTUAL_TERMINAL_PROCESSING | DISABLE_NEWLINE_AUTO_RETURN);
+	SetConsoleOutputCP(65001);
+}
+
+std::string get_error_message(int error_code) {
+	const int language{ MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT) };
+	char* buffer{ nullptr };
+	const auto flags = FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS | FORMAT_MESSAGE_ALLOCATE_BUFFER;
+	FormatMessageA(flags, nullptr, error_code, language, reinterpret_cast<char*>(&buffer), 0, nullptr);
+	if (buffer) {
+		const std::string message{ buffer };
+		LocalFree(buffer);
+		return std::to_string(error_code) + ": " + message;
+	} else {
+		return std::to_string(error_code);
+	}
+}
+
 }
 
 namespace nfwk::platform {
+
+system_command_runner::system_command_runner(const std::string& command, std::function<void(io_stream*)> on_done_) : on_done{ std::move(on_done_) } {
+	thread = std::thread{ [this, command] {
+		//message("core", "Executing command: %green{}", command);
+		if (!GetConsoleWindow()) {
+			info("core", "Creating hidden console window to use _popen()");
+			AllocConsole();
+			ShowWindow(GetConsoleWindow(), SW_HIDE);
+		}
+		if (auto process = _popen(reinterpret_cast<const char*>(command.c_str()), "rb")) {
+			std::size_t last_read_size{ 0 };
+			bool try_again{ false };
+			stream.allocate(32768);
+			do {
+				try_again = false;
+				last_read_size = std::fread(stream.at_write(), 1, stream.size_left_to_write(), process);
+				if (last_read_size != 0) {
+					stream.move_write_index(last_read_size);
+					stream.resize_if_needed(2048);
+				} else {
+					if (ferror(process) != 0) {
+						stream.reset();
+					} else if (feof(process) == 0) {
+						try_again = true;
+					}
+				}
+			} while (last_read_size != 0 || try_again);
+			_pclose(process);
+		} else {
+			error("core", "Failed to run command: %green{}", command);
+		}
+		done = true;
+	} };
+}
+
+system_command_runner::~system_command_runner() {
+	if (thread.joinable()) {
+		thread.join();
+	}
+}
+
+bool system_command_runner::finish() {
+	ASSERT(!finished);
+	if (finished) {
+		return true;
+	} else if (done) {
+		if (on_done) {
+			on_done(&stream);
+		}
+		finished = true;
+		return true;
+	} else {
+		return false;
+	}
+}
+
+bool system_command_runner::is_done() const {
+	return done;
+}
+
+io_stream* system_command_runner::get_stream() {
+	return &stream;
+}
 
 static LPCSTR get_system_cursor_resource(system_cursor cursor) {
 	switch (cursor) {
@@ -93,12 +167,12 @@ long long performance_counter() {
 	return counter.QuadPart;
 }
 
-void sleep(int ms) {
-	Sleep(ms);
+void sleep(long long ms) {
+	Sleep(static_cast<DWORD>(ms));
 }
 
-std::u8string environment_variable(std::u8string_view name) {
-	char8_t buffer[2048];
+std::string environment_variable(std::string_view name) {
+	char buffer[2048];
 	GetEnvironmentVariableA(reinterpret_cast<const char*>(name.data()), reinterpret_cast<char*>(buffer), sizeof(buffer));
 	return buffer;
 }
@@ -112,16 +186,16 @@ bool is_system_file(std::filesystem::path path) {
 std::vector<std::filesystem::path> get_root_directories() {
 	std::vector<std::filesystem::path> paths;
 	const DWORD drives{ GetLogicalDrives() };
-	char8_t drive_letter{ 'A' };
+	char drive_letter{ 'A' };
 	for (DWORD drive{ 1 }; drive_letter <= 'Z'; drive <<= 1, drive_letter++) {
 		if (drives & drive) {
-			paths.emplace_back(std::u8string{ drive_letter } + u8":/");
+			paths.emplace_back(std::string{ drive_letter } + ":/");
 		}
 	}
 	return paths;
 }
 
-std::u8string open_file_browse_window() {
+std::string open_file_browse_window() {
 	char file[MAX_PATH]{};
 	char file_title[MAX_PATH]{};
 	char template_name[MAX_PATH]{};
@@ -134,7 +208,7 @@ std::u8string open_file_browse_window() {
 	data.lpstrFilter = "All\0*.*\0";
 	data.Flags = OFN_PATHMUSTEXIST | OFN_FILEMUSTEXIST | OFN_NOCHANGEDIR;
 	GetOpenFileNameA(&data);
-	return reinterpret_cast<const char8_t*>(file);
+	return reinterpret_cast<const char*>(file);
 }
 
 bool open_file_browser_and_select(std::filesystem::path path) {
@@ -143,7 +217,7 @@ bool open_file_browser_and_select(std::filesystem::path path) {
 	const auto result = SHOpenFolderAndSelectItems(items, 0, nullptr, 0);
 	ILFree(items);
 	if (result != S_OK) {
-		warning(core::log, u8"Failed to open and select file: {}", path);
+		warning(core::log, "Failed to open and select file: {}", path);
 	}
 	return result == S_OK;
 }
@@ -166,14 +240,14 @@ surface load_file_thumbnail(std::filesystem::path path, int scale) {
 	IShellItemImageFactory* factory{ nullptr };
 	auto result = SHCreateItemFromParsingName(path.wstring().c_str(), nullptr, IID_PPV_ARGS(&factory));
 	if (result != S_OK) {
-		warning(core::log, u8"Failed to create shell item: {}", path);
+		warning(core::log, "Failed to create shell item: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	HBITMAP bitmap_handle{ nullptr };
 	// todo: does E_PENDING work here? I tested it, but it seems useless.
 	result = factory->GetImage({ scale, scale }, SIIGBF_RESIZETOFIT | SIIGBF_BIGGERSIZEOK, &bitmap_handle);
 	if (result != S_OK) {
-		warning(core::log, u8"Failed to load thumbnail: {}", path);
+		warning(core::log, "Failed to load thumbnail: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 	surface thumbnail{ bitmap_as_surface(bitmap_handle) };
@@ -186,66 +260,86 @@ void open_file(std::filesystem::path path, bool minimized) {
 	const auto show = minimized ? SW_HIDE : SW_SHOW;
 	const auto status = reinterpret_cast<int>(ShellExecuteW(nullptr, nullptr, path.wstring().c_str(), nullptr, nullptr, show));
 	if (status <= 32) {
-		warning(core::log, u8"Failed to open {}. Error: {}", path, status);
+		warning(core::log, "Failed to open file: {}. Error: {}", path, status);
 	}
 }
 
-std::vector<std::u8string> command_line_arguments() {
-	std::vector<std::u8string> args;
+std::wstring u8string_to_wstring(std::string_view u8) {
+	// todo: have thread_local buffer/io_stream to prevent superfluous allocations.
+	const auto max_size = static_cast<int>(u8.size()) * 8;
+	auto buffer = new wchar_t[max_size]{};
+	const auto written_size = MultiByteToWideChar(CP_UTF8, 0, reinterpret_cast<const char*>(u8.data()), u8.size(), buffer, max_size);
+	if (written_size == 0) {
+		// const auto error = GetLastError();
+	}
+	std::wstring result{ buffer, static_cast<std::size_t>(written_size) };
+	delete[] buffer;
+	return result;
+}
+
+void open_website_in_default_browser(std::string_view u8_url) {
+	const auto wide_url = u8string_to_wstring(u8_url);
+	const auto status = reinterpret_cast<int>(ShellExecuteW(nullptr, nullptr, wide_url.c_str(), nullptr, nullptr, SW_SHOW));
+	if (status <= 32) {
+		warning(core::log, "Failed to open website: {}. Error: {}", u8_url, status);
+	}
+}
+
+std::vector<std::string> command_line_arguments() {
+	std::vector<std::string> args;
 	for (int i{ 0 }; i < __argc; i++) {
-		args.emplace_back(reinterpret_cast<const char8_t*>(__argv[i]));
+		args.emplace_back(reinterpret_cast<const char*>(__argv[i]));
 	}
 	return args;
 }
 
 void relaunch() {
-	info(core::log, u8"Relaunching program.");
+	info(core::log, "Relaunching program.");
 	STARTUPINFO startup{};
 	startup.cb = sizeof(startup);
 	PROCESS_INFORMATION process{};
 	// todo: pass on arguments? need to implode argv into command line string.
-	if (CreateProcess(__argv[0], nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process)) {
+	if (CreateProcessA(__argv[0], nullptr, nullptr, nullptr, FALSE, 0, nullptr, nullptr, &startup, &process)) {
 		// note: doesn't close process
 		CloseHandle(process.hProcess);
 		CloseHandle(process.hThread);
 	} else {
-		warning(core::log, u8"Failed to start {}. Error: {}", __argv[0], GetLastError());
+		warning(core::log, "Failed to start {}. Error: {}", __argv[0], GetLastError());
 	}
 	// todo: exit event?
 	std::exit(0);
 }
 
+bool internal_thread_wrap_begin() {
+	return windows::initialize_com();
 }
 
-int main() {
+scoped_logic internal_thread_wrap_end() {
+	return windows::uninitialize_com;
+}
+
+}
+
+static int nfwk_main() {
 	if (!nfwk::platform::windows::initialize_com()) {
 		return nfwk::return_code::windows_com_initialize_failed;
 	}
-	start();
+	if (nfwk::test::run_tests()) {
+		start();
+	} else {
+		nfwk::log::add_writer_type<nfwk::log::stdout_writer>();
+		system("pause");
+	}
 	nfwk::platform::windows::uninitialize_com();
 	return nfwk::return_code::success;
+}
+
+int main() {
+	return nfwk_main();
 }
 
 int WINAPI WinMain(HINSTANCE current_instance, HINSTANCE previous_instance, LPSTR command_line, int show_command) {
 	nfwk::platform::windows::current_instance_arg = current_instance;
 	nfwk::platform::windows::show_command_arg = show_command;
-	return main();
-}
-
-std::ostream& operator<<(std::ostream& out, nfwk::platform::system_cursor cursor) {
-	switch (cursor) {
-	case nfwk::platform::system_cursor::none: return out << "None";
-	case nfwk::platform::system_cursor::arrow: return out << "Arrow";
-	case nfwk::platform::system_cursor::beam: return out << "Beam";
-	case nfwk::platform::system_cursor::resize_all: return out << "Resize (all)";
-	case nfwk::platform::system_cursor::resize_horizontal: return out << "Resize (horizontal)";
-	case nfwk::platform::system_cursor::resize_vertical: return out << "Resize (vertical)";
-	case nfwk::platform::system_cursor::resize_diagonal_from_bottom_left: return out << "Resize (bottom left -> top right)";
-	case nfwk::platform::system_cursor::resize_diagonal_from_top_left: return out << "Resize (top left -> bottom right)";
-	case nfwk::platform::system_cursor::block: return out << "Block";
-	case nfwk::platform::system_cursor::hand: return out << "Hand";
-	case nfwk::platform::system_cursor::help: return out << "Help";
-	case nfwk::platform::system_cursor::cross: return out << "Cross";
-	case nfwk::platform::system_cursor::wait: return out << "Wait";
-	}
+	return nfwk_main();
 }

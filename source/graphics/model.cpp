@@ -26,7 +26,7 @@ model& model::operator=(model&& that) noexcept {
 	return *this;
 }
 
-int model::index_of_animation(const std::u8string& name) const {
+int model::index_of_animation(std::string_view name) const {
 	for (std::size_t i{ 0 }; i < animations.size(); i++) {
 		if (animations[i].name == name) {
 			return static_cast<int>(i);
@@ -79,11 +79,11 @@ vector3f model::size() const {
 	return max_vertex - min_vertex;
 }
 
-std::u8string model::texture_name() const {
+std::string model::texture_name() const {
 	return texture;
 }
 
-std::u8string model::name() const {
+std::string model::name() const {
 	return model_name;
 }
 

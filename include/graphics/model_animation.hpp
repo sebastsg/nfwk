@@ -42,7 +42,7 @@ struct animation_channel {
 };
 
 struct model_animation {
-	std::u8string name;
+	std::string name;
 	float duration{ 0.0f };
 	float ticks_per_second{ 0.0f };
 	std::vector<animation_channel> channels;
@@ -50,7 +50,7 @@ struct model_animation {
 };
 
 struct model_node {
-	std::u8string name;
+	std::string name;
 	glm::mat4 transform;
 	std::vector<int> children;
 	int depth{ 0 };

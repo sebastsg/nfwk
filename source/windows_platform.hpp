@@ -15,6 +15,12 @@ namespace nfwk::platform::windows {
 
 HINSTANCE current_instance();
 int show_command();
-std::u8string get_error_message(int error_code);
+
+bool initialize_com();
+void uninitialize_com();
+
+void initialize_console();
+
+std::string get_error_message(int error_code);
 
 }

@@ -19,12 +19,12 @@ public:
 	vector3f min;
 	vector3f max;
 	vertex_array_data<Vertex, Index> shape;
-	std::vector<std::u8string> bone_names;
+	std::vector<std::string> bone_names;
 	std::vector<glm::mat4> bones;
 	std::vector<model_node> nodes;
 	std::vector<model_animation> animations;
-	std::u8string texture;
-	std::u8string name;
+	std::string texture;
+	std::string name;
 
 	template<typename CustomVertex>
 	model_data<CustomVertex, Index> to(const std::function<CustomVertex(const Vertex&)>& mapper) const {
@@ -80,21 +80,21 @@ model_data<Vertex, Index> create_box_model_data(const std::function<Vertex(const
 struct model_import_options {
 	struct {
 		bool create_default{ false };
-		std::u8string bone_name{ u8"Bone" };
+		std::string bone_name{ "Bone" };
 	} bones;
 };
 
 struct model_conversion_options {
 	model_import_options import;
-	std::function<void(const std::u8string&, const model_data<animated_mesh_vertex, int>&)> exporter;
+	std::function<void(const std::string&, const model_data<animated_mesh_vertex, int>&)> exporter;
 };
 
 template<typename Vertex, typename Index>
-void export_model(const std::u8string& path, const model_data<Vertex, Index>& model) {
+void export_model(const std::string& path, const model_data<Vertex, Index>& model) {
 	io_stream stream;
-	stream.write(model.transform);
-	stream.write(model.min);
-	stream.write(model.max);
+	stream.write_struct(model.transform);
+	stream.write_struct(model.min);
+	stream.write_struct(model.max);
 	stream.write_string(model.texture);
 	stream.write_string(model.name);
 	stream.write_size(sizeof(Vertex));
@@ -104,32 +104,32 @@ void export_model(const std::u8string& path, const model_data<Vertex, Index>& mo
 	stream.write_array<glm::mat4>(model.bones);
 	stream.write_size<size_length::two_bytes>(model.nodes.size());
 	for (const auto& node : model.nodes) {
-		stream.write(node.name);
-		stream.write(node.transform);
+		stream.write_string(node.name);
+		stream.write_struct(node.transform);
 		stream.write_array<std::int16_t, int>(node.children);
 	}
 	stream.write_size(model.animations.size(), size_length::two_bytes);
 	for (const auto& animation : model.animations) {
 		stream.write_string(animation.name);
-		stream.write(animation.duration);
-		stream.write(animation.ticks_per_second);
+		stream.write_float32(animation.duration);
+		stream.write_float32(animation.ticks_per_second);
 		stream.write_size<size_length::two_bytes>(animation.channels.size());
 		for (const auto& node : animation.channels) {
-			stream.write(static_cast<std::int16_t>(node.bone));
+			stream.write_int16(static_cast<std::int16_t>(node.bone));
 			stream.write_size<size_length::two_bytes>(node.positions.size());
 			for (const auto& position : node.positions) {
-				stream.write(position.time);
-				stream.write(position.position);
+				stream.write_float32(position.time);
+				stream.write_struct(position.position);
 			}
 			stream.write_size<size_length::two_bytes>(node.rotations.size());
 			for (const auto& rotation : node.rotations) {
-				stream.write(rotation.time);
-				stream.write(rotation.rotation);
+				stream.write_float32(rotation.time);
+				stream.write_struct(rotation.rotation);
 			}
 			stream.write_size<size_length::two_bytes>(node.scales.size());
 			for (const auto& scale : node.scales) {
-				stream.write(scale.time);
-				stream.write(scale.scale);
+				stream.write_float32(scale.time);
+				stream.write_struct(scale.scale);
 			}
 		}
 		stream.write_array<std::int16_t, int>(animation.transitions);
@@ -138,21 +138,21 @@ void export_model(const std::u8string& path, const model_data<Vertex, Index>& mo
 }
 
 template<typename Vertex, typename Index>
-void import_model(const std::u8string& path, model_data<Vertex, Index>& model) {
+void import_model(const std::string& path, model_data<Vertex, Index>& model) {
 	io_stream stream;
 	read_file(path, stream);
 	if (stream.write_index() == 0) {
-		warning(graphics::log, u8"Failed to open file: {}", path);
+		warning(graphics::log, "Failed to open file: {}", path);
 		return;
 	}
-	model.transform = stream.read<glm::mat4>();
-	model.min = stream.read<vector3f>();
-	model.max = stream.read<vector3f>();
+	model.transform = stream.read_struct<glm::mat4>();
+	model.min = stream.read_struct<vector3f>();
+	model.max = stream.read_struct<vector3f>();
 	model.texture = stream.read_string();
 	model.name = stream.read_string();
 	const auto vertex_size = stream.read_size();
 	if (vertex_size != sizeof(Vertex)) {
-		warning(graphics::log, u8"{} != {}. File: {}", vertex_size, sizeof(Vertex), path);
+		warning(graphics::log, "{} != {}. File: {}", vertex_size, sizeof(Vertex), path);
 		return;
 	}
 	model.shape.vertices = stream.read_array<Vertex>();
@@ -163,36 +163,36 @@ void import_model(const std::u8string& path, model_data<Vertex, Index>& model) {
 	for (std::size_t n{ 0 }; n < node_count; n++) {
 		auto& node = model.nodes.emplace_back();
 		node.name = stream.read_string();
-		node.transform = stream.read<glm::mat4>();
+		node.transform = stream.read_struct<glm::mat4>();
 		node.children = stream.read_array<int, std::int16_t>();
 	}
 	const auto animation_count = stream.read_size<size_length::two_bytes>();
 	for (std::size_t a{ 0 }; a < animation_count; a++) {
 		auto& animation{ model.animations.emplace_back() };
 		animation.name = stream.read_string();
-		animation.duration = stream.read<float>();
-		animation.ticks_per_second = stream.read<float>();
+		animation.duration = stream.read_float32();
+		animation.ticks_per_second = stream.read_float32();
 		const auto animation_node_count = stream.read_size<size_length::two_bytes>();
 		for (std::size_t n{ 0 }; n < animation_node_count; n++) {
 			auto& node = animation.channels.emplace_back();
-			node.bone = static_cast<int>(stream.read<std::int16_t>());
+			node.bone = static_cast<int>(stream.read_int16());
 			const auto position_count = stream.read_size<size_length::two_bytes>();
 			for (std::size_t p{ 0 }; p < position_count; p++) {
 				auto& position = node.positions.emplace_back();
-				position.time = stream.read<float>();
-				position.position = stream.read<vector3f>();
+				position.time = stream.read_float32();
+				position.position = stream.read_struct<vector3f>();
 			}
 			const auto rotation_count = stream.read_size<size_length::two_bytes>();
 			for (std::size_t r{ 0 }; r < rotation_count; r++) {
 				auto& rotation = node.rotations.emplace_back();
-				rotation.time = stream.read<float>();
-				rotation.rotation = stream.read<glm::quat>();
+				rotation.time = stream.read_float32();
+				rotation.rotation = stream.read_struct<glm::quat>();
 			}
 			const auto scale_count = stream.read_size<size_length::two_bytes>();
 			for (std::size_t s{ 0 }; s < scale_count; s++) {
 				auto& scale = node.scales.emplace_back();
-				scale.time = stream.read<float>();
-				scale.scale = stream.read<vector3f>();
+				scale.time = stream.read_float32();
+				scale.scale = stream.read_struct<vector3f>();
 			}
 		}
 		animation.transitions = stream.read_array<int, std::int16_t>();
@@ -213,10 +213,10 @@ model_data<Vertex, Index> merge_model_animations(const std::vector<model_data<Ve
 	for (std::size_t m{ 1 }; m < models.size(); m++) {
 		auto& model = models[m];
 		if (model.transform != output.transform) {
-			warning(graphics::log, u8"Root transform not identical. Not skipped.");
+			warning(graphics::log, "Root transform not identical. Not skipped.");
 		}
 		if (output.nodes.size() != model.nodes.size()) {
-			warning(graphics::log, u8"Different number of node transforms. Skipping.");
+			warning(graphics::log, "Different number of node transforms. Skipping.");
 			continue;
 		}
 		bool equal{ true };
@@ -228,7 +228,7 @@ model_data<Vertex, Index> merge_model_animations(const std::vector<model_data<Ve
 				break;
 			}*/
 			if (output.nodes[n].children != model.nodes[n].children) {
-				warning(graphics::log, u8"Different node children {}. Skipping.", n);
+				warning(graphics::log, "Different node children {}. Skipping.", n);
 				equal = false;
 				break;
 			}
@@ -237,24 +237,24 @@ model_data<Vertex, Index> merge_model_animations(const std::vector<model_data<Ve
 			continue;
 		}
 		if (model.bones.size() != output.bones.size()) {
-			warning(graphics::log, u8"Mesh not identical. Skipping.");
+			warning(graphics::log, "Mesh not identical. Skipping.");
 			//continue;
 		}
 		for (std::size_t i = 0; i < model.bones.size(); i++) {
 			if (model.bones[i] != output.bones[i]) {
-				warning(graphics::log, u8"Mesh not identical. Skipping.");
+				warning(graphics::log, "Mesh not identical. Skipping.");
 				//continue;
 			}
 		}
 		if (model.shape != output.shape) {
-			warning(graphics::log, u8"Mesh not identical. Skipping.");
+			warning(graphics::log, "Mesh not identical. Skipping.");
 			//continue;
 		}
 		for (auto& animation : model.animations) {
 			bool skip{ false };
 			for (auto& existing_animation : output.animations) {
 				if (animation.name == existing_animation.name) {
-					warning(graphics::log, u8"{} already exists. Skipping animation.", animation.name);
+					warning(graphics::log, "{} already exists. Skipping animation.", animation.name);
 					skip = true;
 					continue;
 				}
@@ -276,7 +276,7 @@ model_data<Vertex, Index> merge_model_animations(const std::vector<model_data<Ve
 
 
 #if 0
-void convert_model(const std::u8string& source, const std::u8string& destination, model_conversion_options options);
+void convert_model(const std::string& source, const std::string& destination, model_conversion_options options);
 #endif
 
 transform3 load_model_bounding_box(const std::filesystem::path& path);

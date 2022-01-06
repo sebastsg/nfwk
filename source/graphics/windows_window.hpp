@@ -1,7 +1,7 @@
 #pragma once
 
 #include "platform.hpp"
-#include "windows_platform.hpp"
+#include "../source/windows_platform.hpp"
 #include "graphics/window.hpp"
 
 namespace nfwk::platform {
@@ -12,7 +12,7 @@ public:
 	static void create_classes();
 	static std::shared_ptr<render_context> create_compatibility_render_context();
 
-	windows_window(std::u8string_view title, std::optional<vector2i> size = std::nullopt);
+	windows_window(std::string_view title, std::optional<vector2i> size = std::nullopt);
 	~windows_window() override;
 
 	void poll() override;
@@ -23,9 +23,9 @@ public:
 	bool is_open() const override;
 	vector2i position() const override;
 	vector2i size() const override;
-	std::u8string title() const override;
+	std::string title() const override;
 
-	void set_title(std::u8string_view title) override;
+	void set_title(std::string_view title) override;
 	void set_size(vector2i size) override;
 
 	void swap() override;
@@ -39,7 +39,7 @@ public:
 
 private:
 	
-	static HWND create_window(std::u8string_view name, std::u8string_view type, int width, int height, bool maximized);
+	static HWND create_window(std::string_view name, std::string_view type, int width, int height, bool maximized);
 
 	void set_data();
 	void show(bool maximized);

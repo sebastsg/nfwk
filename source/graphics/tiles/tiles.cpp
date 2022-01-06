@@ -44,7 +44,7 @@ std::shared_ptr<layer> map::make_layer(int depth, int chunk_tiles_per_axis, vect
 	} else if (method == renderer::method::autotile) {
 		layer->set_renderer(std::make_unique<autotile_renderer>(grid, total_tile_types, *tileset_texture));
 	} else {
-		error(u8"tiles", u8"Invalid render method.");
+		error("tiles", "Invalid render method.");
 	}
 	std::sort(layers.begin(), layers.end(), [](const auto& a, const auto& b) {
 		return a->depth < b->depth;

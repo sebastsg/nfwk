@@ -73,7 +73,7 @@ void texture::load(const surface& surface, scale_option scaling, bool mipmap) {
 }
 
 void texture::load(const surface& surface) {
-	load(surface, scale_option::nearest_neighbour, false);
+	load(surface, scale_option::nearest_neighbor, false);
 }
 
 void texture::load_from_screen(int bottom_y, int x, int y, int width, int height) {
@@ -96,4 +96,12 @@ int texture::height() const {
 	return gl_textures[id].size.y;
 }
 
+}
+
+std::ostream& operator<<(std::ostream& out, nfwk::scale_option option) {
+	switch (option) {
+	using enum nfwk::scale_option;
+	case nearest_neighbor: return out << "Nearest Neighbor";
+	case linear: return out << "Linear";
+	}
 }

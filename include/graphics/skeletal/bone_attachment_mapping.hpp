@@ -7,16 +7,16 @@ namespace nfwk {
 
 struct bone_attachment_mapping {
 
-	std::u8string root_model;
-	std::u8string root_animation;
-	std::u8string attached_model;
-	std::u8string attached_animation;
+	std::string root_model;
+	std::string root_animation;
+	std::string attached_model;
+	std::string attached_animation;
 	int attached_to_channel = -1;
 	vector3f position;
 	glm::quat rotation;
 
 	bool is_same_mapping(const bone_attachment_mapping& that) const;
-	std::u8string mapping_string() const;
+	std::string mapping_string() const;
 
 };
 

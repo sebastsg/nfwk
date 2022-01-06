@@ -22,11 +22,11 @@ float pcm_stream::read_float() {
 		return 0.0f;
 	}
 	if (source->format() == pcm_format::int_16) {
-		const auto pcm = source->stream().read<std::int16_t>(position);
+		const auto pcm = source->stream().peek<std::int16_t>(position);
 		position += sizeof(pcm);
 		return static_cast<float>(static_cast<double>(pcm) / static_cast<double>(SHRT_MAX));
 	}
-	warning(audio::log, u8"Unknown source format {}", source->format());
+	warning(audio::log, "Unknown source format {}", source->format());
 	return 0.0f;
 }
 
@@ -57,4 +57,13 @@ int pcm_stream::sample_rate() const {
 	return source->sample_rate();
 }
 
+}
+
+std::ostream& operator<<(std::ostream& out, nfwk::pcm_format value) {
+	switch (value) {
+	using enum nfwk::pcm_format;
+	case float_32: return out << "Float32";
+	case int_16: return out << "Int16";
+	case unknown: return out << "Unknown";
+	}
 }

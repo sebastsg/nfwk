@@ -2,11 +2,11 @@
 #include "graphics/ui.hpp"
 #include "io.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
-std::optional<int> trigger_event_node::process() const {
+std::optional<int> trigger_event_node::process(script_context& context) const {
 	warning("scripts", "Does not pause script yet. Should be made like execute_script_node.");
-	//game_event_container::global().trigger(event_id);
+	//game_event_container::any().trigger(event_id);
 	return 0;
 }
 

@@ -1,23 +1,21 @@
 #include "scripts/nodes/random_condition_node.hpp"
-#include "graphics/ui.hpp"
 #include "random.hpp"
-#include "math.hpp"
 #include "io.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
-std::optional<int> random_condition_node::process() const {
-	return random_number_generator::global().chance(0.5f);
+std::optional<int> random_condition_node::process(script_context& context) const {
+	return random_number_generator::any().chance(chance);
 }
 
 void random_condition_node::write(io_stream& stream) const {
 	script_node::write(stream);
-	stream.write<std::int32_t>(percent);
+	stream.write_float32(chance);
 }
 
 void random_condition_node::read(io_stream& stream) {
 	script_node::read(stream);
-	percent = stream.read<std::int32_t>();
+	chance = stream.read_float32();
 }
 
 }

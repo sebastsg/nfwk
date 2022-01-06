@@ -26,7 +26,7 @@ window* render_context::get_current_window() {
 
 window::window() {
 	close_event_listener = on_close.listen([this] {
-		info(draw::log, u8"About to close window: {}.", title());
+		info(draw::log, "About to close window: {}.", title());
 		for (auto& subprogram : attached_subprograms) {
 			subprogram->stop();
 		}

@@ -4,7 +4,6 @@
 #include <libpng/png.h>
 
 #include <cerrno>
-#include <filesystem>
 
 namespace nfwk {
 
@@ -14,23 +13,22 @@ surface load_png(const std::filesystem::path& path) {
 	}
 	png_structp png{ png_create_read_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr) };
 	if (!png) {
-		warning(graphics::log, u8"Failed to create read structure");
+		warning(graphics::log, "Failed to create read structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	png_infop info{ png_create_info_struct(png) };
 	if (!info) {
-		warning(graphics::log, u8"Failed to create info structure");
+		warning(graphics::log, "Failed to create info structure");
 		return { 2, 2, pixel_format::rgba };
 	}
 	if (setjmp(png_jmpbuf(png))) {
-		warning(graphics::log, u8"Failed to load image: {}", path);
+		warning(graphics::log, "Failed to load image: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 #if 1
 	FILE* file{ nullptr };
-	const auto& path_string = path.u8string();
-	const char* path_data = reinterpret_cast<const char*>(path_string.c_str());
-	const errno_t error{ fopen_s(&file, path_data, "rb") };
+	const auto& path_string = path.wstring();
+	const auto error = _wfopen_s(&file, path_string.c_str(), L"rb");
 	if (!file) {
 		return { 2, 2, pixel_format::rgba };
 	}
@@ -39,7 +37,7 @@ surface load_png(const std::filesystem::path& path) {
 	const int error{ errno };
 #endif
 	if (error == ENOENT) {
-		warning(graphics::log, u8"Image file was not found: {}", path);
+		warning(graphics::log, "Image file was not found: {}", path);
 		return { 2, 2, pixel_format::rgba };
 	}
 
@@ -90,7 +88,7 @@ surface load_png(const std::filesystem::path& path) {
 		delete[] rows[y];
 	}
 	delete[] rows;
-	message(graphics::log, u8"Loaded PNG file {}. Size: {}, {}", path, width, height);
+	message(graphics::log, "Loaded PNG file {}. Size: {}, {}", path, width, height);
 	return { pixels, static_cast<int>(width), static_cast<int>(height), pixel_format::rgba, surface::construct_by::move };
 }
 

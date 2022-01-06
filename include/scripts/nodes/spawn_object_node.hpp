@@ -3,36 +3,39 @@
 #include "io.hpp"
 #include "scripts/script_node.hpp"
 #include "script_node_macro.hpp"
+#include "scripts/script_tree.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
 class spawn_object_node : public script_node {
 public:
 
-	NFWK_SCRIPT_CORE_NODE(11, u8"Spawn object", u8"");
+	NFWK_SCRIPT_CORE_NODE(11, "Spawn object", "");
 
-	int class_index{ 0 };
+	std::string class_id{ 0 };
 	vector2f position;
 
-	script_node_output_type output_type() const override {
-		return script_node_output_type::single;
+	output_type get_output_type() const override {
+		return output_type::single;
 	}
 
-	std::optional<int> process() const override {
-		objects::spawn(class_index);
+	std::optional<int> process(script_context& context) const override {
+		if (auto class_ = context.objects->find_class_instance(class_id)) {
+			class_->create_instance();
+		}
 		return 0;
 	}
 
 	void write(io_stream& stream) const override {
 		script_node::write(stream);
-		stream.write(static_cast<std::int32_t>(class_index));
-		stream.write(position);
+		stream.write_string(class_id);
+		stream.write_struct(position);
 	}
 
 	void read(io_stream& stream) override {
 		script_node::read(stream);
-		class_index = stream.read<std::int32_t>();
-		position = stream.read<vector2f>();
+		class_id = stream.read_string();
+		position = stream.read_struct<vector2f>();
 	}
 
 };

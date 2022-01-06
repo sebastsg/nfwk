@@ -12,42 +12,41 @@ chunk::chunk(int x, int y, int tiles_per_axis, vector2i grid, tiles::layer* laye
 }
 
 void chunk::write(io_stream& stream) const {
-	stream.write(chunk_index);
-	stream.write(tile_index);
-	stream.write(static_cast<std::int16_t>(tiles_per_axis));
-	stream.write(grid);
+	stream.write_struct(chunk_index);
+	stream.write_struct(tile_index);
+	stream.write_int16(tiles_per_axis);
+	stream.write_struct(grid);
 	//stream.write_array<std::int32_t, tile>(tiles);
-	stream.write<std::int8_t>(rendered ? 1 : 0);
+	stream.write_bool(rendered != nullptr);
 	if (rendered) {
-		stream.write(static_cast<std::int32_t>(rendered->tiles.size()));
+		stream.write_size(rendered->tiles.size());
 		for (const auto& group : rendered->tiles) {
-			stream.write(static_cast<std::int8_t>(group.size()));
+			stream.write_size<size_length::one_byte>(group.size());
 			for (const auto& tile : group) {
-				stream.write(tile.position);
-				stream.write(tile.size);
-				stream.write(tile.tex_coords);
+				stream.write_struct(tile.position);
+				stream.write_struct(tile.size);
+				stream.write_struct(tile.tex_coords);
 			}
 		}
 	}
 }
 
 void chunk::read(io_stream& stream) {
-	chunk_index = stream.read<vector2i>();
-	tile_index = stream.read<vector2i>();
-	tiles_per_axis = static_cast<int>(stream.read<std::int16_t>());
-	grid = stream.read<vector2i>();
+	chunk_index = stream.read_struct<vector2i>();
+	tile_index = stream.read_struct<vector2i>();
+	tiles_per_axis = stream.read_int16<int>();
+	grid = stream.read_struct<vector2i>();
 	//tiles = stream.read_array<tile, int32_t>();
-	const bool has_render_data{ stream.read<std::int8_t>() != 0 };
-	if (has_render_data) {
+	if (stream.read_bool()) { // has render data
 		rendered = std::make_unique<rendered_chunk>();
-		const std::int32_t tile_count{ stream.read<std::int32_t>() };
-		for (std::int32_t i{ 0 }; i < tile_count; i++) {
-			const std::int8_t subtile_count{ stream.read<std::int8_t>() };
+		const auto tile_count = stream.read_size();
+		for (std::size_t i{ 0 }; i < tile_count; i++) {
+			const auto subtile_count = stream.read_size<size_length::one_byte>();
 			auto& tile = rendered->tiles.emplace_back();
-			for (std::int8_t j{ 0 }; j < subtile_count; j++) {
-				const auto position = stream.read<vector2f>();
-				const auto size = stream.read<vector2f>();
-				const auto tex_coords = stream.read<vector4f>();
+			for (std::size_t j{ 0 }; j < subtile_count; j++) {
+				const auto position = stream.read_struct<vector2f>();
+				const auto size = stream.read_struct<vector2f>();
+				const auto tex_coords = stream.read_struct<vector4f>();
 				tile.emplace_back(position, size, tex_coords);
 			}
 		}

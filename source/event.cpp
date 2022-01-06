@@ -42,7 +42,7 @@ void remove_event(int event_id) {
 
 int add_event_listener(int event_id) {
 	if (event_id < 0 || event_id >= static_cast<int>(data.events.size()) || !data.events[event_id].event_exists) {
-		warning(core::log, u8"Trying to add event listener to non-existing event {}", event_id);
+		warning(core::log, "Trying to add event listener to non-existing event {}", event_id);
 		return -1;
 	}
 	auto& event = data.events[event_id];

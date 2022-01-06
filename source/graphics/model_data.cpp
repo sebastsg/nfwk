@@ -297,13 +297,13 @@ transform3 load_model_bounding_box(const std::filesystem::path& path) {
 	io_stream stream;
 	read_file(path, stream);
 	if (stream.write_index() == 0) {
-		warning(graphics::log, u8"Failed to open file: {}", path);
+		warning(graphics::log, "Failed to open file: {}", path);
 		return {};
 	}
 	stream.move_read_index(sizeof(glm::mat4));
 	transform3 transform;
-	transform.position = stream.read<vector3f>();
-	transform.scale = stream.read<vector3f>();
+	transform.position = stream.read_struct<vector3f>();
+	transform.scale = stream.read_struct<vector3f>();
 	return transform;
 }
 

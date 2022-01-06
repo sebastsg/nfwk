@@ -3,13 +3,13 @@
 #include "graphics/ui.hpp"
 #include "io.hpp"
 
-namespace nfwk {
+namespace nfwk::script {
 
-std::optional<int> execute_script_node::process() const {
+std::optional<int> execute_script_node::process(script_context& context) const {
 	ASSERT(false);
-	error(scripts::log, u8"Not implemented");
+	error(scripts::log, "Not implemented");
 	//script_tree inner;
-	//inner.context = tree->context;
+	//inner.context = context;
 	//inner.load(script);
 	//inner.process_entry_point();
 	return 0;

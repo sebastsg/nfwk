@@ -21,35 +21,35 @@ wgl_context::~wgl_context() {
 	if (exists()) {
 		// todo: this code must be improved/fixed, as it's assuming the current device context can be used.
 		if (is_current()) {
-			info(draw::log, u8"Calling delete event");
+			info(draw::log, "Calling delete event");
 			on_delete.emit();
 			wglMakeCurrent(nullptr, nullptr);
 		} else if (on_delete.total_listeners() > 0) {
-			bug(u8"{} listeners for delete event, and this context is not current. If >0, expect crash.", on_delete.total_listeners());
+			bug("{} listeners for delete event, and this context is not current. If >0, expect crash.", on_delete.total_listeners());
 		}
-		info(draw::log, u8"Deleting context");
+		info(draw::log, "Deleting context");
 		wglDeleteContext(gl_context);
 	}
 }
 
 void wgl_context::initialize_glew() {
 	if (const auto glew_error = glewInit(); glew_error != GLEW_OK) {
-		error(draw::log, u8"Failed to initialize GLEW");
+		error(draw::log, "Failed to initialize GLEW");
 		ASSERT(glew_error == GLEW_OK);
 	}
 }
 
 void wgl_context::initialize_gl() {
-	message(draw::log, u8"Enabling depth testing");
+	message(draw::log, "Enabling depth testing");
 	CHECK_GL_ERROR(glEnable(GL_DEPTH_TEST));
-	message(draw::log, u8"Setting depth function: \"less than or equal\"");
+	message(draw::log, "Setting depth function: \"less than or equal\"");
 	CHECK_GL_ERROR(glDepthFunc(GL_LEQUAL));
-	message(draw::log, u8"Enabling blending");
+	message(draw::log, "Enabling blending");
 	CHECK_GL_ERROR(glEnable(GL_BLEND));
 	// https://www.opengl.org/sdk/docs/man/html/glBlendFunc.xhtml
-	message(draw::log, u8"Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
+	message(draw::log, "Setting blend function. Source: \"Source alpha\". Destination: \"One minus source alpha\"");
 	CHECK_GL_ERROR(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
-	message(draw::log, u8"Enabling scissor testing");
+	message(draw::log, "Enabling scissor testing");
 	CHECK_GL_ERROR(glEnable(GL_SCISSOR_TEST));
 }
 
@@ -66,12 +66,15 @@ bool wgl_context::is_current() const {
 }
 
 void wgl_context::make_current(const window& window) {
-	if (const auto* platform_window = dynamic_cast<const platform::windows_window*>(&window)) {
+	if (is_current()) {
+		return;
+	}
+	if (const auto* platform_window = dynamic_cast<const windows_window*>(&window)) {
 		make_current(platform_window->get_device_context());
 		const auto [width, height] = window.size();
 		set_viewport(0, 0, width, height);
 	} else {
-		bug(u8"Unknown window implementation");
+		bug("Unknown window implementation");
 	}
 }
 
@@ -98,15 +101,15 @@ void wgl_context::clear() {
 }
 
 void wgl_context::log_info() const {
-	info(draw::log, u8"[b]Windows OpenGL[/b]"
+	info(draw::log, "[b]Windows OpenGL[/b]"
 		"\n[b]Version:[/b] {}"
 		"\n[b]Vendor:[/b] {}"
 		"\n[b]Renderer:[/b] {}"
 		"\n[b]Shading Language Version:[/b] {}",
-		glGetString(GL_VERSION),
-		glGetString(GL_VENDOR),
-		glGetString(GL_RENDERER),
-		glGetString(GL_SHADING_LANGUAGE_VERSION)
+		reinterpret_cast<const char*>(glGetString(GL_VERSION)),
+		reinterpret_cast<const char*>(glGetString(GL_VENDOR)),
+		reinterpret_cast<const char*>(glGetString(GL_RENDERER)),
+		reinterpret_cast<const char*>(glGetString(GL_SHADING_LANGUAGE_VERSION))
 	);
 }
 
@@ -124,26 +127,26 @@ bool wgl_context::set_swap_interval(swap_interval interval) {
 bool wgl_context::set_swap_interval(int interval) {
 	const auto status = wglSwapIntervalEXT(interval);
 	if (status) {
-		message(draw::log, u8"Set swap interval to {}", interval);
+		message(draw::log, "Set swap interval to {}", interval);
 	} else {
-		warning(draw::log, u8"Failed to set swap interval to {}. Error: {}", interval, GetLastError());
+		warning(draw::log, "Failed to set swap interval to {}. Error: {}", interval, GetLastError());
 	}
 	return status;
 }
 
 wgl_compatibility_context::wgl_compatibility_context(HDC device_context) {
 	set_pixel_format(device_context);
-	message(draw::log, u8"Creating default context");
+	message(draw::log, "Creating default context");
 	gl_context = wglCreateContext(device_context);
 	if (!gl_context) {
-		error(draw::log, u8"Failed to create default context");
+		error(draw::log, "Failed to create default context");
 	}
 	make_current(device_context);
 	initialize_gl();
 }
 
 void wgl_compatibility_context::set_pixel_format(HDC device_context) {
-	message(draw::log, u8"Setting pixel format (compatibility)");
+	message(draw::log, "Setting pixel format (compatibility)");
 	PIXELFORMATDESCRIPTOR descriptor{};
 	descriptor.nSize = sizeof(descriptor);
 	descriptor.nVersion = 1;
@@ -153,14 +156,14 @@ void wgl_compatibility_context::set_pixel_format(HDC device_context) {
 	descriptor.cColorBits = 32;
 	const int format{ ChoosePixelFormat(device_context, &descriptor) };
 	if (format == 0) {
-		error(draw::log, u8"Did not find suitable pixel format");
+		error(draw::log, "Did not find suitable pixel format");
 		return;
 	}
 	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
 	if (!SetPixelFormat(device_context, format, &descriptor)) {
-		error(draw::log, u8"Failed to set pixel format");
+		error(draw::log, "Failed to set pixel format");
 	}
-	info(draw::log, u8"Pixel Format: {}\nDouble buffer: {}", format, ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"));
+	info(draw::log, "Pixel Format: {}\nDouble buffer: {}", format, ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"));
 }
 
 wgl_attribute_context::wgl_attribute_context(HDC device_context, std::optional<int> samples) : samples{ samples.value_or(0) } {
@@ -170,14 +173,14 @@ wgl_attribute_context::wgl_attribute_context(HDC device_context, std::optional<i
 		WGL_CONTEXT_MINOR_VERSION_ARB, 6,
 		0
 	};
-	message(draw::log, u8"Creating context with attributes");
+	message(draw::log, "Creating context with attributes");
 	gl_context = wglCreateContextAttribsARB(device_context, nullptr, attributes);
 	if (!gl_context) {
-		warning(draw::log, u8"Failed to create context. OpenGL {}.{} not supported", attributes[1], attributes[3]);
-		message(draw::log, u8"Creating fallback context");
+		warning(draw::log, "Failed to create context. OpenGL {}.{} not supported", attributes[1], attributes[3]);
+		message(draw::log, "Creating fallback context");
 		gl_context = wglCreateContext(device_context);
 		if (!gl_context) {
-			error(draw::log, u8"Failed to create fallback context");
+			error(draw::log, "Failed to create fallback context");
 			return;
 		}
 	}
@@ -201,7 +204,7 @@ void wgl_attribute_context::set_pixel_format(HDC device_context) {
 		samples = 1;
 		break;
 	}
-	message(draw::log, u8"Setting pixel format");
+	message(draw::log, "Setting pixel format");
 	const int int_attributes[]{
 		WGL_DRAW_TO_WINDOW_ARB, GL_TRUE,
 		WGL_SUPPORT_OPENGL_ARB, GL_TRUE,
@@ -223,20 +226,20 @@ void wgl_attribute_context::set_pixel_format(HDC device_context) {
 	unsigned int count{ 0 };
 	const auto success = wglChoosePixelFormatARB(device_context, int_attributes, float_attributes, 1, &format, &count);
 	if (!success || count == 0) {
-		warning(draw::log, u8"Failed to find pixel format");
+		warning(draw::log, "Failed to find pixel format");
 		return;
 	}
 	PIXELFORMATDESCRIPTOR descriptor{};
 	DescribePixelFormat(device_context, format, sizeof(PIXELFORMATDESCRIPTOR), &descriptor);
 	if (!SetPixelFormat(device_context, format, &descriptor)) {
-		error(draw::log, u8"Failed to set pixel format");
+		error(draw::log, "Failed to set pixel format");
 	}
-	info(draw::log, u8"Pixel Format: {}\nDouble buffer: {}\nSamples: {}", format, ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"), samples);
+	info(draw::log, "Pixel Format: {}\nDouble buffer: {}\nSamples: {}", format, ((descriptor.dwFlags & PFD_DOUBLEBUFFER) ? "Yes" : "No"), samples);
 }
 
 void wgl_attribute_context::enable_multisampling() {
 	if (samples > 0) {
-		message(draw::log, u8"Enabled multisampling");
+		message(draw::log, "Enabled multisampling");
 		CHECK_GL_ERROR(glEnable(GL_MULTISAMPLE));
 	}
 }

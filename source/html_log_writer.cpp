@@ -1,11 +1,12 @@
 #include "html_log_writer.hpp"
 #include "assets.hpp"
+#include "utility_functions.hpp"
 
 namespace nfwk::log {
 
 // this can be used for release builds to have fewer external files.
-constexpr std::u8string_view default_template_html{
-	u8"<!doctype html><html><head><style>"
+constexpr std::string_view default_template_html{
+	"<!doctype html><html><head><style>"
 	"body { margin: 0; background: #202021; }"
 	"table { width: 100%; border-collapse: collapse; }"
 	"td { border: 1px solid #333; background: #282828; color: #a0a0a0; font-family: monospace; }"
@@ -16,9 +17,9 @@ constexpr std::u8string_view default_template_html{
 	"<td>File</td><td style=\"width:25%;\">Function</td><td>Line</td></tr>"
 };
 
-html_writer::html_writer(std::shared_ptr<debug_log> log) : log_writer{ log } {
+html_writer::html_writer(std::shared_ptr<debug_log> log_) : log_writer{ std::move(log_) } {
 	buffer = default_template_html;
-	path = u8"logs/" + log->name + u8".html";
+	path = "logs/" + log->name + ".html";
 	for (const auto& entry : log->get_entries()) {
 		buffer += entry_html(entry);
 	}
@@ -32,29 +33,29 @@ void html_writer::open() const {
 	platform::open_file(path, false);
 }
 
-std::string html_writer::field_html(const std::u8string& message, int col_span) {
+std::string html_writer::field_html(const std::string& message, int col_span) {
 	return "<td colspan=\"" + std::to_string(col_span) + "\">" + std::string{ message.begin(), message.end() } + "</td>";
 }
 
-std::u8string html_writer::entry_html(const log_entry& entry) {
+std::string html_writer::entry_html(const log_entry& entry) {
 	std::stringstream html;
 	html << "\r\n<tr class=\"" << entry.type << "\">";
 	html << field_html(entry.time);
 	html << field_html(html_compatible_string(entry.message));
 	html << field_html(entry.file);
 	html << field_html(html_compatible_string(entry.function));
-	html << field_html(reinterpret_cast<const char8_t*>(std::to_string(entry.line).c_str()));
+	html << field_html(reinterpret_cast<const char*>(std::to_string(entry.line).c_str()));
 	html << "</tr>";
-	return reinterpret_cast<const char8_t*>(html.str().c_str());
+	return reinterpret_cast<const char*>(html.str().c_str());
 }
 
-std::u8string html_writer::html_compatible_string(std::u8string string) {
-	replace_substring(string, u8"&", u8"&amp;");
-	replace_substring(string, u8">", u8"&gt;");
-	replace_substring(string, u8"<", u8"&lt;");
-	replace_substring(string, u8"\n", u8"<br>");
-	replace_substring(string, u8"[b]", u8"<b>");
-	replace_substring(string, u8"[/b]", u8"</b>");
+std::string html_writer::html_compatible_string(std::string string) {
+	replace_substring(string, "&", "&amp;");
+	replace_substring(string, ">", "&gt;");
+	replace_substring(string, "<", "&lt;");
+	replace_substring(string, "\n", "<br>");
+	replace_substring(string, "[b]", "<b>");
+	replace_substring(string, "[/b]", "</b>");
 	return string;
 }
 
@@ -65,7 +66,7 @@ void html_writer::flush() {
 	} else {
 		append_file(path, buffer);
 	}
-	buffer = u8"";
+	buffer = "";
 }
 
 }

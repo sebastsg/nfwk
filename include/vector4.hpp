@@ -7,27 +7,26 @@ namespace nfwk {
 template<typename T>
 struct vector4 {
 
-	union {
-		struct {
-			T x, y, z, w;
-		};
-		struct {
-			vector2<T> xy;
-			T _placeholder_z_0;
-			T _placeholder_w_1;
-		};
-		struct {
-			vector3<T> xyz;
-			T _placeholder_w_2;
-		};
-		struct {
-			T _placeholder_x_0;
-			T _placeholder_y_0;
-			vector2<T> zw;
-		};
-	};
+	static constexpr int components{ 4 };
+	
+	T x{};
+	T y{};
+	T z{};
+	T w{};
 
-	constexpr vector4() : x{}, y{}, z{}, w{} {}
+	constexpr vector2<T> xy() const {
+		return { x, y };
+	}
+
+	constexpr vector2<T> zw() const {
+		return { z, w };
+	}
+
+	constexpr vector3<T> xyz() const {
+		return { x, y, z };
+	}
+
+	constexpr vector4() = default;
 	constexpr vector4(T i) : x{ i }, y{ i }, z{ i }, w{ i } {}
 	constexpr vector4(T x, T y, T z, T w) : x{ x }, y{ y }, z{ z }, w{ w } {}
 
@@ -95,7 +94,7 @@ struct vector4 {
 	}
 
 	constexpr bool operator<(const vector4<T>& v) const {
-		return x < v.x&& y < v.y&& z < v.z&& w < v.w;
+		return x < v.x && y < v.y && z < v.z && w < v.w;
 	}
 
 	constexpr bool operator>=(const vector4<T>& v) const {
